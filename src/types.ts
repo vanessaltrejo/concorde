@@ -3,9 +3,12 @@ export type SkyPosition = {
   elevationDeg: number
 }
 
-// A Sun or Earth position plus its apparent size (from Horizons).
+// A Sun or Earth position plus its apparent size and astrometric ICRF
+// direction (from Horizons).
 export type SkyBodyState = SkyPosition & {
   angularDiameterDeg: number
+  raDeg: number
+  decDeg: number
 }
 
 export type SkySample = {
@@ -14,6 +17,9 @@ export type SkySample = {
   earth: SkyBodyState
   // Percent of Earth's disc lit by the Sun, as seen from the site.
   earthIlluminatedPct: number
+  // Point on Earth (east longitude, latitude) at the center of the disc seen from the site.
+  earthSubObserverLonDeg: number
+  earthSubObserverLatDeg: number
 }
 
 export type LandingSite = {
@@ -48,12 +54,23 @@ export type HorizonProfile = {
   elevationDeg: number[]
 }
 
-// Terrain vertices around the site in scene axes (x = east, y = up, z = -north),
-// from public/data/<siteId>/terrain.bin + terrain.json.
+// One terrain grid around the site, from public/data/<siteId>/terrain_<name>.f32
+// + terrain.json (scripts/build_terrain.py). Positions are exact scene x, y, z
+// (x = east, y = up, z = -north, meters) per node, row-major.
 export type TerrainGrid = {
-  gridSize: number
+  size: number
   spacingM: number
-  vertices: Float32Array
+  // Approximate map: scene x = a*col + b*row + c, scene z = d*col + e*row + f.
+  // Only used to look up heights from scene x, z in the shadow shader.
+  affine: [number, number, number, number, number, number]
+  positions: Float32Array
+}
+
+// near: 20 m out to 10 km, mid: 320 m out to 80 km, far: 640 m out to 200 km.
+export type TerrainData = {
+  near: TerrainGrid
+  mid: TerrainGrid
+  far: TerrainGrid
 }
 
 export type Visibility = 'visible' | 'partial' | 'hidden'
@@ -61,5 +78,5 @@ export type Visibility = 'visible' | 'partial' | 'hidden'
 export type SiteData = {
   sky: SkyData
   horizon: HorizonProfile
-  terrain: TerrainGrid
+  terrain: TerrainData
 }

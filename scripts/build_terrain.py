@@ -3,8 +3,10 @@
 Reads only small windows of a remote Cloud-Optimized GeoTIFF (no full
 download) and writes:
   public/data/<site_id>/horizon.json   horizon elevation for every azimuth
-  public/data/<site_id>/terrain.bin    terrain vertices for the 3D view
-  public/data/<site_id>/terrain.json   size and provenance of terrain.bin
+  public/data/<site_id>/terrain_near.f32  20 m grid around the site, exact scene x,y,z
+  public/data/<site_id>/terrain_mid.f32   320 m grid out to 80 km, exact scene x,y,z
+  public/data/<site_id>/terrain_far.f32   640 m grid out to 200 km, exact scene x,y,z
+  public/data/<site_id>/terrain.json      grid sizes, scene placement, provenance
 
 Data: LOLA 20 m/pixel south pole DEM, LDEM_80S_20MPP_ADJ.TIF (PGDA product 90),
 Barker et al. 2023, Planet. Sci. J. 4, 183, doi:10.3847/PSJ/acf3e1.
@@ -59,9 +61,15 @@ LEVELS = [
     (2, 160.0, MAX_DISTANCE_M, 80.0),
 ]
 
-# Terrain mesh for the 3D view: square around the site, 40 m spacing.
-MESH_HALF_SIZE_M = 10_000.0
-MESH_OVERVIEW_LEVEL = 0  # 2x = 40 m
+# Height grids for the 3D view: (name, overview level, half size in m).
+# Near: full 20 m data, 20 x 20 km. Mid: 16x overview (320 m), 160 x 160 km.
+# Far: 32x overview (640 m), 400 x 400 km, so shadows see the same terrain
+# (out to 200 km) as the horizon profile.
+GRIDS = [
+    ("near", None, 10_000.0),
+    ("mid", 3, 80_000.0),
+    ("far", 4, MAX_DISTANCE_M),
+]
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = PROJECT_ROOT / "public" / "data" / SITE_ID
@@ -181,20 +189,24 @@ def build_horizon(geom: Geometry, x0: float, y0: float, observer: np.ndarray) ->
     return horizon
 
 
-def build_mesh(geom: Geometry, x0: float, y0: float, observer: np.ndarray) -> tuple[np.ndarray, int, float]:
-    """Terrain vertices in the observer's local frame: (east, up, -north) in meters.
+def build_grid(
+    geom: Geometry, x0: float, y0: float, observer: np.ndarray, overview_level: int | None, half_size_m: float
+) -> dict:
+    """Height grid in the scene frame of the observer, for the 3D view.
 
-    Matches the app scene axes (+X east, +Y up, -Z north). Curvature is included
-    because each vertex is placed on the sphere first.
+    Scene axes: x = east, y = up, z = -north (meters), site ground at the origin.
+    Every grid node is placed on the sphere first, so positions include curvature.
+    Exact x, y, z are stored per node. An affine fit (col, row) -> scene (x, z) is
+    also stored, only to look up heights from scene x, z in the shadow shader; its
+    residual comes from curvature (deep terrain far away "leans") and is reported.
     """
     east, north, up = local_frame(SITE_LON_DEG, SITE_LAT_DEG)
-    with open_dem(MESH_OVERVIEW_LEVEL) as ds:
-        data, transform = read_window(ds, x0, y0, MESH_HALF_SIZE_M)
-    rows, cols = data.shape
-    size = min(rows, cols)
+    with open_dem(overview_level) as ds:
+        data, transform = read_window(ds, x0, y0, half_size_m)
+    size = min(data.shape)
     data = data[:size, :size]
     spacing = transform.a
-    col_idx, row_idx = np.meshgrid(np.arange(size), np.arange(size))
+    col_idx, row_idx = np.meshgrid(np.arange(size, dtype=np.float64), np.arange(size, dtype=np.float64))
     xs = transform.c + (col_idx + 0.5) * spacing
     ys = transform.f - (row_idx + 0.5) * spacing
     heights = data.copy()
@@ -203,10 +215,26 @@ def build_mesh(geom: Geometry, x0: float, y0: float, observer: np.ndarray) -> tu
         heights[np.isnan(heights)] = np.nanmean(heights)
     points = geom.to_cartesian(xs.ravel(), ys.ravel(), heights.ravel())
     d = points - observer
-    # Observer sits at scene origin + OBSERVER_HEIGHT_M, so shift the ground down.
-    local = np.stack([d @ east, d @ up + OBSERVER_HEIGHT_M, -(d @ north)], axis=1).astype(np.float32)
-    print(f"  mesh {size}x{size} at {spacing:.0f} m, NaN filled: {nan_count}")
-    return local, size, spacing
+    scene_x = d @ east
+    scene_y = d @ up + OBSERVER_HEIGHT_M
+    scene_z = -(d @ north)
+
+    design = np.stack([col_idx.ravel(), row_idx.ravel(), np.ones(size * size)], axis=1)
+    coef_x, *_ = np.linalg.lstsq(design, scene_x, rcond=None)
+    coef_z, *_ = np.linalg.lstsq(design, scene_z, rcond=None)
+    residual = np.hypot(design @ coef_x - scene_x, design @ coef_z - scene_z)
+    print(
+        f"  {size}x{size} at {spacing:.0f} m, NaN filled: {nan_count}, "
+        f"affine fit max residual {residual.max():.2f} m"
+    )
+    return {
+        "positions": np.stack([scene_x, scene_y, scene_z], axis=1).astype(np.float32),
+        "size": size,
+        "spacingM": spacing,
+        # scene x = a*col + b*row + c ; scene z = d*col + e*row + f
+        "affine": [float(v) for v in (*coef_x, *coef_z)],
+        "maxResidualM": float(residual.max()),
+    }
 
 
 def main() -> None:
@@ -246,20 +274,29 @@ def main() -> None:
     }
     (OUT_DIR / "horizon.json").write_text(json.dumps(horizon_out))
 
-    print("Mesh:")
-    vertices, size, spacing = build_mesh(geom, x0, y0, observer)
-    (OUT_DIR / "terrain.bin").write_bytes(vertices.tobytes())
+    grids_meta = {}
+    for name, level, half_size in GRIDS:
+        print(f"Grid {name}:")
+        grid = build_grid(geom, x0, y0, observer, level, half_size)
+        (OUT_DIR / f"terrain_{name}.f32").write_bytes(grid["positions"].tobytes())
+        grids_meta[name] = {k: v for k, v in grid.items() if k != "positions"}
+        grids_meta[name]["file"] = f"terrain_{name}.f32"
+    old_mesh = OUT_DIR / "terrain.bin"
+    if old_mesh.exists():
+        old_mesh.unlink()
+
     terrain_meta = {
         "siteId": SITE_ID,
-        "gridSize": size,
-        "spacingM": spacing,
-        "vertexLayout": "float32 x,y,z per vertex, row-major; x=east, y=up, z=-north (meters). "
-        "Site ground at (0,0,0); observer eye at (0, observerHeightM, 0)",
+        "grids": grids_meta,
+        "layout": "float32 x,y,z per grid node, row-major (row = map row). "
+        "Scene axes: x = east, y = up, z = -north (meters); site ground at (0,0,0), "
+        "observer eye at (0, observerHeightM, 0). Affine (col,row) -> scene x,z is "
+        "approximate (see maxResidualM) and only used for shadow height lookups.",
         "observerHeightM": OBSERVER_HEIGHT_M,
         "provenance": {"source": DEM_SOURCE, "url": DEM_URL, "generatedUtc": generated},
     }
     (OUT_DIR / "terrain.json").write_text(json.dumps(terrain_meta, indent=1))
-    print(f"Wrote horizon.json, terrain.bin ({vertices.nbytes / 1e6:.1f} MB), terrain.json")
+    print("Wrote horizon.json, terrain_*.f32, terrain.json")
 
 
 if __name__ == "__main__":

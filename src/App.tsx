@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
-import { MainView } from './components/MainView'
-import { Sidebar } from './components/Sidebar'
+import { SiteView } from './components/SiteView'
 import { loadSiteData } from './data/loadSiteData'
-import { bodyVisibility } from './scene/visibility'
 import type { SiteData } from './types'
 
 const siteId = 'shackleton-rim'
@@ -14,7 +12,6 @@ type LoadState =
 
 export default function App() {
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' })
-  const [sampleIndex, setSampleIndex] = useState(0)
 
   useEffect(() => {
     loadSiteData(siteId)
@@ -32,29 +29,5 @@ export default function App() {
     )
   }
 
-  const { sky, horizon, terrain } = loadState.data
-  const sample = sky.samples[sampleIndex]
-  const sunVisibility = bodyVisibility(sample.sun, horizon)
-  const earthVisibility = bodyVisibility(sample.earth, horizon)
-
-  return (
-    <div className="flex h-full">
-      <Sidebar
-        site={sky.site}
-        samples={sky.samples}
-        index={sampleIndex}
-        onIndexChange={setSampleIndex}
-        sunVisibility={sunVisibility}
-        earthVisibility={earthVisibility}
-      />
-      <MainView
-        sample={sample}
-        horizon={horizon}
-        terrain={terrain}
-        sunVisibility={sunVisibility}
-        earthVisibility={earthVisibility}
-        initialAzimuthDeg={Math.round(sky.samples[0].earth.azimuthDeg)}
-      />
-    </div>
-  )
+  return <SiteView data={loadState.data} />
 }

@@ -1,4 +1,12 @@
-import type { HorizonProfile, SiteData, SkyBodyState, SkyData, SkySample, TerrainGrid } from '../types'
+import type {
+  HorizonProfile,
+  SiteData,
+  SkyBodyState,
+  SkyData,
+  SkySample,
+  TerrainData,
+  TerrainGrid,
+} from '../types'
 
 // Thin data layer: reads the static files made by the scripts in /scripts.
 
@@ -15,7 +23,9 @@ function isSkyBodyState(value: unknown): value is SkyBodyState {
     isRecord(value) &&
     isNumber(value.azimuthDeg) &&
     isNumber(value.elevationDeg) &&
-    isNumber(value.angularDiameterDeg)
+    isNumber(value.angularDiameterDeg) &&
+    isNumber(value.raDeg) &&
+    isNumber(value.decDeg)
   )
 }
 
@@ -25,7 +35,9 @@ function isSkySample(value: unknown): value is SkySample {
     typeof value.timeUtc === 'string' &&
     isSkyBodyState(value.sun) &&
     isSkyBodyState(value.earth) &&
-    isNumber(value.earthIlluminatedPct)
+    isNumber(value.earthIlluminatedPct) &&
+    isNumber(value.earthSubObserverLonDeg) &&
+    isNumber(value.earthSubObserverLatDeg)
   )
 }
 
@@ -69,18 +81,52 @@ async function loadHorizon(siteId: string): Promise<HorizonProfile> {
   return json
 }
 
-async function loadTerrain(siteId: string): Promise<TerrainGrid> {
+type GridMeta = {
+  size: number
+  spacingM: number
+  affine: TerrainGrid['affine']
+  file: string
+}
+
+function isGridMeta(value: unknown): value is GridMeta {
+  return (
+    isRecord(value) &&
+    isNumber(value.size) &&
+    isNumber(value.spacingM) &&
+    typeof value.file === 'string' &&
+    Array.isArray(value.affine) &&
+    value.affine.length === 6 &&
+    value.affine.every(isNumber)
+  )
+}
+
+async function loadGrid(siteId: string, meta: GridMeta): Promise<TerrainGrid> {
+  const response = await fetch(`/data/${siteId}/${meta.file}`)
+  if (!response.ok) throw new Error(`Could not load ${meta.file} for ${siteId} (${response.status})`)
+  const positions = new Float32Array(await response.arrayBuffer())
+  if (positions.length !== meta.size * meta.size * 3) {
+    throw new Error(`${meta.file} for ${siteId} does not match grid size ${meta.size}`)
+  }
+  return { size: meta.size, spacingM: meta.spacingM, affine: meta.affine, positions }
+}
+
+async function loadTerrain(siteId: string): Promise<TerrainData> {
   const meta = await fetchJson(`/data/${siteId}/terrain.json`)
-  if (!isRecord(meta) || !isNumber(meta.gridSize) || !isNumber(meta.spacingM)) {
+  if (
+    !isRecord(meta) ||
+    !isRecord(meta.grids) ||
+    !isGridMeta(meta.grids.near) ||
+    !isGridMeta(meta.grids.mid) ||
+    !isGridMeta(meta.grids.far)
+  ) {
     throw new Error(`terrain.json for ${siteId} has an unexpected shape`)
   }
-  const response = await fetch(`/data/${siteId}/terrain.bin`)
-  if (!response.ok) throw new Error(`Could not load terrain.bin for ${siteId} (${response.status})`)
-  const vertices = new Float32Array(await response.arrayBuffer())
-  if (vertices.length !== meta.gridSize * meta.gridSize * 3) {
-    throw new Error(`terrain.bin for ${siteId} does not match gridSize ${meta.gridSize}`)
-  }
-  return { gridSize: meta.gridSize, spacingM: meta.spacingM, vertices }
+  const [near, mid, far] = await Promise.all([
+    loadGrid(siteId, meta.grids.near),
+    loadGrid(siteId, meta.grids.mid),
+    loadGrid(siteId, meta.grids.far),
+  ])
+  return { near, mid, far }
 }
 
 export async function loadSiteData(siteId: string): Promise<SiteData> {

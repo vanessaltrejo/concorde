@@ -22,6 +22,7 @@ export function LookControls({
 }: LookControlsProps) {
   const camera = useThree((state) => state.camera)
   const domElement = useThree((state) => state.gl.domElement)
+  const invalidate = useThree((state) => state.invalidate)
   const view = useRef({ azimuthDeg: initialAzimuthDeg, elevationDeg: initialElevationDeg })
 
   useEffect(() => {
@@ -31,6 +32,8 @@ export function LookControls({
       // turns it toward west, so azimuth uses the negative angle.
       camera.rotation.set((elevationDeg * Math.PI) / 180, (-azimuthDeg * Math.PI) / 180, 0, 'YXZ')
       onHeadingChange(azimuthDeg)
+      // The canvas only renders on demand.
+      invalidate()
     }
 
     let lastX = 0
@@ -76,7 +79,7 @@ export function LookControls({
       domElement.removeEventListener('pointerup', onPointerUp)
       domElement.removeEventListener('pointercancel', onPointerUp)
     }
-  }, [camera, domElement, onHeadingChange])
+  }, [camera, domElement, onHeadingChange, invalidate])
 
   return null
 }

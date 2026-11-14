@@ -1,6 +1,6 @@
 import { Canvas } from '@react-three/fiber'
-import { useRef, useState } from 'react'
-import type { HorizonProfile, SkySample, TerrainGrid, Visibility } from '../types'
+import { Suspense, useRef, useState } from 'react'
+import type { HorizonProfile, SkySample, TerrainData, Visibility } from '../types'
 import { observerHeightM } from '../scene/constants'
 import { skyPointM } from '../scene/skyMath'
 import type { BodyVisibility } from '../scene/visibility'
@@ -8,14 +8,14 @@ import { CompassOverlay } from './CompassOverlay'
 import { HorizonSilhouette } from './HorizonSilhouette'
 import { LookControls } from './LookControls'
 import { ScreenLabels } from './ScreenLabels'
-import { SkyBody } from './SkyBody'
-import { SunLight } from './SunLight'
-import { TerrainMesh } from './TerrainMesh'
+import { EarthDisc } from './EarthDisc'
+import { SunDisc } from './SunDisc'
+import { Terrain } from './Terrain'
 
 type MainViewProps = {
   sample: SkySample
   horizon: HorizonProfile
-  terrain: TerrainGrid
+  terrain: TerrainData
   sunVisibility: BodyVisibility
   earthVisibility: BodyVisibility
   initialAzimuthDeg: number
@@ -46,18 +46,18 @@ export function MainView({
     <main className="relative flex-1 overflow-hidden bg-black">
       <Canvas
         style={{ touchAction: 'none', cursor: 'grab' }}
+        frameloop="demand"
+        dpr={[1, 1.5]}
         gl={{ logarithmicDepthBuffer: true }}
-        camera={{ position: observerPosition, fov: 60, near: 0.5, far: 60_000 }}
+        camera={{ position: observerPosition, fov: 60, near: 0.5, far: 800_000 }}
       >
         <color attach="background" args={['#000000']} />
-        {/* Visual only: a faint fill light so the terrain never turns fully black.
-            It stands in for earthshine but is not a measured value. */}
-        <ambientLight intensity={0.35} />
-        <SunLight sun={sample.sun} visibleFraction={sunVisibility.fraction} />
-        <TerrainMesh grid={terrain} />
+        <Terrain terrain={terrain} sample={sample} />
         <HorizonSilhouette profile={horizon} eyeHeightM={observerHeightM} />
-        <SkyBody body={sample.sun} observerPosition={observerPosition} color="#fffbe6" />
-        <SkyBody body={sample.earth} observerPosition={observerPosition} color="#3b82f6" />
+        <SunDisc sun={sample.sun} observerPosition={observerPosition} />
+        <Suspense fallback={null}>
+          <EarthDisc sample={sample} observerPosition={observerPosition} />
+        </Suspense>
         <ScreenLabels
           targets={[
             { elementRef: sunLabelRef, worldPosition: skyPointM(sample.sun, observerPosition) },
@@ -78,9 +78,9 @@ export function MainView({
       </div>
       <CompassOverlay azimuthDeg={headingDeg} />
       <p className="pointer-events-none absolute bottom-3 left-3 text-xs text-gray-500">
-        Terrain: LOLA 20 m (near mesh 40 m, far terrain as horizon silhouette to 200 km). Sun and
-        Earth: JPL Horizons. Ambient light is visual only. Drag to look around. Observer height{' '}
-        {observerHeightM} m.
+        Terrain: LOLA 20 m to 10 km, 320 m to 80 km, 640 m to 200 km. Shadows computed from the
+        same terrain. Earthshine is boosted to be visible (visual aid). Drag to look
+        around. Observer height {observerHeightM} m.
       </p>
     </main>
   )

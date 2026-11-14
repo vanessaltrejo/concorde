@@ -1,7 +1,10 @@
 import type { LandingSite, SkySample } from '../types'
+import type { TimingMetrics } from '../scene/timing'
 import type { BodyVisibility } from '../scene/visibility'
+import { Credits } from './Credits'
 import { DateTimeControl } from './DateTimeControl'
 import { MetricsPanel } from './MetricsPanel'
+import { PeriodSummary } from './PeriodSummary'
 
 type SidebarProps = {
   site: LandingSite
@@ -10,6 +13,7 @@ type SidebarProps = {
   onIndexChange: (index: number) => void
   sunVisibility: BodyVisibility
   earthVisibility: BodyVisibility
+  timing: TimingMetrics
 }
 
 export function Sidebar({
@@ -19,6 +23,7 @@ export function Sidebar({
   onIndexChange,
   sunVisibility,
   earthVisibility,
+  timing,
 }: SidebarProps) {
   return (
     <aside className="flex w-72 shrink-0 flex-col gap-6 overflow-y-auto border-r border-gray-200 bg-white p-4 text-gray-900">
@@ -37,7 +42,11 @@ export function Sidebar({
         sample={samples[index]}
         sunVisibility={sunVisibility}
         earthVisibility={earthVisibility}
+        sunNext={timing.sunNext}
+        earthNext={timing.earthNext}
       />
+      <PeriodSummary timing={timing} />
+      <Credits />
     </aside>
   )
 }

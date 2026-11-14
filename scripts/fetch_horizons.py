@@ -49,9 +49,24 @@ STEP_SIZE = "1 h"
 # Horizons target codes: 10 = Sun, 399 = Earth.
 TARGETS = {"sun": "10", "earth": "399"}
 
-# QUANTITIES: 4 = apparent azimuth and elevation, 10 = illuminated fraction,
-# 13 = target angular diameter.
-QUANTITIES = "4,10,13"
+# QUANTITIES: 1 = astrometric RA & DEC (ICRF), 4 = apparent azimuth and
+# elevation, 10 = illuminated fraction, 13 = target angular diameter,
+# 14 = observer sub-longitude & sub-latitude (point of the target facing us).
+# RA/DEC + az/el of two bodies give the sky-to-horizon rotation, used with 14
+# to orient the Earth texture.
+QUANTITIES = "1,4,10,13,14"
+
+# Horizons column names (CSV header) we read.
+COLUMNS = {
+    "raDeg": "R.A._(ICRF)",
+    "decDeg": "DEC_(ICRF)",
+    "azimuthDeg": "Azi_(a-app)",
+    "elevationDeg": "Elev_(a-app)",
+    "illuminatedPct": "Illu%",
+    "angularDiameterArcsec": "Ang-diam",
+    "subLonDeg": "ObsSub-LON",
+    "subLatDeg": "ObsSub-LAT",
+}
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = PROJECT_ROOT / "data" / "raw"
@@ -94,27 +109,33 @@ def fetch(target_code: str) -> tuple[str, str, dict]:
 
 
 def parse_rows(result: str) -> list[dict]:
-    """Parse the CSV table between $$SOE and $$EOE.
-
-    Columns: date, solar presence, interferer presence, azimuth (deg),
-    elevation (deg), illuminated fraction (%), angular diameter (arcsec).
-    """
-    start = result.index("$$SOE") + len("$$SOE")
+    """Parse the CSV table between $$SOE and $$EOE, finding columns by name."""
+    start = result.index("$$SOE")
+    header_line = next(
+        line for line in reversed(result[:start].splitlines()) if line.strip().startswith("Date__")
+    )
+    header = [cell.strip() for cell in header_line.split(",")]
+    index = {key: header.index(name) for key, name in COLUMNS.items()}
     end = result.index("$$EOE")
     rows = []
-    for line in result[start:end].strip().splitlines():
+    for line in result[start + len("$$SOE") : end].strip().splitlines():
         cells = [cell.strip() for cell in line.split(",")]
         time_utc = datetime.strptime(cells[0], "%Y-%b-%d %H:%M").replace(tzinfo=timezone.utc)
-        rows.append(
-            {
-                "timeUtc": time_utc.isoformat().replace("+00:00", "Z"),
-                "azimuthDeg": float(cells[3]),
-                "elevationDeg": float(cells[4]),
-                "illuminatedPct": float(cells[5]),
-                "angularDiameterDeg": float(cells[6]) / 3600,
-            }
-        )
+        row = {key: float(cells[i]) for key, i in index.items()}
+        row["angularDiameterDeg"] = row.pop("angularDiameterArcsec") / 3600
+        row["timeUtc"] = time_utc.isoformat().replace("+00:00", "Z")
+        rows.append(row)
     return rows
+
+
+def body_state(row: dict) -> dict:
+    return {
+        "azimuthDeg": row["azimuthDeg"],
+        "elevationDeg": row["elevationDeg"],
+        "angularDiameterDeg": row["angularDiameterDeg"],
+        "raDeg": row["raDeg"],
+        "decDeg": row["decDeg"],
+    }
 
 
 def main() -> None:
@@ -141,17 +162,13 @@ def main() -> None:
         samples.append(
             {
                 "timeUtc": sun["timeUtc"],
-                "sun": {
-                    "azimuthDeg": sun["azimuthDeg"],
-                    "elevationDeg": sun["elevationDeg"],
-                    "angularDiameterDeg": sun["angularDiameterDeg"],
-                },
-                "earth": {
-                    "azimuthDeg": earth["azimuthDeg"],
-                    "elevationDeg": earth["elevationDeg"],
-                    "angularDiameterDeg": earth["angularDiameterDeg"],
-                },
+                "sun": body_state(sun),
+                "earth": body_state(earth),
                 "earthIlluminatedPct": earth["illuminatedPct"],
+                # Point on Earth (east longitude, latitude) at the center of the
+                # disc seen from the site.
+                "earthSubObserverLonDeg": earth["subLonDeg"],
+                "earthSubObserverLatDeg": earth["subLatDeg"],
             }
         )
 
@@ -170,7 +187,7 @@ def main() -> None:
             "observerAltitudeKm": SITE["altitude_km"],
             "notes": "Airless apparent azimuth and elevation of the target center. "
             "Azimuth clockwise from north. Elevation relative to the reference sphere "
-            "(1737.4 km); terrain is not included.",
+            "(1737.4 km); terrain is not included. RA/DEC are astrometric ICRF.",
             "queries": queries,
         },
         "samples": samples,

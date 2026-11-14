@@ -1,12 +1,54 @@
 {
  "siteId": "shackleton-rim",
- "gridSize": 500,
- "spacingM": 40.0,
- "vertexLayout": "float32 x,y,z per vertex, row-major; x=east, y=up, z=-north (meters). Site ground at (0,0,0); observer eye at (0, observerHeightM, 0)",
+ "grids": {
+  "near": {
+   "size": 1000,
+   "spacingM": 20.0,
+   "affine": [
+    -18.271836909582145,
+    -8.123034647745548,
+    13194.779568850707,
+    8.129193972238854,
+    -18.2827797498752,
+    5065.9258518921715
+   ],
+   "maxResidualM": 15.34064047158416,
+   "file": "terrain_near.f32"
+  },
+  "mid": {
+   "size": 500,
+   "spacingM": 320.0,
+   "affine": [
+    -292.0974612565266,
+    -129.89126783165372,
+    105569.66073555883,
+    129.81350028928904,
+    -292.03138084561994,
+    40560.75268507529
+   ],
+   "maxResidualM": 219.4958622118752,
+   "file": "terrain_mid.f32"
+  },
+  "far": {
+   "size": 625,
+   "spacingM": 640.0,
+   "affine": [
+    -582.4003817660924,
+    -258.91233024929085,
+    262930.3990769604,
+    259.0391012422401,
+    -582.5755916739391,
+    101377.48958788558
+   ],
+   "maxResidualM": 1331.3881303101261,
+   "file": "terrain_far.f32"
+  }
+ },
+ "layout": "float32 x,y,z per grid node, row-major (row = map row). Scene axes: x = east, y = up, z = -north (meters); site ground at (0,0,0), observer eye at (0, observerHeightM, 0). Affine (col,row) -> scene x,z is approximate (see maxResidualM) and only used for shadow height lookups.",
  "observerHeightM": 2.0,
  "provenance": {
   "source": "LOLA LDEM_80S_20MPP_ADJ (PGDA product 90), Barker et al. 2023, Planet. Sci. J. 4, 183, doi:10.3847/PSJ/acf3e1",
   "url": "https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_80S_20MPP_ADJ.TIF",
-  "generatedUtc": "2026-11-14T21:44:32.238006Z"
+  "generatedUtc": "2026-11-14T22:38:42.734479Z"
  }
 }

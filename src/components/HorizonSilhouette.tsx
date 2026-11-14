@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { BufferAttribute, BufferGeometry, DoubleSide } from 'three'
+import { BufferAttribute, BufferGeometry, DoubleSide, Float32BufferAttribute } from 'three'
 import type { HorizonProfile } from '../types'
 
 type HorizonSilhouetteProps = {
@@ -7,12 +7,12 @@ type HorizonSilhouetteProps = {
   eyeHeightM: number
 }
 
-// Far terrain stand-in: a band around the observer whose top edge follows the
-// computed horizon profile (terrain up to 200 km away). It sits between the
-// near terrain mesh and the Sun/Earth discs, so what you see matches the
-// hidden/visible logic exactly.
-const silhouetteRadiusM = 30_000
-const bottomElevationDeg = -15
+// Safety outline behind all terrain grids (they reach 200-283 km): a band whose
+// top edge is the computed horizon profile. Where the coarse grids smooth a
+// distant peak a little, this band still shows the exact outline, so what you
+// see always matches the hidden/visible logic.
+const silhouetteRadiusM = 300_000
+const bottomElevationDeg = -8
 
 function buildSilhouetteGeometry(profile: HorizonProfile, eyeHeightM: number): BufferGeometry {
   const count = profile.elevationDeg.length
@@ -41,12 +41,39 @@ function buildSilhouetteGeometry(profile: HorizonProfile, eyeHeightM: number): B
   return geometry
 }
 
+// Thin line on the computed horizon, so ground and black sky never blend.
+// Every point of nearer terrain is at or below this line by definition, so it
+// is drawn on top without a depth test.
+function buildHorizonLineGeometry(profile: HorizonProfile, eyeHeightM: number): BufferGeometry {
+  const count = profile.elevationDeg.length
+  const toRad = Math.PI / 180
+  const points: number[] = []
+  for (let i = 0; i <= count; i++) {
+    const azimuth = i * profile.azimuthStepDeg * toRad
+    const elevation = profile.elevationDeg[i % count] * toRad
+    points.push(
+      silhouetteRadiusM * Math.sin(azimuth),
+      eyeHeightM + silhouetteRadiusM * Math.tan(elevation),
+      -silhouetteRadiusM * Math.cos(azimuth),
+    )
+  }
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new Float32BufferAttribute(points, 3))
+  return geometry
+}
+
 export function HorizonSilhouette({ profile, eyeHeightM }: HorizonSilhouetteProps) {
   const geometry = useMemo(() => buildSilhouetteGeometry(profile, eyeHeightM), [profile, eyeHeightM])
+  const lineGeometry = useMemo(() => buildHorizonLineGeometry(profile, eyeHeightM), [profile, eyeHeightM])
 
   return (
-    <mesh geometry={geometry}>
-      <meshBasicMaterial color="#3a3a3a" side={DoubleSide} />
-    </mesh>
+    <>
+      <mesh geometry={geometry}>
+        <meshBasicMaterial color="#2b2b2b" side={DoubleSide} />
+      </mesh>
+      <lineLoop geometry={lineGeometry} renderOrder={2}>
+        <lineBasicMaterial color="#8a8a8a" transparent opacity={0.55} depthTest={false} />
+      </lineLoop>
+    </>
   )
 }

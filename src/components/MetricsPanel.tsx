@@ -1,10 +1,15 @@
-import type { SkySample, Visibility } from '../types'
+import type { SkySample } from '../types'
 import type { BodyVisibility } from '../scene/visibility'
+import { formatDuration, formatUtc } from '../scene/formatTime'
+import { StatusBadge } from './StatusBadge'
+import type { NextTransition } from '../scene/windows'
 
 type MetricsPanelProps = {
   sample: SkySample
   sunVisibility: BodyVisibility
   earthVisibility: BodyVisibility
+  sunNext: NextTransition
+  earthNext: NextTransition
 }
 
 type MetricRowProps = {
@@ -21,22 +26,51 @@ function MetricRow({ label, value }: MetricRowProps) {
   )
 }
 
-const stateLabels: Record<Visibility, string> = {
-  visible: 'Visible',
-  partial: 'Partly hidden',
-  hidden: 'Hidden',
+function StatusRow({ visibility }: { visibility: BodyVisibility }) {
+  return (
+    <div className="flex justify-between text-sm">
+      <dt className="text-gray-500">Status</dt>
+      <dd>
+        <StatusBadge state={visibility.state} fraction={visibility.fraction} />
+      </dd>
+    </div>
+  )
 }
 
-function stateText({ state, fraction }: BodyVisibility): string {
-  if (state === 'partial') return `${stateLabels[state]} (${Math.round(fraction * 100)}% of disc)`
-  return stateLabels[state]
+function transitionLabel(body: 'Sun' | 'Earth', next: NextTransition): string {
+  return `${body}${next.kind === 'set' ? 'set' : 'rise'} in`
+}
+
+function transitionValue(next: NextTransition): string {
+  if (!next.found) return `> ${formatDuration(next.afterMs)} (end of data)`
+  return `${formatDuration(next.inMs)}`
+}
+
+function transitionTime(next: NextTransition): string | null {
+  return next.found ? formatUtc(next.timeMs) : null
+}
+
+function TransitionRow({ body, next }: { body: 'Sun' | 'Earth'; next: NextTransition }) {
+  const at = transitionTime(next)
+  return (
+    <div className="flex flex-col">
+      <MetricRow label={transitionLabel(body, next)} value={transitionValue(next)} />
+      {at && <p className="text-right text-xs text-gray-400">{at}</p>}
+    </div>
+  )
 }
 
 function degrees(value: number): string {
   return `${value.toFixed(2)}°`
 }
 
-export function MetricsPanel({ sample, sunVisibility, earthVisibility }: MetricsPanelProps) {
+export function MetricsPanel({
+  sample,
+  sunVisibility,
+  earthVisibility,
+  sunNext,
+  earthNext,
+}: MetricsPanelProps) {
   const { sun, earth } = sample
 
   return (
@@ -44,7 +78,8 @@ export function MetricsPanel({ sample, sunVisibility, earthVisibility }: Metrics
       <div className="flex flex-col gap-1">
         <h2 className="text-sm font-medium">Sun (power)</h2>
         <dl className="flex flex-col gap-1">
-          <MetricRow label="Status" value={stateText(sunVisibility)} />
+          <StatusRow visibility={sunVisibility} />
+          <TransitionRow body="Sun" next={sunNext} />
           <MetricRow label="Elevation" value={degrees(sun.elevationDeg)} />
           <MetricRow label="Terrain horizon there" value={degrees(sunVisibility.horizonDeg)} />
           <MetricRow label="Azimuth" value={degrees(sun.azimuthDeg)} />
@@ -53,7 +88,8 @@ export function MetricsPanel({ sample, sunVisibility, earthVisibility }: Metrics
       <div className="flex flex-col gap-1">
         <h2 className="text-sm font-medium">Earth (direct link)</h2>
         <dl className="flex flex-col gap-1">
-          <MetricRow label="Status" value={stateText(earthVisibility)} />
+          <StatusRow visibility={earthVisibility} />
+          <TransitionRow body="Earth" next={earthNext} />
           <MetricRow label="Elevation" value={degrees(earth.elevationDeg)} />
           <MetricRow label="Terrain horizon there" value={degrees(earthVisibility.horizonDeg)} />
           <MetricRow label="Azimuth" value={degrees(earth.azimuthDeg)} />
@@ -62,7 +98,8 @@ export function MetricsPanel({ sample, sunVisibility, earthVisibility }: Metrics
       </div>
       <p className="text-xs text-gray-400">
         Sun and Earth: JPL Horizons. Horizon: LOLA 20 m terrain up to 200 km. A body is partly
-        hidden when terrain covers part of its disc.
+        hidden when terrain covers part of its disc. Set and rise times use the same rule (set =
+        no part visible), interpolated between hourly samples.
       </p>
     </section>
   )
