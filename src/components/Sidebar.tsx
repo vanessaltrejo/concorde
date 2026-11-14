@@ -1,4 +1,5 @@
 import type { LandingSite, SkySample } from '../types'
+import type { BodyVisibility } from '../scene/visibility'
 import { DateTimeControl } from './DateTimeControl'
 import { MetricsPanel } from './MetricsPanel'
 
@@ -7,13 +8,20 @@ type SidebarProps = {
   samples: SkySample[]
   index: number
   onIndexChange: (index: number) => void
+  sunVisibility: BodyVisibility
+  earthVisibility: BodyVisibility
 }
 
-export function Sidebar({ site, samples, index, onIndexChange }: SidebarProps) {
-  const current = samples[index]
-
+export function Sidebar({
+  site,
+  samples,
+  index,
+  onIndexChange,
+  sunVisibility,
+  earthVisibility,
+}: SidebarProps) {
   return (
-    <aside className="flex w-72 shrink-0 flex-col gap-6 border-r border-gray-200 bg-white p-4 text-gray-900">
+    <aside className="flex w-72 shrink-0 flex-col gap-6 overflow-y-auto border-r border-gray-200 bg-white p-4 text-gray-900">
       <h1 className="text-lg font-semibold">Lunar Landing Site Simulator</h1>
 
       <section className="flex flex-col gap-1">
@@ -25,7 +33,11 @@ export function Sidebar({ site, samples, index, onIndexChange }: SidebarProps) {
       </section>
 
       <DateTimeControl samples={samples} index={index} onIndexChange={onIndexChange} />
-      <MetricsPanel sample={current} />
+      <MetricsPanel
+        sample={samples[index]}
+        sunVisibility={sunVisibility}
+        earthVisibility={earthVisibility}
+      />
     </aside>
   )
 }

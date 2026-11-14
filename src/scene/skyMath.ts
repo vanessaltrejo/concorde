@@ -1,6 +1,7 @@
 import type { SkyPosition } from '../types'
 
-// Sky bodies are drawn on a far sphere, behind all the terrain.
+// Sky bodies are drawn on a far sphere, behind all the terrain and the
+// horizon silhouette.
 export const skyDistanceM = 40_000
 
 const degToRad = Math.PI / 180
@@ -14,7 +15,13 @@ export function directionFromSky({ azimuthDeg, elevationDeg }: SkyPosition): [nu
   return [Math.cos(el) * Math.sin(az), Math.sin(el), -Math.cos(el) * Math.cos(az)]
 }
 
-// Size of a disc at a given distance that covers an angular diameter.
-export function discDiameterM(angularDiameterDeg: number, distanceM: number): number {
-  return 2 * distanceM * Math.tan((angularDiameterDeg * degToRad) / 2)
+// Point on the sky sphere for a position, seen from the observer.
+export function skyPointM(position: SkyPosition, observer: [number, number, number]): [number, number, number] {
+  const [dx, dy, dz] = directionFromSky(position)
+  return [observer[0] + dx * skyDistanceM, observer[1] + dy * skyDistanceM, observer[2] + dz * skyDistanceM]
+}
+
+// Size of a disc on the sky sphere that covers an angular diameter.
+export function discDiameterM(angularDiameterDeg: number): number {
+  return 2 * skyDistanceM * Math.tan((angularDiameterDeg * degToRad) / 2)
 }

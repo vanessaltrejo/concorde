@@ -1,44 +1,34 @@
 import { useMemo } from 'react'
 import { BufferAttribute, BufferGeometry } from 'three'
-import { fakeHeightM, terrainSegments, terrainSizeM } from '../scene/fakeTerrain'
+import type { TerrainGrid } from '../types'
 
-function buildTerrainGeometry(): BufferGeometry {
-  const rowCount = terrainSegments + 1
-  const step = terrainSizeM / terrainSegments
-  const half = terrainSizeM / 2
-  const positions = new Float32Array(rowCount * rowCount * 3)
+type TerrainMeshProps = {
+  grid: TerrainGrid
+}
+
+function buildTerrainGeometry({ gridSize, vertices }: TerrainGrid): BufferGeometry {
   const indices: number[] = []
-
-  for (let row = 0; row < rowCount; row++) {
-    for (let col = 0; col < rowCount; col++) {
-      const x = -half + col * step
-      const z = -half + row * step
-      const i = (row * rowCount + col) * 3
-      positions[i] = x
-      positions[i + 1] = fakeHeightM(x, z)
-      positions[i + 2] = z
-    }
-  }
-
-  for (let row = 0; row < terrainSegments; row++) {
-    for (let col = 0; col < terrainSegments; col++) {
-      const a = row * rowCount + col
-      const b = a + 1
-      const c = a + rowCount
-      const d = c + 1
-      indices.push(a, c, b, b, c, d)
+  for (let row = 0; row < gridSize - 1; row++) {
+    for (let col = 0; col < gridSize - 1; col++) {
+      const a = row * gridSize + col
+      const nextCol = a + 1
+      const nextRow = a + gridSize
+      const diagonal = nextRow + 1
+      // Winding checked against the data: (a, nextRow, nextCol) faces up.
+      indices.push(a, nextRow, nextCol, nextCol, nextRow, diagonal)
     }
   }
 
   const geometry = new BufferGeometry()
-  geometry.setAttribute('position', new BufferAttribute(positions, 3))
+  geometry.setAttribute('position', new BufferAttribute(vertices, 3))
   geometry.setIndex(indices)
   geometry.computeVertexNormals()
   return geometry
 }
 
-export function TerrainMesh() {
-  const geometry = useMemo(() => buildTerrainGeometry(), [])
+// Real LOLA terrain around the site (scripts/build_terrain.py).
+export function TerrainMesh({ grid }: TerrainMeshProps) {
+  const geometry = useMemo(() => buildTerrainGeometry(grid), [grid])
 
   return (
     <mesh geometry={geometry}>

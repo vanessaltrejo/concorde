@@ -1,22 +1,23 @@
 import { useEffect, useState } from 'react'
 import { MainView } from './components/MainView'
 import { Sidebar } from './components/Sidebar'
-import { loadSkyData } from './data/loadSkyData'
-import type { SkyData } from './types'
+import { loadSiteData } from './data/loadSiteData'
+import { bodyVisibility } from './scene/visibility'
+import type { SiteData } from './types'
 
 const siteId = 'shackleton-rim'
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; data: SkyData }
+  | { status: 'ready'; data: SiteData }
 
 export default function App() {
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' })
   const [sampleIndex, setSampleIndex] = useState(0)
 
   useEffect(() => {
-    loadSkyData(siteId)
+    loadSiteData(siteId)
       .then((data) => setLoadState({ status: 'ready', data }))
       .catch((error: unknown) =>
         setLoadState({ status: 'error', message: error instanceof Error ? error.message : String(error) }),
@@ -31,18 +32,28 @@ export default function App() {
     )
   }
 
-  const { data } = loadState
+  const { sky, horizon, terrain } = loadState.data
+  const sample = sky.samples[sampleIndex]
+  const sunVisibility = bodyVisibility(sample.sun, horizon)
+  const earthVisibility = bodyVisibility(sample.earth, horizon)
+
   return (
     <div className="flex h-full">
       <Sidebar
-        site={data.site}
-        samples={data.samples}
+        site={sky.site}
+        samples={sky.samples}
         index={sampleIndex}
         onIndexChange={setSampleIndex}
+        sunVisibility={sunVisibility}
+        earthVisibility={earthVisibility}
       />
       <MainView
-        sample={data.samples[sampleIndex]}
-        initialAzimuthDeg={Math.round(data.samples[0].earth.azimuthDeg)}
+        sample={sample}
+        horizon={horizon}
+        terrain={terrain}
+        sunVisibility={sunVisibility}
+        earthVisibility={earthVisibility}
+        initialAzimuthDeg={Math.round(sky.samples[0].earth.azimuthDeg)}
       />
     </div>
   )

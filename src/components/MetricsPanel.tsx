@@ -1,7 +1,10 @@
-import type { SkySample, SkyPosition } from '../types'
+import type { SkySample, Visibility } from '../types'
+import type { BodyVisibility } from '../scene/visibility'
 
 type MetricsPanelProps = {
   sample: SkySample
+  sunVisibility: BodyVisibility
+  earthVisibility: BodyVisibility
 }
 
 type MetricRowProps = {
@@ -18,29 +21,48 @@ function MetricRow({ label, value }: MetricRowProps) {
   )
 }
 
-// Placeholder rule (flat horizon). The real check against the horizon
-// profile comes in Step 6.
-function visibilityLabel(position: SkyPosition): string {
-  return position.elevationDeg > 0 ? 'Visible' : 'Hidden'
+const stateLabels: Record<Visibility, string> = {
+  visible: 'Visible',
+  partial: 'Partly hidden',
+  hidden: 'Hidden',
 }
 
-export function MetricsPanel({ sample }: MetricsPanelProps) {
+function stateText({ state, fraction }: BodyVisibility): string {
+  if (state === 'partial') return `${stateLabels[state]} (${Math.round(fraction * 100)}% of disc)`
+  return stateLabels[state]
+}
+
+function degrees(value: number): string {
+  return `${value.toFixed(2)}°`
+}
+
+export function MetricsPanel({ sample, sunVisibility, earthVisibility }: MetricsPanelProps) {
   const { sun, earth } = sample
 
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium">Metrics</h2>
-      <dl className="flex flex-col gap-1">
-        <MetricRow label="Sun azimuth" value={`${sun.azimuthDeg.toFixed(2)}°`} />
-        <MetricRow label="Sun elevation" value={`${sun.elevationDeg.toFixed(2)}°`} />
-        <MetricRow label="Earth azimuth" value={`${earth.azimuthDeg.toFixed(2)}°`} />
-        <MetricRow label="Earth elevation" value={`${earth.elevationDeg.toFixed(2)}°`} />
-        <MetricRow label="Sun" value={visibilityLabel(sun)} />
-        <MetricRow label="Earth" value={visibilityLabel(earth)} />
-        <MetricRow label="Earth lit fraction" value={`${sample.earthIlluminatedPct.toFixed(0)}%`} />
-      </dl>
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-sm font-medium">Sun (power)</h2>
+        <dl className="flex flex-col gap-1">
+          <MetricRow label="Status" value={stateText(sunVisibility)} />
+          <MetricRow label="Elevation" value={degrees(sun.elevationDeg)} />
+          <MetricRow label="Terrain horizon there" value={degrees(sunVisibility.horizonDeg)} />
+          <MetricRow label="Azimuth" value={degrees(sun.azimuthDeg)} />
+        </dl>
+      </div>
+      <div className="flex flex-col gap-1">
+        <h2 className="text-sm font-medium">Earth (direct link)</h2>
+        <dl className="flex flex-col gap-1">
+          <MetricRow label="Status" value={stateText(earthVisibility)} />
+          <MetricRow label="Elevation" value={degrees(earth.elevationDeg)} />
+          <MetricRow label="Terrain horizon there" value={degrees(earthVisibility.horizonDeg)} />
+          <MetricRow label="Azimuth" value={degrees(earth.azimuthDeg)} />
+          <MetricRow label="Lit fraction" value={`${sample.earthIlluminatedPct.toFixed(0)}%`} />
+        </dl>
+      </div>
       <p className="text-xs text-gray-400">
-        Sun and Earth from JPL Horizons. Visibility uses a flat horizon for now (no terrain).
+        Sun and Earth: JPL Horizons. Horizon: LOLA 20 m terrain up to 200 km. A body is partly
+        hidden when terrain covers part of its disc.
       </p>
     </section>
   )

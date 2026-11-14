@@ -40,8 +40,26 @@ export type SkyData = {
   samples: SkySample[]
 }
 
+// Highest terrain elevation for every azimuth, from public/data/<siteId>/horizon.json
+// (scripts/build_terrain.py). elevationDeg[k] is the horizon at azimuth k * azimuthStepDeg.
 export type HorizonProfile = {
   siteId: string
   azimuthStepDeg: number
   elevationDeg: number[]
+}
+
+// Terrain vertices around the site in scene axes (x = east, y = up, z = -north),
+// from public/data/<siteId>/terrain.bin + terrain.json.
+export type TerrainGrid = {
+  gridSize: number
+  spacingM: number
+  vertices: Float32Array
+}
+
+export type Visibility = 'visible' | 'partial' | 'hidden'
+
+export type SiteData = {
+  sky: SkyData
+  horizon: HorizonProfile
+  terrain: TerrainGrid
 }
