@@ -15,7 +15,8 @@ export function Credits() {
             Site: Shackleton rim, Gläser et al. 2018, Planetary and Space Science 162, Table 1.
           </li>
           <li>
-            Earth image: NASA Blue Marble Next Generation (December 2004), oriented with the Horizons
+            Earth image: NASA Blue Marble Next Generation with topography and bathymetry (December
+            2004), oriented with the Horizons
             sub-observer point.
           </li>
           <li>Horizon and shadows: terrain horizon method (Mazarico et al. 2011, Icarus 211).</li>

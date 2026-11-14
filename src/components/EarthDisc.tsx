@@ -11,15 +11,17 @@ type EarthDiscProps = {
   observerPosition: [number, number, number]
 }
 
-// NASA Blue Marble Next Generation (December 2004), resized to 2048 x 1024.
-const earthTextureUrl = '/textures/earth_bmng_200412_2048.jpg'
+// NASA Blue Marble Next Generation with topography and bathymetry (December
+// 2004), resized to 2048 x 1024.
+const earthTextureUrl = '/textures/earth_bmng_topo_bathy_200412_2048.jpg'
 
 // The Earth's disc as a sphere seen from the site:
 // - lit from the real direction of the Sun, so the phase comes from geometry
 //   (lit fraction matches JPL Horizons "Illu%" within 0.13 points);
 // - textured with the side of the Earth that really faces the Moon
 //   (sub-observer longitude from Horizons, pole from the RA/DEC rotation).
-// The night side keeps a dim floor so the Earth is never invisible (visual aid).
+// The night side keeps the continents visible, dimmer than the day side
+// (visual aid; the real night side is dark).
 const vertexShader = /* glsl */ `
 #include <common>
 #include <logdepthbuf_pars_vertex>
@@ -51,12 +53,19 @@ void main() {
   vec3 n = normalize((vec4(nView, 0.0) * viewMatrix).xyz);
   float lat = asin(clamp(dot(n, earthPole), -1.0, 1.0));
   float lon = subObserverLon + atan(dot(n, eastOfSubObserver), dot(n, towardSubObserver));
-  vec2 mapUv = vec2(fract(lon / (2.0 * PI) + 0.5), lat / PI + 0.5);
-  vec3 surface = texture2D(earthMap, mapUv).rgb;
+  // Continuous coordinates (no wrap on the visible side) give the mipmap
+  // gradients; only the lookup wraps. This avoids a seam at 180 deg longitude.
+  vec2 continuousUv = vec2(lon / (2.0 * PI) + 0.5, lat / PI + 0.5);
+  vec2 mapUv = vec2(fract(continuousUv.x), continuousUv.y);
+  vec3 surface = textureGrad(earthMap, mapUv, dFdx(continuousUv), dFdy(continuousUv)).rgb;
 
-  float lit = smoothstep(-0.04, 0.06, dot(n, sunDirection));
-  float limb = 0.8 + 0.2 * nView.z;
-  vec3 color = mix(surface * 0.16 + vec3(0.01, 0.02, 0.05), surface * limb, lit);
+  float lit = smoothstep(-0.12, 0.12, dot(n, sunDirection));
+  float limb = 0.85 + 0.15 * nView.z;
+  // Night side shows the continents, dimmer than the day side, so the real
+  // phase is still readable (visual aid: the real night side is dark).
+  vec3 night = surface * 0.45;
+  vec3 day = surface * limb * 1.15;
+  vec3 color = mix(night, day, lit);
   float edge = 1.0 - smoothstep(0.96, 1.0, r2);
   gl_FragColor = vec4(color, edge);
   #include <tonemapping_fragment>
