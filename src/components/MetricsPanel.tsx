@@ -20,7 +20,7 @@ type MetricRowProps = {
 function MetricRow({ label, value }: MetricRowProps) {
   return (
     <div className="flex justify-between text-sm">
-      <dt className="text-gray-500">{label}</dt>
+      <dt className="text-gray-400">{label}</dt>
       <dd className="font-medium">{value}</dd>
     </div>
   )
@@ -29,7 +29,7 @@ function MetricRow({ label, value }: MetricRowProps) {
 function StatusRow({ visibility }: { visibility: BodyVisibility }) {
   return (
     <div className="flex justify-between text-sm">
-      <dt className="text-gray-500">Status</dt>
+      <dt className="text-gray-400">Status</dt>
       <dd>
         <StatusBadge state={visibility.state} fraction={visibility.fraction} />
       </dd>
@@ -55,7 +55,7 @@ function TransitionRow({ body, next }: { body: 'Sun' | 'Earth'; next: NextTransi
   return (
     <div className="flex flex-col">
       <MetricRow label={transitionLabel(body, next)} value={transitionValue(next)} />
-      {at && <p className="text-right text-xs text-gray-400">{at}</p>}
+      {at && <p className="text-right text-xs text-gray-500">{at}</p>}
     </div>
   )
 }

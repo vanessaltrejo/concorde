@@ -26,13 +26,13 @@ export function Sidebar({
   timing,
 }: SidebarProps) {
   return (
-    <aside className="flex w-72 shrink-0 flex-col gap-6 overflow-y-auto border-r border-gray-200 bg-white p-4 text-gray-900">
+    <aside className="flex w-72 shrink-0 flex-col gap-6 overflow-y-auto border-r border-[#444] bg-[#303030] p-4 text-gray-100">
       <h1 className="text-lg font-semibold">Lunar Landing Site Simulator</h1>
 
       <section className="flex flex-col gap-1">
         <h2 className="text-sm font-medium">Site</h2>
         <p className="text-sm">{site.name}</p>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-400">
           {site.latitudeDeg.toFixed(4)}°, {site.longitudeDeg.toFixed(2)}° E
         </p>
       </section>

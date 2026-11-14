@@ -43,7 +43,7 @@ export function DateTimeControl({
       <input
         id="dateTimeUtc"
         type="datetime-local"
-        className="rounded border border-gray-300 px-2 py-1 text-sm"
+        className="rounded border border-[#555] bg-[#262626] px-2 py-1 text-sm [color-scheme:dark]"
         value={toInputValue(current.timeUtc)}
         min={toInputValue(samples[0].timeUtc)}
         max={toInputValue(samples[samples.length - 1].timeUtc)}

@@ -70,7 +70,7 @@ export function NavRail({ active, onChange }: NavRailProps) {
   return (
     <nav
       aria-label="Main navigation"
-      className="flex w-14 shrink-0 flex-col items-center gap-2 border-r border-gray-800 bg-gray-950 py-3"
+      className="flex w-14 shrink-0 flex-col items-center gap-2 border-r border-[#444] bg-[#262626] py-3"
     >
       {tabs.map((tab) => {
         const isActive = tab.id === active
@@ -85,8 +85,8 @@ export function NavRail({ active, onChange }: NavRailProps) {
             className={
               'flex h-10 w-10 items-center justify-center rounded-lg transition-colors ' +
               (isActive
-                ? 'bg-gray-100 text-gray-950'
-                : 'text-gray-400 hover:bg-gray-800 hover:text-white')
+                ? 'bg-[#3d3d3d] text-white'
+                : 'text-gray-400 hover:bg-[#333] hover:text-white')
             }
           >
             {tab.icon}

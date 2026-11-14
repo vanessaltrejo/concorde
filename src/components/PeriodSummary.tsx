@@ -9,11 +9,11 @@ function PercentRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex justify-between text-sm">
-        <span className="text-gray-500">{label}</span>
+        <span className="text-gray-400">{label}</span>
         <span className="font-medium">{value.toFixed(0)}%</span>
       </div>
-      <div className="h-1.5 rounded bg-gray-200">
-        <div className="h-1.5 rounded bg-gray-700" style={{ width: `${value}%` }} />
+      <div className="h-1.5 rounded bg-[#444]">
+        <div className="h-1.5 rounded bg-gray-200" style={{ width: `${value}%` }} />
       </div>
     </div>
   )

@@ -1,10 +1,10 @@
 // Data sources, methods and the planning disclaimer.
 export function Credits() {
   return (
-    <section className="flex flex-col gap-2 border-t border-gray-200 pt-4 text-xs text-gray-500">
-      <p className="font-medium text-gray-700">Planning aid, not flight grade.</p>
+    <section className="flex flex-col gap-2 border-t border-[#444] pt-4 text-xs text-gray-400">
+      <p className="font-medium text-gray-200">Planning aid, not flight grade.</p>
       <details>
-        <summary className="cursor-pointer text-gray-700">Data sources and methods</summary>
+        <summary className="cursor-pointer text-gray-200">Data sources and methods</summary>
         <ul className="mt-2 flex list-disc flex-col gap-1 pl-4">
           <li>Sun and Earth positions: NASA/JPL Horizons API (observer on the Moon, airless).</li>
           <li>
