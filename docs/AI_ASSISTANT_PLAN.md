@@ -17,6 +17,7 @@ committed. Every decision that differs from the context doc is marked **Changed*
 | Part | File | Note |
 |---|---|---|
 | Serverless endpoint | `api/chat.ts` | Vercel function (`POST /api/chat`). Holds the key. |
+| Router | `api/_lib/router.ts` | Simple questions to Gemini Flash-Lite (fast, larger free quota), complex ones (compare, best, safe/viable, requirements, why, long) to Groq `gpt-oss-120b`; the other is the fallback on any failure. Keyword rule, tests in `router.test.ts`. The panel shows "via Gemini/Groq". |
 | Provider adapter | `api/_lib/provider.ts` | **Changed:** no Vercel AI SDK. Gemini, Groq and OpenRouter all have OpenAI-compatible chat endpoints, so one `fetch` client covers all three. Swap with `AI_PROVIDER=gemini|groq|openrouter`. No new npm packages (no download needed). |
 | System prompt | `api/_lib/prompt.ts` | App guide, rules, disclosure pattern, verified thresholds. |
 | Number check | `api/_lib/verify.ts` | Strict (AI-13). Tests: `node api/_lib/verify.test.ts`. |
@@ -44,29 +45,35 @@ not per sentence.
 | Phase | Status |
 |---|---|
 | 0. Setup: key, Fluid Compute, slope gate, demo site | **Needs people.** Emiliano: create the key and put it in `.env.local` (local) and Vercel env vars. Confirm Fluid Compute. |
-| 1. Chat endpoint | Built. Not tested against a live model (no key yet). |
+| 1. Chat endpoint | Built and tested on gemini-3.5-flash-lite. |
 | 2. Read tools + number check + source chips | Built. Tools checked in the browser; check tested with `verify.test.ts`. |
 | 3. Action tools + banner | Built. Checked in the browser. |
 | 4. Autocomplete requirements | Partly built: `setRequirements`. Site comparison works through `evaluateRequirements`. |
 | 5. Voice | Built (Web Speech API input). Voice output not built (not verified). |
-| 6. Guardrails + test set | Built: disclosure pattern, 429 / quota message, rate limit, eval set in `docs/AI_ASSISTANT_EVAL.md`. Eval not run (needs the key). |
+| 6. Guardrails + test set | Built: disclosure pattern, 429 / quota message, rate limit. Eval run 2026-11-15: 20 of 20 pass after fixes (`docs/AI_ASSISTANT_EVAL.md`). |
 | 7. Site history cards | Not started (out of scope). |
 
 ## Environment variables (server only, never `VITE_`)
 
 ```
-AI_PROVIDER=gemini            # gemini | groq | openrouter
-GEMINI_API_KEY=...            # or GROQ_API_KEY / OPENROUTER_API_KEY
-AI_MODEL=                     # optional; default per provider (see provider.ts)
+GEMINI_API_KEY=...            # simple questions (and fallback)
+GROQ_API_KEY=...              # complex questions (and fallback)
+AI_ROUTING=auto               # optional; off = use AI_PROVIDER only
+AI_SIMPLE_PROVIDER=gemini     # optional
+AI_COMPLEX_PROVIDER=groq      # optional
+AI_MODEL_GEMINI= / AI_MODEL_GROQ=   # optional; defaults in provider.ts
 AI_RATE_LIMIT_PER_HOUR=30     # optional, per visitor
 ```
+
+Groq's free tier allows about 8,000 tokens per minute; one complex turn can use
+several thousand, so a burst of complex questions falls back to Gemini.
 
 ## Known limits
 
 - The rate limit is per server instance (memory). On Vercel, instances restart
   and scale, so it is a soft limit. A durable limit needs a store (e.g. Upstash
   Redis), which is an account and a new dependency: team decision.
-- Default model names (`gemini-2.5-flash-lite`, `openai/gpt-oss-120b`) are
+- Default model names (`gemini-3.5-flash-lite`, `openai/gpt-oss-120b`) are
   **not verified** for this account; set `AI_MODEL` after checking the console.
 - Free-tier Gemini prompts may be used by Google to improve products; the panel
   says so.

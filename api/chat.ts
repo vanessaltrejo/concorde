@@ -4,7 +4,7 @@
 // Tools run in the browser: this function only returns their calls.
 import { TOOL_DEFS, TOOL_NAMES, type ChatResponse, type WireMessage } from '../src/assistant/protocol.js'
 import { APP_GUIDE, SYSTEM_PROMPT } from './_lib/prompt.js'
-import { complete, ProviderError, type ModelMessage } from './_lib/provider.js'
+import { complete, ProviderError, routeFor, type ModelMessage } from './_lib/provider.js'
 import { checkRateLimit } from './_lib/rateLimit.js'
 import { allowedValues, hasSafetyVerdict, verifyNumbers } from './_lib/verify.js'
 
@@ -63,13 +63,16 @@ function isToolCall(value: unknown): value is NonNullable<Extract<WireMessage, {
 
 function errorResponse(error: unknown): Response {
   if (error instanceof ProviderError) {
-    if (error.status === 503)
+    if (error.status === 503 && error.message === 'No model key is set')
       return json({ type: 'error', code: 'no_key', message: 'The assistant is not configured yet (no model key on the server).' }, 503)
-    if (error.status === 429)
+    if (error.status === 429) {
+      // Provider quota (per minute or per day): the body says which limit.
+      console.warn('[api/chat] provider 429', error.message)
       return json(
         { type: 'error', code: 'quota', message: "The assistant's free quota is used up for now. Please try again later." },
         429,
       )
+    }
     console.error('[api/chat] provider error', error.status, error.message)
   } else console.error('[api/chat]', error)
   return json({ type: 'error', code: 'provider', message: 'The AI provider did not answer. Please try again.' }, 502)
@@ -102,35 +105,54 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const model: ModelMessage[] = [{ role: 'system', content: SYSTEM_PROMPT }, ...messages]
+  // The route depends only on the question, so every round trip of one turn
+  // goes to the same provider (unless it fails and the fallback answers).
+  const question = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
+  const { complexity, order } = routeFor(question)
   try {
-    const reply = await complete(model, TOOL_DEFS)
+    const reply = await complete(order, model, TOOL_DEFS)
     const calls = reply.toolCalls.filter((c) => TOOL_NAMES.includes(c.function.name))
     if (calls.length) return json({ type: 'tool_calls', message: { role: 'assistant', content: reply.content, tool_calls: calls } })
 
-    // Numbers may come from tool results, the user's own words or the app guide.
+    // Numbers may come from tool results, the user's own words, the app guide
+    // or the tool descriptions (control ranges such as 0.5 to 29.5 days).
     const allowed = allowedValues([
       APP_GUIDE,
+      JSON.stringify(TOOL_DEFS),
       ...messages.filter((m) => m.role === 'tool' || m.role === 'user').map((m) => m.content ?? ''),
     ])
     const first = check(reply.content ?? '', allowed)
-    if (first.ok) return json({ type: 'answer', content: reply.content ?? '', retried: false })
+    const via = `${reply.via} (${complexity} question)`
+    if (first.ok) return json({ type: 'answer', content: reply.content ?? '', retried: false, via })
 
-    // One retry, told exactly what failed, with no more tool calls.
+    // One retry, told exactly what failed. It is sent as plain text with the
+    // tool results pasted in and no tools offered, so no provider can call a
+    // tool here (Groq rejects tool_choice "none" when the model still tries).
+    const toolData = messages
+      .filter((m) => m.role === 'tool')
+      .map((m) => m.content)
+      .reverse()
+      .join('\n')
+      .slice(0, 12_000)
     const retry = await complete(
+      [reply.provider, ...order.filter((p) => p !== reply.provider)],
       [
-        ...model,
-        { role: 'assistant', content: reply.content ?? '' },
+        { role: 'system', content: SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `Automatic check, not the user: ${first.problem} Rewrite the answer using only values from the tool results above, or say you don't have that data.`,
+          content: [
+            `User question: ${question}`,
+            `App data from tools (JSON, newest first):\n${toolData || '(none)'}`,
+            `Draft answer:\n${reply.content ?? ''}`,
+            `Automatic check, not the user: ${first.problem} Rewrite the draft for the user using only values from the app data above or the app guide, or say you don't have that data. Answer in the language of the user question.`,
+          ].join('\n\n'),
         },
       ],
-      TOOL_DEFS,
-      'none',
+      [],
     )
     const second = check(retry.content ?? '', allowed)
-    if (second.ok && retry.content) return json({ type: 'answer', content: retry.content, retried: true })
-    return json({ type: 'blocked', content: BLOCKED_TEXT, unverified: second.unverified })
+    if (second.ok && retry.content) return json({ type: 'answer', content: retry.content, retried: true, via: `${retry.via} (${complexity} question)` })
+    return json({ type: 'blocked', content: BLOCKED_TEXT, unverified: second.unverified, via })
   } catch (error) {
     return errorResponse(error)
   }

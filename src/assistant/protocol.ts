@@ -21,9 +21,10 @@ export type ChatResponse =
   // The model wants the browser to run tools, then send the results back.
   | { type: 'tool_calls'; message: Extract<WireMessage, { role: 'assistant' }> }
   // Final answer; every number in it was found in a tool result or the user's words.
-  | { type: 'answer'; content: string; retried: boolean }
+  // `via`: which provider and model answered, e.g. "Groq · openai/gpt-oss-120b (complex question)".
+  | { type: 'answer'; content: string; retried: boolean; via: string }
   // The answer had numbers no tool gave, twice: it is not shown.
-  | { type: 'blocked'; content: string; unverified: string[] }
+  | { type: 'blocked'; content: string; unverified: string[]; via: string }
   | { type: 'error'; code: 'no_key' | 'quota' | 'rate_limited' | 'provider' | 'bad_request'; message: string }
 
 type JsonSchema = {

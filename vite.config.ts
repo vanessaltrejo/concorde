@@ -6,8 +6,9 @@ import { viteStaticCopy } from 'vite-plugin-static-copy'
 
 const cesiumBuild = 'node_modules/cesium/Build/Cesium'
 
-// Server-only settings for api/chat (never VITE_*: Vite would expose those to the browser).
-const SERVER_ENV = ['AI_PROVIDER', 'AI_MODEL', 'AI_RATE_LIMIT_PER_HOUR', 'GEMINI_API_KEY', 'GROQ_API_KEY', 'OPENROUTER_API_KEY']
+// Server-only settings for api/chat: AI_* and *_API_KEY (never VITE_*: Vite
+// would expose those to the browser).
+const isServerEnv = (key: string) => key.startsWith('AI_') || key.endsWith('_API_KEY')
 
 function readBody(req: IncomingMessage): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -57,7 +58,7 @@ function apiDevServer(): Plugin {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  for (const key of SERVER_ENV) if (env[key] && !process.env[key]) process.env[key] = env[key]
+  for (const [key, value] of Object.entries(env)) if (isServerEnv(key) && value && !process.env[key]) process.env[key] = value
   return {
     plugins: [
       apiDevServer(),

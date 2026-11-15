@@ -14,6 +14,8 @@ export type TurnResult = {
   sources: string[]
   steps: TurnStep[]
   retried: boolean
+  // Provider and model that answered (empty on errors).
+  via: string
 }
 
 const WRITE_TOOLS = new Set([
@@ -69,7 +71,7 @@ export async function runTurn(
     }
     if (reply.type === 'error') {
       // Drop the unanswered question so the next try starts clean.
-      return { history: previous, text: reply.message, status: 'error', sources: [], steps, retried: false }
+      return { history: previous, text: reply.message, status: 'error', sources: [], steps, retried: false, via: '' }
     }
     history.push({ role: 'assistant', content: reply.content })
     return {
@@ -79,9 +81,10 @@ export async function runTurn(
       sources: reply.type === 'answer' ? [...sources] : [],
       steps,
       retried: reply.type === 'answer' && reply.retried,
+      via: reply.via,
     }
   }
   const text = 'That took too many steps. Please ask a simpler question.'
   history.push({ role: 'assistant', content: text })
-  return { history, text, status: 'error', sources: [], steps, retried: false }
+  return { history, text, status: 'error', sources: [], steps, retried: false, via: '' }
 }

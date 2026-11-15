@@ -5,8 +5,8 @@ import { getLayer, LAYERS, tileLimitLabel } from '../data/layers'
 import { loadSiteLight } from '../data/loadSiteData'
 import { DEFAULT_SITE_ID, getSite, SITES } from '../data/sites'
 import { formatDuration } from '../scene/formatTime'
-import { evaluateSite, loadSiteSlopes, type Criteria } from '../scene/requirements'
-import { computeStay, MAX_STAY_DAYS, MIN_STAY_DAYS } from '../scene/stay'
+import { DEFAULT_CRITERIA, evaluateSite, loadSiteSlopes, type Criteria } from '../scene/requirements'
+import { computeStay, DEFAULT_STAY_DAYS, MAX_STAY_DAYS, MIN_STAY_DAYS } from '../scene/stay'
 import { indexForTime, timeOfIndex } from '../scene/timeSelection'
 import { bodyVisibility } from '../scene/visibility'
 import { buildTimeline, nextTransition, type NextTransition, type SkyBodyKey } from '../scene/windows'
@@ -47,6 +47,13 @@ const LOLA = 'LOLA terrain'
 const SLOPES = 'Site slopes (LOLA plane fit)'
 
 class ToolInputError extends Error {}
+
+// Same ranges as the Requirements panel sliders (RequirementsPanel.tsx).
+const RANGES = {
+  sunMinPercent: { min: 0, max: 100, step: 5 },
+  earthMinPercent: { min: 0, max: 100, step: 5 },
+  slopeMaxDeg: { min: 1, max: 30, step: 1 },
+}
 
 // "2026-11-17 00:00 UTC". Same minute rounding as the sidebar.
 export function utcMinute(ms: number): string {
@@ -100,9 +107,13 @@ async function siteMetrics(siteId: string, state: AppSnapshot) {
     }
   }
   const stay = computeStay(samples, light.horizon, index, state.stayDays)
+  const slope = (await loadSiteSlopes())[siteId]
   return {
     site: { id: siteId, name: getSite(siteId).name },
     selectedTimeUtc: utcMinute(Date.parse(sample.timeUtc)),
+    terrainSlope: slope
+      ? { deg: slope.slopeDeg, baselineM: slope.baselineM, note: 'Plane fit to LOLA terrain around the site; compare only at the same baseline.' }
+      : null,
     sun: body('sun', 'Sun'),
     earth: { ...body('earth', 'Earth'), litPercent: round(sample.earthIlluminatedPct, 0) },
     stay: {
@@ -116,6 +127,21 @@ async function siteMetrics(siteId: string, state: AppSnapshot) {
     dataPeriod: dataPeriod(samples),
     rule: 'A body counts as visible when any part of its disc is above the terrain horizon (NASA PGDA rule). Partly hidden counts as visible for the link.',
   }
+}
+
+// Where each active requirement value comes from, so the model can say when a
+// value is not verified or was chosen by the user.
+function thresholdNotes(criteria: Criteria): string[] {
+  const describe = (label: string, value: number, unit: string, ids: string[]) => {
+    const t = THRESHOLDS.find((x) => ids.includes(x.id) && x.value === value)
+    if (!t) return `${label} ${value}${unit}: value chosen in the app, not a NASA threshold.`
+    return `${label} ${value}${unit}: ${t.citation} (${t.status})${t.caveat ? `. ${t.caveat}` : ''}`
+  }
+  const notes: string[] = []
+  if (criteria.sun.on) notes.push(describe('Sun', criteria.sun.minPercent, '%', ['sun-stay']))
+  if (criteria.earth.on) notes.push(describe('Earth link', criteria.earth.minPercent, '%', ['earth-visibility']))
+  if (criteria.slope.on) notes.push(describe('Slope', criteria.slope.maxDeg, '°', ['landing-slope', 'lander-tilt']))
+  return notes
 }
 
 function describeView(state: AppSnapshot) {
@@ -146,7 +172,7 @@ function describeView(state: AppSnapshot) {
   return { view: 'Dashboard', panels: ['Placeholder, not built yet.'] }
 }
 
-function inRange(value: unknown, min: number, max: number, step: number, name: string): number {
+function inRange(value: unknown, { min, max, step }: { min: number; max: number; step: number }, name: string): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) throw new ToolInputError(`${name} must be a number.`)
   if (value < min || value > max) throw new ToolInputError(`${name} must be between ${min} and ${max}.`)
   return Math.round(value / step) * step
@@ -176,7 +202,12 @@ const tools: Record<string, (args: Args, bridge: AppBridge) => Promise<ToolOutco
         selectedTimeUtc: s.timeMs === null ? 'first sample of the data' : utcMinute(s.timeMs),
         stayDays: s.stayDays,
         layer: { id: s.layerId, label: getLayer(s.layerId).label },
-        requirements: { shownOnMap: s.requirementsOn, criteria: s.criteria },
+        requirements: { shownOnMap: s.requirementsOn, criteria: s.criteria, defaults: DEFAULT_CRITERIA },
+        // Ranges of the app's controls (stay slider, Requirements panel sliders).
+        controlLimits: {
+          stayDays: { min: MIN_STAY_DAYS, max: MAX_STAY_DAYS, step: 0.5, default: DEFAULT_STAY_DAYS },
+          ...RANGES,
+        },
       },
       sources: [],
     }
@@ -203,7 +234,7 @@ const tools: Record<string, (args: Args, bridge: AppBridge) => Promise<ToolOutco
 
   async getSiteMetrics(args, bridge) {
     const state = bridge.getState()
-    return { result: await siteMetrics(siteWithData(args.siteId, state), state), sources: [HORIZONS, LOLA] }
+    return { result: await siteMetrics(siteWithData(args.siteId, state), state), sources: [HORIZONS, LOLA, SLOPES] }
   },
 
   async evaluateRequirements(_args, bridge) {
@@ -227,6 +258,7 @@ const tools: Record<string, (args: Args, bridge: AppBridge) => Promise<ToolOutco
         arrivalUtc: s.timeMs === null ? 'first sample of the data' : utcMinute(s.timeMs),
         stayDays: s.stayDays,
         sites,
+        thresholdNotes: thresholdNotes(s.criteria),
         note: 'Screening only, not "safe": rocks, small craters and dust are not in the data. Slopes are compared only at the same baseline.',
       },
       sources: [HORIZONS, LOLA, SLOPES],
@@ -275,7 +307,7 @@ const tools: Record<string, (args: Args, bridge: AppBridge) => Promise<ToolOutco
   },
 
   setStayDays(args, bridge) {
-    const days = inRange(args.days, MIN_STAY_DAYS, MAX_STAY_DAYS, 0.5, 'days')
+    const days = inRange(args.days, { min: MIN_STAY_DAYS, max: MAX_STAY_DAYS, step: 0.5 }, 'days')
     bridge.setStayDays(days)
     return { result: { changed: true, stayDays: days }, sources: [], action: `Stay length set to ${days} days` }
   },
@@ -323,16 +355,16 @@ const tools: Record<string, (args: Args, bridge: AppBridge) => Promise<ToolOutco
     const next: Criteria = {
       sun: {
         on: bool(args.sunOn, c.sun.on),
-        minPercent: args.sunMinPercent === undefined ? c.sun.minPercent : inRange(args.sunMinPercent, 0, 100, 5, 'sunMinPercent'),
+        minPercent: args.sunMinPercent === undefined ? c.sun.minPercent : inRange(args.sunMinPercent, RANGES.sunMinPercent, 'sunMinPercent'),
       },
       earth: {
         on: bool(args.earthOn, c.earth.on),
         minPercent:
-          args.earthMinPercent === undefined ? c.earth.minPercent : inRange(args.earthMinPercent, 0, 100, 5, 'earthMinPercent'),
+          args.earthMinPercent === undefined ? c.earth.minPercent : inRange(args.earthMinPercent, RANGES.earthMinPercent, 'earthMinPercent'),
       },
       slope: {
         on: bool(args.slopeOn, c.slope.on),
-        maxDeg: args.slopeMaxDeg === undefined ? c.slope.maxDeg : inRange(args.slopeMaxDeg, 1, 30, 1, 'slopeMaxDeg'),
+        maxDeg: args.slopeMaxDeg === undefined ? c.slope.maxDeg : inRange(args.slopeMaxDeg, RANGES.slopeMaxDeg, 'slopeMaxDeg'),
       },
     }
     const enabled = bool(args.enabled, true)

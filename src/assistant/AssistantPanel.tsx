@@ -13,6 +13,7 @@ type ChatItem =
       sources: string[]
       steps: TurnStep[]
       retried: boolean
+      via: string
     }
 
 const TOOL_LABELS: Record<string, string> = {
@@ -247,6 +248,11 @@ function AssistantMessage({ item }: { item: Extract<ChatItem, { role: 'assistant
           <span className="text-[10px] text-gray-500" title="Every number in this answer was found in the app's tool results or the app guide.">
             ✓ numbers checked
           </span>
+          {item.via && (
+            <span className="text-[10px] text-gray-500" title={`Answered by ${item.via}`}>
+              · via {item.via.split(' · ')[0]}
+            </span>
+          )}
         </div>
       )}
     </div>
