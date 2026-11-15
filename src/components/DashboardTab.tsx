@@ -39,7 +39,7 @@ const EARTH = '#5b9bff'
 const RED = '#fc3d21'
 
 export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayDays, onOpenHorizon, onOpenCompare }: Props) {
-  const withData = useMemo(() => SITES.filter((s) => s.hasSkyData && !s.saved), [])
+  const withData = useMemo(() => SITES.filter((s) => s.hasSkyData), [])
   const activeId = siteId && withData.some((s) => s.id === siteId) ? siteId : withData[0].id
   const [state, setState] = useState<State>({ lights: {}, slopes: {}, status: 'loading' })
   const [detailed, setDetailed] = useState(false)

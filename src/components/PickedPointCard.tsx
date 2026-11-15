@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { SiteLight } from '../data/loadSiteData'
 import { indexForTime, timeOfIndex } from '../scene/timeSelection'
-import { coverage, loadPointLight } from '../terrain/anywhere'
+import { coverage, loadAnywhereLight } from '../terrain/anywhere'
 import { DateTimeControl } from './DateTimeControl'
 import { HorizonPreview } from './HorizonPreview'
 import { StayPanel } from './StayPanel'
@@ -49,8 +49,8 @@ export function PickedPointCard({
   useEffect(() => {
     if (!cover.ok) return
     let cancelled = false
-    loadPointLight({ latDeg, lonDeg })
-      .then((light) => !cancelled && setState({ key, status: 'ready', light }))
+    loadAnywhereLight({ latDeg, lonDeg })
+      .then(({ light }) => !cancelled && setState({ key, status: 'ready', light }))
       .catch((error: unknown) => !cancelled && setState({ key, status: 'error', message: error instanceof Error ? error.message : String(error) }))
     return () => {
       cancelled = true

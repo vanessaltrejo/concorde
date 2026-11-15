@@ -6,5 +6,4 @@ export const GROUP_COLOR: Record<SiteEntry['group'], string> = {
   'South pole': '#F5A524', // orange
   'CLPS missions': '#B794F6', // purple
   'Apollo landing sites': '#4ADE80', // green
-  'Saved points': '#56B4E9', // sky blue
 }

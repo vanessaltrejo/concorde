@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { SITES, getSite } from '../data/sites'
-import { useSitesVersion } from '../state/useSites'
 import { SitePicker } from './SitePicker'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
 import { loadSiteSlopes, type SiteSlope } from '../scene/requirements'
@@ -8,6 +7,8 @@ import { AXES, GOALS, computeMetrics, scoreFor, whyWinner, type GoalId, type Met
 import { addDateVariant, addScenario, MAX_SCENARIOS, moveScenario, removeScenario, setScenarioOrder, updateScenario, useScenarios, type Scenario } from '../state/scenarios'
 import { HorizonPreview } from './HorizonPreview'
 import { MissionList } from './MissionList'
+import { loadAnywhereLight, parsePointId, pointName } from '../terrain/anywhere'
+import { usePlaces, getPlaces } from '../state/places'
 
 // Colors per card (red is kept for small highlights only); cards are also told apart by number and line style.
 const CARD_COLORS = ['#0B3D91', '#1f7ae0', '#0e8f7e']
@@ -18,6 +19,8 @@ type Loaded = { lights: Record<string, SiteLight>; slopes: Record<string, SiteSl
 
 export function CompareTab({ stayDays, fallbackTimeMs }: Props) {
   const scenarios = useScenarios()
+  // Re-render when a saved place is renamed (card titles use its name).
+  usePlaces()
   const [goalId, setGoalId] = useState<GoalId>('power')
   const [data, setData] = useState<Loaded>({ lights: {}, slopes: {}, failed: [] })
 
@@ -26,16 +29,26 @@ export function CompareTab({ stayDays, fallbackTimeMs }: Props) {
     let cancelled = false
     Promise.all([
       loadSiteSlopes().catch(() => ({}) as Record<string, SiteSlope>),
-      ...siteIds.map((id) => loadSiteLight(id).then((l) => [id, l] as const).catch(() => [id, null] as const)),
-    ]).then(([slopes, ...pairs]) => {
+      ...siteIds.map((id) => {
+        const point = parsePointId(id)
+        // A point on the Moon: computed in the browser from the terrain tiles.
+        if (point)
+          return loadAnywhereLight(point)
+            .then((r) => [id, r.light, r.slope] as const)
+            .catch(() => [id, null, null] as const)
+        return loadSiteLight(id).then((l) => [id, l, undefined] as const).catch(() => [id, null, undefined] as const)
+      }),
+    ]).then(([slopes, ...triples]) => {
       if (cancelled) return
       const lights: Record<string, SiteLight> = {}
+      const allSlopes = { ...(slopes as Record<string, SiteSlope>) }
       const failed: string[] = []
-      for (const [id, l] of pairs) {
+      for (const [id, l, slope] of triples as [string, SiteLight | null, SiteSlope | null | undefined][]) {
         if (l) lights[id] = l
         else failed.push(id)
+        if (slope) allSlopes[id] = slope
       }
-      setData({ lights, slopes: slopes as Record<string, SiteSlope>, failed })
+      setData({ lights, slopes: allSlopes, failed })
     })
     return () => {
       cancelled = true
@@ -92,12 +105,12 @@ export function CompareTab({ stayDays, fallbackTimeMs }: Props) {
       {winner?.metrics && (
         <p className="rounded-lg border border-[#22304f] bg-[#0b1226] px-3 py-2 text-sm">
           <span className="text-gray-400">Model suggestion for {goal.label}: </span>
-          <strong>{getSite(winner.sc.siteId).name}</strong>
+          <strong>{scenarioName(winner.sc.siteId)}</strong>
           <span className="text-gray-400"> ({dateLabel(winner.sc, winner.light)})</span>
           {why.length > 0 && second ? (
             <span className="text-gray-300">
               {' '}
-              leads on {why.map((k) => AXES.find((a) => a.key === k)?.short.toLowerCase()).join(' and ')} over {getSite(second.sc.siteId).name}.
+              leads on {why.map((k) => AXES.find((a) => a.key === k)?.short.toLowerCase()).join(' and ')} over {scenarioName(second.sc.siteId)}.
             </span>
           ) : (
             <span className="text-gray-300"> {ranked.length === 1 ? '— add another scenario to compare.' : 'is a close call: scores are nearly equal.'}</span>
@@ -132,7 +145,7 @@ export function CompareTab({ stayDays, fallbackTimeMs }: Props) {
         {scenarios.length < MAX_SCENARIOS && <AddSlot />}
       </div>
 
-      {ranked.length >= 2 && <OverlayRadar rows={ranked.map((r) => ({ index: r.i, name: getSite(r.sc.siteId).name, metrics: r.metrics! }))} />}
+      {ranked.length >= 2 && <OverlayRadar rows={ranked.map((r) => ({ index: r.i, name: scenarioName(r.sc.siteId), metrics: r.metrics! }))} />}
     </div>
   )
 }
@@ -149,7 +162,8 @@ type Row = { sc: Scenario; i: number; light: SiteLight | undefined; metrics: Met
 function Card({ index, row, rank, allMetrics, fallbackTimeMs, loadingFailed }: { index: number; row: Row; rank: number; allMetrics: (Metrics | null)[]; fallbackTimeMs: number | null; loadingFailed: boolean }) {
   const { sc, light, metrics, score } = row
   const [over, setOver] = useState(false)
-  const site = getSite(sc.siteId)
+  const site = parsePointId(sc.siteId) ? null : getSite(sc.siteId)
+  const name = scenarioName(sc.siteId)
   const color = CARD_COLORS[index % CARD_COLORS.length]
   const first = light ? Date.parse(light.sky.samples[0].timeUtc) : 0
   const last = light ? Date.parse(light.sky.samples[light.sky.samples.length - 1].timeUtc) : 0
@@ -183,9 +197,9 @@ function Card({ index, row, rank, allMetrics, fallbackTimeMs, loadingFailed }: {
           <span aria-hidden className="rounded-full bg-[#303030] px-1.5 py-0.5 text-[11px] font-bold" style={{ color }} title="Your order (drag to change)">
             {ordinal(index)}
           </span>
-          {site.name}
+          {name}
         </h2>
-        <button type="button" onClick={() => removeScenario(sc.id)} aria-label={`Remove ${site.name}`} className="text-lg leading-none text-white/80 hover:text-white">
+        <button type="button" onClick={() => removeScenario(sc.id)} aria-label={`Remove ${name}`} className="text-lg leading-none text-white/80 hover:text-white">
           ×
         </button>
       </div>
@@ -206,8 +220,8 @@ function Card({ index, row, rank, allMetrics, fallbackTimeMs, loadingFailed }: {
           />
         </label>
 
-        {loadingFailed && <p className="text-xs text-[#F0793A]">No data for this site yet.</p>}
-        {!light && !loadingFailed && <p className="text-xs text-gray-300">Loading…</p>}
+        {loadingFailed && <p className="text-xs text-[#F0793A]">No data for this {site ? 'site' : 'point'} yet{site ? '' : ' (outside the covered latitudes, or the tile limit was reached)'}.</p>}
+        {!light && !loadingFailed && <p className="text-xs text-gray-300">{site ? 'Loading…' : 'Computing the terrain for this point…'}</p>}
 
         {metrics && light && (
           <>
@@ -252,7 +266,7 @@ function Card({ index, row, rank, allMetrics, fallbackTimeMs, loadingFailed }: {
             </ul>
             {metrics.truncated && <p className="text-[11px] text-[#E69F00]">The stay runs past the end of the data ({metrics.coveredDays.toFixed(1)} days counted).</p>}
             {metrics.slopeDeg === null && <p className="text-[11px] text-gray-300">No slope data for this site yet: flatness is left out of the score.</p>}
-            <MissionList site={site} />
+            {site ? <MissionList site={site} /> : <p className="text-[11px] text-gray-400">Point on the Moon: terrain and slope computed in your browser from NASA LOLA tiles (same method as the curated sites).</p>}
             <button
               type="button"
               disabled={false}
@@ -278,14 +292,38 @@ function axisText(key: string, m: Metrics): string {
   }
 }
 
+// Display name of a scenario: curated site, saved place, or bare coordinates.
+function scenarioName(siteId: string): string {
+  const point = parsePointId(siteId)
+  if (!point) return getSite(siteId).name
+  const saved = getPlaces().find((p) => Math.abs(p.latDeg - point.latDeg) < 5e-5 && Math.abs(p.lonDeg - point.lonDeg) < 5e-5)
+  return saved ? saved.name : pointName(point)
+}
+
 function AddSlot() {
-  useSitesVersion()
   const options = SITES.filter((s) => s.hasSkyData)
+  const places = usePlaces()
   return (
     <div className="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#3a4560] p-4 text-center text-sm text-gray-300">
       <p>Add a scenario</p>
-      <SitePicker value={null} options={options} onChange={(id) => addScenario(id, null)} ariaLabel="Add a site to compare" />
-      <p className="text-[11px] text-gray-400">Or press “Compare” on any site in the other tabs.</p>
+      <SitePicker
+        value={null}
+        options={options}
+        extraGroups={
+          places.length > 0
+            ? [
+                {
+                  title: 'Saved places (any point on the Moon)',
+                  color: '#56B4E9',
+                  items: places.map((p) => ({ id: `point:${p.latDeg.toFixed(4)},${p.lonDeg.toFixed(4)}`, name: p.name })),
+                },
+              ]
+            : []
+        }
+        onChange={(id) => addScenario(id, null)}
+        ariaLabel="Add a site to compare"
+      />
+      <p className="text-[11px] text-gray-400">Or press “Compare” on any site, or on a pin on the Orbital view.</p>
     </div>
   )
 }

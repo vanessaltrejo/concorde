@@ -280,7 +280,7 @@ const tools: Record<string, (args: Args, bridge: AppBridge) => Promise<ToolOutco
 
   async evaluateRequirements(_args, bridge) {
     const s = bridge.getState()
-    const withData = SITES.filter((site) => site.hasSkyData && !site.saved)
+    const withData = SITES.filter((site) => site.hasSkyData)
     const [lights, slopes] = await Promise.all([Promise.all(withData.map((site) => loadSiteLight(site.id))), loadSiteSlopes()])
     const sites = withData.map((site, i) => {
       const r = evaluateSite(site.id, lights[i], slopes[site.id] ?? null, s.criteria, s.timeMs, s.stayDays)

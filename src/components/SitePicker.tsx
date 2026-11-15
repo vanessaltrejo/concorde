@@ -7,6 +7,8 @@ type SitePickerProps = {
   value: string | null
   options: SiteEntry[]
   onChange: (siteId: string) => void
+  // More groups after the registered sites (for example saved places).
+  extraGroups?: { title: string; color: string; items: { id: string; name: string }[] }[]
   placeholder?: string
   ariaLabel: string
   // Marks sites that have no Horizon view data yet.
@@ -16,7 +18,7 @@ type SitePickerProps = {
 
 // Site menu with a coloured title per group (South pole orange, CLPS missions
 // purple, Apollo green, Saved points blue) and a dot in the same colour per site.
-export function SitePicker({ value, options, onChange, placeholder = 'Choose a site…', ariaLabel, flagMissingData = false, triggerClassName }: SitePickerProps) {
+export function SitePicker({ value, options, extraGroups = [], onChange, placeholder = 'Choose a site…', ariaLabel, flagMissingData = false, triggerClassName }: SitePickerProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -99,6 +101,30 @@ export function SitePicker({ value, options, onChange, placeholder = 'Choose a s
                     {flagMissingData && !s.hasSkyData && <span className="whitespace-nowrap text-[10px] text-gray-500">no Horizon data yet</span>}
                   </button>
                 ))}
+            </div>
+          ))}
+          {extraGroups.map((g) => (
+            <div key={g.title}>
+              <p className="flex items-center gap-2 px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: g.color }}>
+                <span aria-hidden className="h-3 w-1 rounded-sm" style={{ background: g.color }} />
+                {g.title}
+              </p>
+              {g.items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="option"
+                  aria-selected={item.id === value}
+                  onClick={() => {
+                    onChange(item.id)
+                    setOpen(false)
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-gray-200 hover:bg-[#3a3a3a]"
+                >
+                  <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: g.color }} />
+                  <span className="flex-1 whitespace-nowrap">{item.name}</span>
+                </button>
+              ))}
             </div>
           ))}
         </div>,

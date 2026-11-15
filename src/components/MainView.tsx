@@ -96,6 +96,11 @@ export function MainView({
         onZoom={(factor) => setFovDeg((previous) => clampFov(previous * factor))}
         onLookAtSun={() => lookAt(sample.sun.azimuthDeg, sample.sun.elevationDeg)}
         onLookAtEarth={() => lookAt(sample.earth.azimuthDeg, sample.earth.elevationDeg)}
+        onCenter={() => {
+          // Back to the starting direction, horizon level, widest view.
+          lookAt(initialAzimuthDeg, 0)
+          setFovDeg(maxFovDeg)
+        }}
       />
     </main>
   )

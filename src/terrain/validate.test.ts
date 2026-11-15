@@ -13,7 +13,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { TerrainEngine } from './engine.ts'
+import { siteSlope, TerrainEngine } from './engine.ts'
 import { skyAtPoint, type Ephemeris } from '../scene/zones.ts'
 import type { Manifest } from './tiles.ts'
 
@@ -133,14 +133,21 @@ async function main() {
 
     // Sky pass mark: the same visible/hidden decision in at least 99% of hours,
     // positions within 0.05° (Phase 6 measured 0.006°), lit fraction within 1 point.
-    const pass = med < 0.1 && agreePct >= 99 && skyAgreePct >= 99 && maxSkyPos < 0.05 && maxIllum < 1
+    // Slope: same plane fit as scripts/site_slopes.py, vs public/data/site_slopes.json.
+    const slopes = JSON.parse(readFileSync(join(DATA_DIR, 'site_slopes.json'), 'utf8')) as { sites: Record<string, { slopeDeg: number; baselineM: number }> }
+    const refSlope = slopes.sites[id]
+    const ourSlope = siteSlope(result.near)
+    const slopeOk = !refSlope || (ourSlope !== null && Math.abs(ourSlope.slopeDeg - refSlope.slopeDeg) <= 0.01 && ourSlope.baselineM === refSlope.baselineM)
+    const pass = med < 0.1 && agreePct >= 99 && skyAgreePct >= 99 && maxSkyPos < 0.05 && maxIllum < 1 && slopeOk
     if (!pass) failures++
     console.log(
       `${pass ? 'PASS' : 'FAIL'} ${id}: horizon median Δ ${med.toFixed(4)}° max Δ ${max.toFixed(3)}° (bin ${diffs.indexOf(max)}), ` +
         `visible/hidden agreement ${agreePct.toFixed(2)}%, ground ${result.groundHeightM.toFixed(2)} m, ` +
         `${result.tilesLoaded} tiles, ${seconds} s\n     ${gridNotes.join(' | ')}\n` +
         `     sky vs Horizons: position max Δ ${maxSkyPos.toFixed(4)}°, diameter max Δ ${maxDiam.toFixed(5)}°, ` +
-        `Earth lit max Δ ${maxIllum.toFixed(3)} pts, decisions agree ${skyAgreePct.toFixed(2)}%`,
+        `Earth lit max Δ ${maxIllum.toFixed(3)} pts, decisions agree ${skyAgreePct.toFixed(2)}%
+` +
+        `     slope ${ourSlope?.slopeDeg}° @ ${ourSlope?.baselineM} m vs site_slopes.json ${refSlope?.slopeDeg}° @ ${refSlope?.baselineM} m`,
     )
   }
   assert.equal(failures, 0, `${failures} check(s) failed`)

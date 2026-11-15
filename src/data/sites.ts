@@ -11,11 +11,7 @@ export type SiteEntry = {
   source: string
   hasSkyData: boolean
   // Heading in the site menu.
-  group: 'South pole' | 'CLPS missions' | 'Apollo landing sites' | 'Saved points'
-  // A point the user saved from the map (kept in this browser). Its Sun, Earth and
-  // horizon are computed in the browser, so it is left out of the whole-set
-  // checks (Requirements, Dashboard heatmap, assistant evaluation).
-  saved?: boolean
+  group: 'South pole' | 'CLPS missions' | 'Apollo landing sites'
   // CLPS missions that land (or landed) here. Several missions can share a site.
   missions?: Mission[]
 }
@@ -177,79 +173,3 @@ export function getSite(id: string): SiteEntry {
   return site
 }
 
-// Saved points: picked on the Orbital view and kept in this browser. They join
-// SITES (same list as the curated sites) so the site menu, the map markers and
-// Compare treat them like any other site.
-const SAVED_KEY = 'concorde.savedPoints'
-type SavedPoint = { id: string; name: string; latitudeDeg: number; longitudeDeg: number }
-const siteListeners = new Set<() => void>()
-let sitesVersion = 0
-
-function toEntry(p: SavedPoint): SiteEntry {
-  return {
-    id: p.id,
-    name: p.name,
-    latitudeDeg: p.latitudeDeg,
-    longitudeDeg: p.longitudeDeg,
-    source: 'Point saved from the Orbital view',
-    hasSkyData: true,
-    group: 'Saved points',
-    saved: true,
-  }
-}
-
-function readSaved(): SavedPoint[] {
-  try {
-    const raw: unknown = JSON.parse(window.localStorage.getItem(SAVED_KEY) ?? '[]')
-    if (!Array.isArray(raw)) return []
-    return raw.filter(
-      (p): p is SavedPoint =>
-        typeof p === 'object' && p !== null && typeof p.id === 'string' && typeof p.name === 'string' &&
-        Number.isFinite(p.latitudeDeg) && Number.isFinite(p.longitudeDeg),
-    )
-  } catch {
-    return []
-  }
-}
-
-function writeSaved(): void {
-  try {
-    const list = SITES.filter((s) => s.saved).map((s) => ({ id: s.id, name: s.name, latitudeDeg: s.latitudeDeg, longitudeDeg: s.longitudeDeg }))
-    window.localStorage.setItem(SAVED_KEY, JSON.stringify(list))
-  } catch {
-    // Storage can be blocked; the point still works until the page is closed.
-  }
-}
-
-function changed(): void {
-  sitesVersion++
-  siteListeners.forEach((l) => l())
-}
-
-for (const p of readSaved()) SITES.push(toEntry(p))
-
-export function addSavedPoint(latitudeDeg: number, longitudeDeg: number): SiteEntry {
-  const number = Math.max(0, ...SITES.filter((s) => s.saved).map((s) => Number(s.id.split('-')[1]) || 0)) + 1
-  const entry = toEntry({ id: `saved-${number}`, name: `Point ${number}`, latitudeDeg, longitudeDeg })
-  SITES.push(entry)
-  writeSaved()
-  changed()
-  return entry
-}
-
-export function removeSavedPoint(id: string): void {
-  const i = SITES.findIndex((s) => s.id === id && s.saved)
-  if (i < 0) return
-  SITES.splice(i, 1)
-  writeSaved()
-  changed()
-}
-
-export function subscribeSites(listener: () => void): () => void {
-  siteListeners.add(listener)
-  return () => siteListeners.delete(listener)
-}
-
-export function sitesSnapshot(): number {
-  return sitesVersion
-}

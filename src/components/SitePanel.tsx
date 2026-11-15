@@ -3,9 +3,8 @@ import { SitePicker } from './SitePicker'
 import { PanelHandle } from './PanelHandle'
 import { MissionList } from './MissionList'
 import { useEffect, useState, type ReactNode } from 'react'
-import { useSitesVersion } from '../state/useSites'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
-import { DEFAULT_SITE_ID, removeSavedPoint, SITES, type SiteEntry } from '../data/sites'
+import { SITES, type SiteEntry } from '../data/sites'
 import { indexForTime, timeOfIndex } from '../scene/timeSelection'
 import { DateTimeControl } from './DateTimeControl'
 import { HorizonPreview } from './HorizonPreview'
@@ -42,7 +41,6 @@ export function SitePanel({
   onSelect,
   onOpenSkyView,
 }: SitePanelProps) {
-  useSitesVersion()
   const [collapsed, setCollapsed] = useState(false)
   const [lightState, setLightState] = useState<LightState | null>(null)
   const selectedId = selected?.id ?? null
@@ -92,22 +90,6 @@ export function SitePanel({
             <p className="text-xs text-gray-400">
               {selected.latitudeDeg.toFixed(4)}°, {selected.longitudeDeg.toFixed(2)}° E
             </p>
-            {selected.saved && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (!window.confirm(`Remove ${selected.name}? It disappears from the map, the menu and Compare.`)) return
-                  removeSavedPoint(selected.id)
-                  onSelect(DEFAULT_SITE_ID)
-                }}
-                className="mt-1 flex items-center gap-1.5 self-start rounded border border-[#E69F00]/60 px-2 py-1 text-xs text-[#f5b94d] hover:bg-[#E69F00]/15"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
-                </svg>
-                Remove this point
-              </button>
-            )}
           </section>
 
           <MissionList site={selected} />
@@ -159,7 +141,7 @@ export function SitePanel({
                 className="aspect-[16/7] w-full rounded bg-black object-cover"
               />
             ) : (
-              <p className="text-xs text-gray-300">No topography picture for this point yet.</p>
+              <p className="text-xs text-gray-300">No topography picture for this site yet.</p>
             )}
           </section>
         </>

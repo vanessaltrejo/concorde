@@ -5,7 +5,8 @@
 import { TerrainEngine, type AnywhereResult } from './engine.ts'
 import type { Manifest } from './tiles.ts'
 
-export type WorkerRequest = { baseUrl: string; lonDeg: number; latDeg: number }
+// grids 'near': light mode for Compare (horizon + near grid only).
+export type WorkerRequest = { baseUrl: string; lonDeg: number; latDeg: number; grids?: 'all' | 'near' }
 export type WorkerMessage =
   | { type: 'progress'; text: string }
   | { type: 'done'; result: AnywhereResult }
@@ -28,20 +29,18 @@ const post = (message: WorkerMessage, transfer: Transferable[] = []) =>
   (self as unknown as { postMessage: (m: WorkerMessage, t: Transferable[]) => void }).postMessage(message, transfer)
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
-  const { baseUrl, lonDeg, latDeg } = event.data
+  const { baseUrl, lonDeg, latDeg, grids = 'all' } = event.data
   try {
     post({ type: 'progress', text: 'Loading the terrain index' })
     const response = await fetch(`${baseUrl}/manifest.json`)
     if (!response.ok) throw unavailable(response.status)
     const manifest = (await response.json()) as Manifest
     const engine = new TerrainEngine(manifest, baseUrl, fetchTile)
-    const result = await engine.compute(lonDeg, latDeg, (text) => post({ type: 'progress', text }))
-    post({ type: 'done', result }, [
-      result.horizonDeg.buffer,
-      result.near.positions.buffer,
-      result.mid.positions.buffer,
-      result.far.positions.buffer,
-    ])
+    const result = await engine.compute(lonDeg, latDeg, (text) => post({ type: 'progress', text }), grids)
+    const buffers: Transferable[] = [result.horizonDeg.buffer, result.near.positions.buffer]
+    if (result.mid) buffers.push(result.mid.positions.buffer)
+    if (result.far) buffers.push(result.far.positions.buffer)
+    post({ type: 'done', result }, buffers)
   } catch (error) {
     post({ type: 'error', message: error instanceof Error ? error.message : String(error) })
   }

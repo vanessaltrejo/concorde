@@ -12,7 +12,7 @@ import { DEFAULT_CRITERIA, type Criteria } from './scene/requirements'
 import { DEFAULT_STAY_DAYS } from './scene/stay'
 import { indexForTime, timeOfIndex } from './scene/timeSelection'
 import { readUrlState, writeUrlState } from './state/urlState'
-import { useSitesVersion } from './state/useSites'
+import { addScenario, MAX_SCENARIOS, useScenarios } from './state/scenarios'
 import { DashboardTab } from './components/DashboardTab'
 import { CompareTab } from './components/CompareTab'
 import type { SiteData } from './types'
@@ -47,11 +47,12 @@ export default function App() {
   // Stay length in days, from the selected time on. Shared by both views.
   const [stayDays, setStayDays] = useState(initial.stayDays ?? DEFAULT_STAY_DAYS)
   const [loaded, setLoaded] = useState<Loaded | null>(null)
+  const scenarios = useScenarios()
   // Orbital view layer and requirements. Kept here so the assistant can use them.
   const [layerId, setLayerId] = useState('image')
   const [requirementsOn, setRequirementsOn] = useState(true)
   const [criteria, setCriteria] = useState<Criteria>(DEFAULT_CRITERIA)
-  const [flyRequest, setFlyRequest] = useState<{ siteId: string } | null>(null)
+  const [flyRequest, setFlyRequest] = useState<{ siteId: string } | { point: AnywherePoint } | null>(null)
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [banners, setBanners] = useState<BannerItem[]>([])
   const bannerIdRef = useRef(0)
@@ -102,14 +103,6 @@ export default function App() {
       cancelled = true
     }
   }, [tab, skySiteId, horizonPoint, horizonKey, loaded])
-
-  // A removed saved point cannot stay selected or open in the Horizon view.
-  const sitesVersion = useSitesVersion()
-  useEffect(() => {
-    const exists = (id: string | null) => id === null || SITES.some((s) => s.id === id)
-    if (!exists(selectedSiteId)) setSelectedSiteId(DEFAULT_SITE_ID)
-    if (!exists(skySiteId)) setSkySiteId(DEFAULT_SITE_ID)
-  }, [sitesVersion, selectedSiteId, skySiteId])
 
   // The address bar names only the screen, never the site or the date.
   useEffect(() => {
@@ -210,7 +203,14 @@ export default function App() {
 
   return (
     <div className="relative flex h-full overflow-hidden" style={{ '--assistant-w': assistantOpen ? '24rem' : '0px' } as CSSProperties}>
-      <NavRail active={tab} onChange={setTab} />
+      <NavRail
+        active={tab}
+        onChange={setTab}
+        onOpenPlace={(place) => {
+          setFlyRequest({ point: { latDeg: place.latDeg, lonDeg: place.lonDeg } })
+          setTab('orbital')
+        }}
+      />
       <ErrorBoundary key={tab}>
       {tab === 'horizon' && (
         <HorizonTab
@@ -242,6 +242,17 @@ export default function App() {
             criteria={criteria}
             onCriteriaChange={setCriteria}
             flyRequest={flyRequest}
+            onComparePoint={(point) => {
+              const id = pointId(point)
+              if (!scenarios.some((sc) => sc.siteId === id)) {
+                if (scenarios.length >= MAX_SCENARIOS) {
+                  announce(`Compare holds ${MAX_SCENARIOS} scenarios: remove one to add this point`)
+                } else {
+                  addScenario(id, timeMs)
+                }
+              }
+              setTab('compare')
+            }}
           />
         </Suspense>
       )}

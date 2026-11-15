@@ -18,13 +18,15 @@ import {
   LabelStyle,
   VerticalOrigin,
   ConstantProperty,
+  HeightReference,
   type ImageryLayer,
   type Primitive,
 } from 'cesium'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 import { getLayer, photoBase, tileUrl, type TileSource } from '../data/layers'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
-import { addSavedPoint, getSite, SITES, type SiteEntry } from '../data/sites'
+import { getSite, SITES, type SiteEntry } from '../data/sites'
+import { coverage } from '../terrain/anywhere'
 import {
   evaluateSite,
   loadSiteSlopes,
@@ -48,10 +50,11 @@ import {
   type GlobalSlope,
 } from '../scene/globalCells'
 import { addGlobalLayer, raiseGlobalLayer, removeGlobalLayer } from './globalLayer'
-import { LayerSelector } from './LayerSelector'
+import { LayerControl } from './LayerControl'
+import { DEFAULT_MARKER_FILTER, siteVisible, type MarkerFilter } from '../scene/markers'
+import { addPlace, formatCoords, usePlaces, type Place } from '../state/places'
 import { SitePanel } from './SitePanel'
 import { PickedPointCard } from './PickedPointCard'
-import { useSitesVersion } from '../state/useSites'
 import { GROUP_COLOR } from '../data/siteGroups'
 
 type Picked = { latitudeDeg: number; longitudeDeg: number; cell: number | null }
@@ -85,7 +88,7 @@ const SELECTED_COLOR = Color.WHITE
 // `meets` is null when requirements are off; then every site has the default colour.
 function highlightSite(viewer: Viewer, siteId: string | null, meets: Record<string, boolean> | null) {
   for (const entity of viewer.entities.values) {
-    if (entity.id === PICKED_ID) continue
+    if (entity.id === PICKED_ID || entity.id.startsWith('pin:')) continue
     const status = meets ? meets[entity.id] : undefined
     const base = status === undefined ? groupColor(getSite(entity.id)) : status ? MEETS_COLOR : EXCLUDED_COLOR
     if (entity.point) entity.point.color = new ConstantProperty(entity.id === siteId ? SELECTED_COLOR : base)
@@ -133,8 +136,56 @@ function addSiteMarker(viewer: Viewer, site: SiteEntry, index: number) {
   })
 }
 
+// Saved places are drawn as map pins (entity id "pin:<placeId>").
+const PIN_IMAGE =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38"><path d="M14 1C7 1 1.5 6.4 1.5 13.3 1.5 22.5 14 37 14 37s12.5-14.5 12.5-23.7C26.5 6.4 21 1 14 1z" fill="#1a73e8" stroke="#ffffff" stroke-width="2"/><circle cx="14" cy="13.5" r="4.6" fill="#0b2e6b"/></svg>',
+  )
+
+function syncPins(viewer: Viewer, places: Place[], show: boolean) {
+  for (const entity of [...viewer.entities.values]) if (entity.id.startsWith('pin:')) viewer.entities.remove(entity)
+  if (show) {
+    for (const place of places) {
+      viewer.entities.add({
+        id: `pin:${place.id}`,
+        position: Cartesian3.fromDegrees(place.lonDeg, place.latDeg, 0, Ellipsoid.MOON),
+        billboard: {
+          image: PIN_IMAGE,
+          verticalOrigin: VerticalOrigin.BOTTOM,
+          heightReference: HeightReference.NONE,
+        },
+        label: {
+          text: place.name,
+          font: '13px sans-serif',
+          fillColor: Color.WHITE,
+          outlineColor: Color.BLACK,
+          outlineWidth: 3,
+          style: LabelStyle.FILL_AND_OUTLINE,
+          verticalOrigin: VerticalOrigin.BOTTOM,
+          pixelOffset: new Cartesian2(0, -40),
+          distanceDisplayCondition: LABEL_NEAR,
+        },
+      })
+    }
+  }
+  viewer.scene.requestRender()
+}
+
+function applyMarkerFilter(viewer: Viewer, filter: MarkerFilter) {
+  for (const site of SITES) {
+    const entity = viewer.entities.getById(site.id)
+    if (entity) entity.show = siteVisible(site, filter)
+  }
+  viewer.scene.requestRender()
+}
+
+type PinMenu = { placeId: string; x: number; y: number }
+
 type RequirementsData ={ lights: Record<string, SiteLight>; slopes: Record<string, SiteSlope> }
 
+// Altitude when flying to a saved place; sites fly lower (topography).
+const ZONE_ALTITUDE_M = 150_000
 const TOPOGRAPHY_ALTITUDE_M = 40_000
 const GLOBE_ALTITUDE_M = 6_000_000
 
@@ -169,7 +220,9 @@ type MoonGlobeProps = {
   criteria: Criteria
   onCriteriaChange: (criteria: Criteria) => void
   // A site the assistant asked to show: select it and fly over it (new object = new request).
-  flyRequest: { siteId: string } | null
+  flyRequest: { siteId: string } | { point: { latDeg: number; lonDeg: number } } | null
+  // Pin menu "Compare": add this point to the Compare tab.
+  onComparePoint: (point: { latDeg: number; lonDeg: number }) => void
 }
 
 // Orbital view: smooth Moon sphere with NASA imagery. Cesium loads only the
@@ -190,6 +243,7 @@ export default function MoonGlobe({
   criteria,
   onCriteriaChange: setCriteria,
   flyRequest,
+  onComparePoint,
 }: MoonGlobeProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<Viewer | null>(null)
@@ -197,6 +251,11 @@ export default function MoonGlobe({
   // Latest "select a site" action for the Cesium click handler (created once).
   const showZoneRef = useRef<(siteId: string) => void>(() => {})
   const [picked, setPicked] = useState<Picked | null>(null)
+  const [markerFilter, setMarkerFilter] = useState<MarkerFilter>(DEFAULT_MARKER_FILTER)
+  const places = usePlaces()
+  const [pinMenu, setPinMenu] = useState<PinMenu | null>(null)
+  const overMenuRef = useRef(false)
+  const hideMenuTimerRef = useRef<number | null>(null)
   const [zoneImage, setZoneImage] = useState<ZoneImage | null>(null)
   const capturedSiteRef = useRef<string | null>(null)
   const [requirementsData, setRequirementsData] = useState<RequirementsData | null>(null)
@@ -305,7 +364,7 @@ export default function MoonGlobe({
   useEffect(() => {
     if (!requirementsOn || requirementsData) return
     let cancelled = false
-    const withData = SITES.filter((s) => s.hasSkyData && !s.saved)
+    const withData = SITES.filter((s) => s.hasSkyData)
     Promise.all([Promise.all(withData.map((s) => loadSiteLight(s.id))), loadSiteSlopes()])
       .then(([lights, slopes]) => {
         if (cancelled) return
@@ -390,9 +449,15 @@ export default function MoonGlobe({
     handler.setInputAction((event: ScreenSpaceEventHandler.PositionedEvent) => {
       const hit: unknown = viewer.scene.pick(event.position)
       if (typeof hit === 'object' && hit !== null && 'id' in hit && hit.id instanceof Entity && hit.id.id !== PICKED_ID) {
-        showZoneRef.current(hit.id.id)
+        const entityId = hit.id.id
+        if (entityId.startsWith('pin:')) {
+          setPinMenu({ placeId: entityId.slice(4), x: event.position.x, y: event.position.y })
+          return
+        }
+        showZoneRef.current(entityId)
         return
       }
+      setPinMenu(null)
       // A zone cell (primitive id "cell-<n>") is reported with its results.
       const cellMatch =
         typeof hit === 'object' && hit !== null && 'id' in hit && typeof hit.id === 'string' ? /^cell-(\d+)$/.exec(hit.id) : null
@@ -416,6 +481,19 @@ export default function MoonGlobe({
     handler.setInputAction((event: ScreenSpaceEventHandler.MotionEvent) => {
       const hit: unknown = viewer.scene.pick(event.endPosition)
       const id = typeof hit === 'object' && hit !== null && 'id' in hit && hit.id instanceof Entity ? hit.id.id : null
+      if (id?.startsWith('pin:')) {
+        if (hideMenuTimerRef.current !== null) window.clearTimeout(hideMenuTimerRef.current)
+        hideMenuTimerRef.current = null
+        const pos = event.endPosition
+        const placeId = id.slice(4)
+        setPinMenu((m) => (m && m.placeId === placeId ? m : { placeId, x: pos.x, y: pos.y }))
+      } else if (hovered?.startsWith('pin:') && hideMenuTimerRef.current === null) {
+        // Leaving a pin: close its menu unless the cursor moves onto the menu.
+        hideMenuTimerRef.current = window.setTimeout(() => {
+          hideMenuTimerRef.current = null
+          if (!overMenuRef.current) setPinMenu(null)
+        }, 400)
+      }
       if (id === hovered) return
       hovered = id
       showHoverLabel(viewer, id)
@@ -468,17 +546,6 @@ export default function MoonGlobe({
     }
   }, [picked])
 
-  // A removed saved point loses its marker.
-  const sitesVersion = useSitesVersion()
-  useEffect(() => {
-    const viewer = viewerRef.current
-    if (!viewer) return
-    for (const entity of [...viewer.entities.values]) {
-      if (entity.id !== PICKED_ID && !SITES.some((s) => s.id === entity.id)) viewer.entities.remove(entity)
-    }
-    viewer.scene.requestRender()
-  }, [sitesVersion])
-
   // Highlight the selected site marker.
   useEffect(() => {
     const viewer = viewerRef.current
@@ -493,7 +560,7 @@ export default function MoonGlobe({
     const viewer = viewerRef.current
     if (!viewer) return
     capturedSiteRef.current = siteId
-    setZoneImage(getSite(siteId).saved ? null : { siteId, url: `/topography/${siteId}.jpg` })
+    setZoneImage({ siteId, url: `/topography/${siteId}.jpg` })
     flyOver(viewer, siteId, altitudeM)
   }
 
@@ -504,13 +571,12 @@ export default function MoonGlobe({
     flyAndCapture(siteId, TOPOGRAPHY_ALTITUDE_M)
   }
 
-  // Save the picked point as a new site: a marker on the globe, an entry in the
-  // site menu and a Compare flag.
+  // Save the picked point as a pin: marker on the globe, entry under Saved places
+  // in the left rail, and Compare in its menu.
   function savePicked(point: Picked) {
-    const viewer = viewerRef.current
-    const entry = addSavedPoint(point.latitudeDeg, point.longitudeDeg)
-    if (viewer) addSiteMarker(viewer, entry, SITES.length - 1)
-    showZone(entry.id)
+    addPlace(point.latitudeDeg, point.longitudeDeg)
+    setMarkerFilter((f) => (f.pins ? f : { ...f, pins: true }))
+    setPicked(null)
   }
 
   // Back to the first view: the whole near side, straight down.
@@ -529,16 +595,52 @@ export default function MoonGlobe({
     showZoneRef.current = showZone
   })
 
-  // A site selected without a click on the globe (link, URL, first load) gets
-  // the same flight and topography image.
+  // A site selected without a click on the globe (link, first load) gets the
+  // same flight and topography picture.
   useEffect(() => {
     if (selectedSiteId && capturedSiteRef.current !== selectedSiteId) flyAndCapture(selectedSiteId, TOPOGRAPHY_ALTITUDE_M)
   })
 
-  // Fly when the assistant selects a site. Runs after the viewer exists.
+  // Fly when the assistant selects a site, or to a saved place. Runs after the viewer exists.
   useEffect(() => {
-    if (flyRequest) showZoneRef.current(flyRequest.siteId)
+    if (!flyRequest) return
+    if ('siteId' in flyRequest) {
+      showZoneRef.current(flyRequest.siteId)
+      return
+    }
+    const viewer = viewerRef.current
+    if (!viewer) return
+    const { latDeg, lonDeg } = flyRequest.point
+    viewer.camera.flyTo({
+      destination: Cartesian3.fromDegrees(lonDeg, latDeg, ZONE_ALTITUDE_M, Ellipsoid.MOON),
+      orientation: { heading: 0, pitch: CesiumMath.toRadians(-90), roll: 0 },
+      duration: 2,
+    })
+    setPicked({ latitudeDeg: latDeg, longitudeDeg: lonDeg, cell: null })
   }, [flyRequest])
+
+  // Pins and marker filters follow their state.
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (viewer) syncPins(viewer, places, markerFilter.pins)
+  }, [places, markerFilter.pins])
+
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (viewer) applyMarkerFilter(viewer, markerFilter)
+  }, [markerFilter])
+
+  // Zoom buttons: halve or double the camera height.
+  function zoomBy(factor: number) {
+    const viewer = viewerRef.current
+    if (!viewer) return
+    const height = viewer.camera.positionCartographic.height
+    if (factor < 1) viewer.camera.zoomIn(height * (1 - factor))
+    else viewer.camera.zoomOut(Math.max(0, Math.min(height * (factor - 1), 20_000_000 - height)))
+    viewer.scene.requestRender()
+  }
+
+  const menuPlace = pinMenu ? places.find((p) => p.id === pinMenu.placeId) ?? null : null
 
   const selectedSite = selectedSiteId ? getSite(selectedSiteId) : null
 
@@ -551,7 +653,27 @@ export default function MoonGlobe({
         aria-label="3D Moon globe. Drag to rotate, scroll to zoom, click a site marker to select it."
       />
       <div className="absolute left-4 top-4 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-3 overflow-y-auto">
-        <LayerSelector activeId={layerId} onChange={setLayerId} onResetGlobe={resetGlobe} />
+        <div className="rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg">
+          <div className="flex items-center justify-between gap-2">
+            <h1 className="flex items-center gap-2 text-lg font-semibold">
+              <span aria-hidden className="h-4 w-1 rounded-sm bg-[var(--nasa-red)]" />
+              Orbital view
+            </h1>
+            <button
+              type="button"
+              onClick={resetGlobe}
+              className="flex items-center gap-1.5 rounded bg-[#FFD400] px-2.5 py-1 text-xs font-semibold text-black hover:brightness-110"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />
+              </svg>
+              Reset globe
+            </button>
+          </div>
+          <p className="mt-1 text-[11px] text-gray-400">
+            Click the Moon to pick a point, then save it or open its Horizon view. Map layers: bottom left.
+          </p>
+        </div>
         <RequirementsPanel
           enabled={requirementsOn}
           onEnabledChange={setRequirementsOn}
@@ -634,6 +756,51 @@ export default function MoonGlobe({
         onSelect={showZone}
         onOpenSkyView={onOpenSkyView}
       />
+      <LayerControl activeId={layerId} onChange={setLayerId} filter={markerFilter} onFilterChange={setMarkerFilter} />
+      <div style={{ right: 'calc(19.5rem + var(--assistant-w, 0px))' }}
+        className="absolute top-1/2 flex -translate-y-1/2 flex-col transition-[right] duration-300 overflow-hidden rounded-lg border border-[#444] bg-[#303030]/95 shadow-lg">
+        <button type="button" onClick={() => zoomBy(0.5)} aria-label="Zoom in" title="Zoom in" className="h-9 w-9 text-lg text-gray-100 hover:bg-[#3a3a3a]">
+          +
+        </button>
+        <div className="h-px bg-[#444]" />
+        <button type="button" onClick={() => zoomBy(2)} aria-label="Zoom out" title="Zoom out" className="h-9 w-9 text-lg text-gray-100 hover:bg-[#3a3a3a]">
+          −
+        </button>
+      </div>
+      {pinMenu && menuPlace && (
+        <div
+          role="dialog"
+          aria-label={`Pin ${menuPlace.name}`}
+          onMouseEnter={() => {
+            overMenuRef.current = true
+          }}
+          onMouseLeave={() => {
+            overMenuRef.current = false
+            setPinMenu(null)
+          }}
+          className="absolute z-20 w-56 -translate-x-1/2 rounded-lg border border-[#555] bg-[#202020]/97 p-2.5 text-gray-100 shadow-2xl"
+          style={{ left: pinMenu.x, top: Math.max(8, pinMenu.y - 150) }}
+        >
+          <p className="truncate text-sm font-medium">{menuPlace.name}</p>
+          <p className="text-[11px] text-gray-400">{formatCoords(menuPlace.latDeg, menuPlace.lonDeg)}</p>
+          {(() => {
+            const cover = coverage(menuPlace.latDeg)
+            const point = { latDeg: menuPlace.latDeg, lonDeg: menuPlace.lonDeg }
+            return cover.ok ? (
+              <div className="mt-2 flex gap-1.5">
+                <button type="button" onClick={() => onOpenPointView(point)} className="flex-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-950 hover:bg-white">
+                  Horizon view
+                </button>
+                <button type="button" onClick={() => onComparePoint(point)} className="flex-1 rounded border border-[#666] px-2 py-1 text-xs hover:bg-[#3a3a3a]">
+                  Compare
+                </button>
+              </div>
+            ) : (
+              <p className="mt-2 text-[11px] text-gray-400">{cover.reason}</p>
+            )
+          })()}
+        </div>
+      )}
     </div>
   )
 }

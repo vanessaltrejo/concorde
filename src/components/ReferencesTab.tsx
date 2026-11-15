@@ -140,7 +140,7 @@ function Item({ name, link, usedFor }: Ref) {
 export function ReferencesTab() {
   const layerIds = SELECTOR.flatMap((e) => e.options ?? [e.id])
   const layers = layerIds.map((id) => LAYERS.find((l) => l.id === id)).filter((l) => l !== undefined)
-  const siteSources = [...new Set(SITES.filter((s) => !s.saved).map((s) => s.source))]
+  const siteSources = [...new Set(SITES.map((s) => s.source))]
 
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col gap-3 overflow-y-auto bg-[#303030] p-3 text-gray-100 md:p-4 [&>*]:shrink-0">
