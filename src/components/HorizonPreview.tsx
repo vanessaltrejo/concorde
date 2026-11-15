@@ -80,13 +80,13 @@ export function HorizonPreview({ sky, horizon, timeMs }: HorizonPreviewProps) {
       </svg>
       <dl className="flex flex-col gap-0.5 text-xs">
         <div className="flex justify-between">
-          <dt className="text-gray-400">Sun</dt>
+          <dt className="text-gray-300">Sun</dt>
           <dd>
             <StatusBadge state={sun.state} fraction={sun.fraction} />
           </dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-400">Earth</dt>
+          <dt className="text-gray-300">Earth</dt>
           <dd>
             <StatusBadge state={earth.state} fraction={earth.fraction} />
           </dd>

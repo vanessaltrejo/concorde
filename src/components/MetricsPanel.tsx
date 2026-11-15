@@ -22,7 +22,7 @@ type MetricRowProps = {
 function MetricRow({ label, value }: MetricRowProps) {
   return (
     <div className="flex justify-between text-sm">
-      <dt className="text-gray-400">{label}</dt>
+      <dt className="text-gray-300">{label}</dt>
       <dd className="font-medium">{value}</dd>
     </div>
   )
@@ -31,7 +31,7 @@ function MetricRow({ label, value }: MetricRowProps) {
 function StatusRow({ visibility }: { visibility: BodyVisibility }) {
   return (
     <div className="flex justify-between text-sm">
-      <dt className="text-gray-400">Status</dt>
+      <dt className="text-gray-300">Status</dt>
       <dd>
         <StatusBadge state={visibility.state} fraction={visibility.fraction} />
       </dd>
@@ -57,7 +57,7 @@ function TransitionRow({ body, next }: { body: 'Sun' | 'Earth'; next: NextTransi
   return (
     <div className="flex flex-col">
       <MetricRow label={transitionLabel(body, next)} value={transitionValue(next)} />
-      {at && <p className="text-right text-xs text-gray-500">{at}</p>}
+      {at && <p className="text-right text-xs text-gray-300">{at}</p>}
     </div>
   )
 }
@@ -99,7 +99,7 @@ export function MetricsPanel({
           <MetricRow label="Lit fraction" value={`${sample.earthIlluminatedPct.toFixed(0)}%`} />
         </dl>
       </div>
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-gray-300">
         Sun and Earth: JPL Horizons. Horizon: {terrainNote}. A body is partly
         hidden when terrain covers part of its disc. Set and rise times use the same rule (set =
         no part visible), interpolated between hourly samples.

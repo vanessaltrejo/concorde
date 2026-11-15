@@ -1,4 +1,6 @@
-import { APP_NAME } from '../appName'
+import { SITES } from '../data/sites'
+import { FlagButton } from './FlagButton'
+import { MissionList } from './MissionList'
 import type { HorizonProfile, LandingSite, SkySample } from '../types'
 import type { TimingMetrics } from '../scene/timing'
 import type { BodyVisibility } from '../scene/visibility'
@@ -39,17 +41,25 @@ export function Sidebar({
   onStayDaysChange,
 }: SidebarProps) {
   return (
-    <aside className="flex w-72 shrink-0 flex-col gap-6 overflow-y-auto border-r border-[#444] bg-[#303030] p-4 text-gray-100">
-      <h1 className="text-lg font-semibold">{APP_NAME}</h1>
+    <aside className="absolute left-4 top-4 z-10 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-6 overflow-y-auto rounded-lg border border-[#444] bg-[#303030] p-4 shadow-lg text-gray-100">
+      <h1 className="flex items-center gap-2 text-lg font-semibold">
+        <span aria-hidden className="h-4 w-1 rounded-sm bg-[var(--nasa-red)]" />
+        Horizon view
+      </h1>
 
       <section className="flex flex-col gap-1">
         <h2 className="text-sm font-medium">Site</h2>
         <p className="flex items-baseline justify-between gap-2">
           <span className="text-sm">{site.name}</span>
-          <span className="text-xs text-gray-400">
+          <FlagButton siteId={site.id} timeMs={timeMs} />
+          <span className="text-xs text-gray-300">
             {site.latitudeDeg.toFixed(4)}°, {site.longitudeDeg.toFixed(2)}° E
           </span>
         </p>
+        {(() => {
+          const entry = SITES.find((s) => s.id === site.id)
+          return entry ? <MissionList site={entry} /> : null
+        })()}
       </section>
 
       <DateTimeControl samples={samples} index={index} onIndexChange={onIndexChange} />

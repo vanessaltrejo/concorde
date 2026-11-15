@@ -61,7 +61,7 @@ function Row({
         disabled={!on}
         onChange={(e) => onValue(Number(e.target.value))}
       />
-      <p className="text-[10px] text-gray-500">{note}</p>
+      <p className="text-[11px] text-gray-300">{note}</p>
     </div>
   )
 }
@@ -79,7 +79,7 @@ export function RequirementsPanel({
   zoneSummary,
 }: RequirementsPanelProps) {
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-[#444] bg-[#303030]/95 p-3 text-gray-100">
+    <div className="flex flex-col gap-3 rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg">
       <label className="flex items-center justify-between text-sm font-medium">
         <span>Requirements</span>
         <span className="flex items-center gap-2 text-xs font-normal text-gray-300">
@@ -130,7 +130,7 @@ export function RequirementsPanel({
             note="Default 10° (NASA Artemis, about 100 m scale). Polar sites use a 100 m baseline, Apollo sites about 355 m."
           />
 
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-300">
             For the selected arrival date and a {stayDays} day stay. Green = meets your requirements
             (screening only, not "safe"): rocks, small craters and dust are not in the data.
           </p>
@@ -145,16 +145,16 @@ export function RequirementsPanel({
               limit (100 m baseline). Click a cell for its values.
             </p>
           )}
-          {error && <p className="text-xs text-gray-400">{error}</p>}
-          {!results && !error && <p className="text-xs text-gray-400">Checking sites…</p>}
+          {error && <p className="text-xs text-gray-300">{error}</p>}
+          {!results && !error && <p className="text-xs text-gray-300">Checking sites…</p>}
           {results && (
             <ul className="flex flex-col gap-1 text-xs">
               {results.map((r) => (
                 <li key={r.siteId} className="flex flex-col">
-                  <span className="font-medium" style={{ color: r.meets ? MEETS_COLOR : '#9a9a9a' }}>
+                  <span className="font-medium" style={{ color: r.meets ? MEETS_COLOR : '#6b7280' }}>
                     {r.meets ? '✓' : '✕'} {getSite(r.siteId).name}
                   </span>
-                  <span className="text-gray-400">
+                  <span className="text-gray-300">
                     Sun {r.sunPercent.toFixed(0)}%{r.passes.sun ? '' : ' ✕'} · Earth {r.earthPercent.toFixed(0)}%
                     {r.passes.earth ? '' : ' ✕'} · Slope{' '}
                     {r.slope ? `${r.slope.slopeDeg.toFixed(1)}° (${r.slope.baselineM} m)` : 'n/a'}

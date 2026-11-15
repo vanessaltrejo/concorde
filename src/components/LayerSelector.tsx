@@ -1,4 +1,3 @@
-import { APP_NAME } from '../appName'
 import { SELECTOR, getLayer, tileLimitLabel } from '../data/layers'
 
 type LayerSelectorProps = {
@@ -11,8 +10,11 @@ export function LayerSelector({ activeId, onChange }: LayerSelectorProps) {
   const active = getLayer(activeId)
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-[#444] bg-[#303030]/95 p-3 text-gray-100">
-      <h1 className="text-lg font-semibold">{APP_NAME}</h1>
+    <div className="flex flex-col gap-3 rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg">
+      <h1 className="flex items-center gap-2 text-lg font-semibold">
+        <span aria-hidden className="h-4 w-1 rounded-sm bg-[var(--nasa-red)]" />
+        Orbital view
+      </h1>
       <fieldset className="flex flex-col gap-1">
         <legend className="mb-1 text-sm font-medium">Map layer</legend>
         {/* Two columns, filled top to bottom: 3 on the left, 2 on the right. */}
@@ -51,8 +53,8 @@ export function LayerSelector({ activeId, onChange }: LayerSelectorProps) {
         </div>
       </fieldset>
 
-      <section className="flex flex-col gap-1 border-t border-[#444] pt-2 text-xs text-gray-400">
-        <p className="font-medium text-gray-200">{active.label}</p>
+      <section className="flex flex-col gap-1 border-t border-[#444] pt-2 text-xs text-gray-300">
+        <p className="font-medium text-gray-100">{active.label}</p>
         <p>{active.sourceNote}</p>
         <p>
           <span className="text-gray-300">Coverage:</span> {active.coverageLabel}

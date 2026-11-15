@@ -8,6 +8,7 @@ import {
   ScreenSpaceEventHandler,
   ScreenSpaceEventType,
   UrlTemplateImageryProvider,
+  SkyBox,
   Viewer,
   Cartesian3,
   Cartesian2,
@@ -254,7 +255,16 @@ export default function MoonGlobe({
       fullscreenButton: false,
       infoBox: false,
       selectionIndicator: false,
-      skyBox: false,
+      skyBox: new SkyBox({
+        sources: {
+          positiveX: '/textures/stars/tycho2t3_80_px.jpg',
+          negativeX: '/textures/stars/tycho2t3_80_mx.jpg',
+          positiveY: '/textures/stars/tycho2t3_80_py.jpg',
+          negativeY: '/textures/stars/tycho2t3_80_my.jpg',
+          positiveZ: '/textures/stars/tycho2t3_80_pz.jpg',
+          negativeZ: '/textures/stars/tycho2t3_80_mz.jpg',
+        },
+      }),
       skyAtmosphere: false,
       // Draw only when something changes (saves GPU and battery).
       requestRenderMode: true,

@@ -37,7 +37,7 @@ export function SiteView({ data, sampleIndex, onSampleIndexChange, stayDays, onS
   }
 
   return (
-    <div className="flex h-full min-w-0 flex-1">
+    <div className="relative flex h-full min-w-0 flex-1">
       <Sidebar
         site={sky.site}
         samples={sky.samples}

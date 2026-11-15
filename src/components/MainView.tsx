@@ -1,5 +1,6 @@
 import { summarizeTerrain } from '../scene/terrainInfo'
 import { Canvas } from '@react-three/fiber'
+import { StarSky } from './StarSky'
 import { Suspense, useCallback, useRef, useState } from 'react'
 import type { HorizonProfile, SkySample, TerrainData, Visibility } from '../types'
 import { observerHeightM } from '../scene/constants'
@@ -62,7 +63,7 @@ export function MainView({
         gl={{ logarithmicDepthBuffer: true }}
         camera={{ position: observerPosition, fov: maxFovDeg, near: 0.5, far: 800_000 }}
       >
-        <color attach="background" args={['#000000']} />
+        <StarSky />
         <Terrain terrain={terrain} sample={sample} />
         <HorizonSilhouette profile={horizon} eyeHeightM={observerHeightM} />
         <SunDisc sun={sample.sun} observerPosition={observerPosition} />
@@ -97,7 +98,7 @@ export function MainView({
         onLookAtSun={() => lookAt(sample.sun.azimuthDeg, sample.sun.elevationDeg)}
         onLookAtEarth={() => lookAt(sample.earth.azimuthDeg, sample.earth.elevationDeg)}
       />
-      <p className="pointer-events-none absolute bottom-3 left-3 max-w-[50%] text-xs text-gray-500">
+      <p className="pointer-events-none absolute bottom-3 left-[20rem] max-w-[40%] text-xs text-gray-500">
         Terrain: LOLA {summarizeTerrain(terrain).levels}. Shadows computed from the
         same terrain. Earthshine is boosted to be visible (visual aid). Drag to look around,
         scroll to zoom. Observer height {observerHeightM} m.

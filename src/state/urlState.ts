@@ -3,7 +3,7 @@
 
 import { DEFAULT_STAY_DAYS, MAX_STAY_DAYS, MIN_STAY_DAYS } from '../scene/stay'
 
-export type View = 'orbital' | 'horizon' | 'dashboard'
+export type View = 'orbital' | 'horizon' | 'dashboard' | 'compare'
 
 type UrlState = {
   view: View | null
@@ -12,7 +12,7 @@ type UrlState = {
   stayDays: number | null
 }
 
-const VIEWS: View[] = ['orbital', 'horizon', 'dashboard']
+const VIEWS: View[] = ['orbital', 'horizon', 'dashboard', 'compare']
 
 export function readUrlState(knownSiteIds: string[]): UrlState {
   try {
@@ -33,14 +33,23 @@ export function readUrlState(knownSiteIds: string[]): UrlState {
   }
 }
 
-export function writeUrlState(state: { view: View; siteId: string | null; timeMs: number | null; stayDays: number }): void {
+export function writeUrlState(
+  state: { view: View; siteId: string | null; timeMs: number | null; stayDays: number } | null,
+  compare: string | null = null,
+): void {
   try {
+    if (state === null && compare === null) {
+      window.history.replaceState(null, '', window.location.pathname)
+      return
+    }
+    if (state === null) return writeUrlState({ view: 'orbital', siteId: null, timeMs: null, stayDays: DEFAULT_STAY_DAYS }, compare)
     const params = new URLSearchParams()
     params.set('view', state.view)
     if (state.siteId) params.set('site', state.siteId)
     // Minute precision, UTC ("2026-11-17T00:00Z").
     if (state.timeMs !== null) params.set('t', `${new Date(state.timeMs).toISOString().slice(0, 16)}Z`)
     if (state.stayDays !== DEFAULT_STAY_DAYS) params.set('stay', String(state.stayDays))
+    if (compare) params.set('cmp', compare)
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
   } catch {
     // The address bar is a convenience; the app works without it.

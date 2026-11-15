@@ -16,11 +16,11 @@ function Bar({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex justify-between text-sm">
-        <span className="text-gray-400">{label}</span>
+        <span className="text-gray-300">{label}</span>
         <span className="font-medium">{value.toFixed(0)}%</span>
       </div>
       <div className="h-1.5 rounded bg-[#444]">
-        <div className="h-1.5 rounded bg-gray-200" style={{ width: `${value}%` }} />
+        <div className="h-1.5 rounded bg-[#4d8be8]" style={{ width: `${value}%` }} />
       </div>
     </div>
   )
@@ -50,7 +50,7 @@ export function StayPanel({ samples, horizon, timeMs, stayDays, onStayDaysChange
         value={stayDays}
         onChange={(e) => onStayDaysChange(Number(e.target.value))}
       />
-      <p className="truncate text-xs text-gray-400">
+      <p className="truncate text-xs text-gray-300">
         {formatUtc(stay.arrivalMs).replace(' UTC', '')} → {formatUtc(stay.coveredEndMs)}
       </p>
       <Bar label="Stay with Sun" value={stay.sunPercent} />

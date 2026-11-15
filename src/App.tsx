@@ -8,6 +8,9 @@ import { DEFAULT_SITE_ID, getSite, SITES } from './data/sites'
 import { DEFAULT_STAY_DAYS } from './scene/stay'
 import { indexForTime, timeOfIndex } from './scene/timeSelection'
 import { readUrlState, writeUrlState } from './state/urlState'
+import { encodeScenarios, useScenarios } from './state/scenarios'
+import { DashboardTab } from './components/DashboardTab'
+import { CompareTab } from './components/CompareTab'
 import type { SiteData } from './types'
 
 // CesiumJS is large: it loads only when the Orbital view tab opens.
@@ -34,6 +37,7 @@ export default function App() {
   // Stay length in days, from the selected time on. Shared by both views.
   const [stayDays, setStayDays] = useState(initial.stayDays ?? DEFAULT_STAY_DAYS)
   const [loaded, setLoaded] = useState<Loaded | null>(null)
+  const scenarios = useScenarios()
 
   // Load the Horizon view site's files (about 19 MB) only when that tab is open and
   // the site is not already loaded. A late answer for an older site is ignored.
@@ -59,8 +63,11 @@ export default function App() {
 
   // Keep the address bar in step with the screen, so a link reopens it.
   useEffect(() => {
-    writeUrlState({ view: tab, siteId: tab === 'horizon' ? skySiteId : selectedSiteId, timeMs, stayDays })
-  }, [tab, skySiteId, selectedSiteId, timeMs, stayDays])
+    const siteId = tab === 'horizon' ? skySiteId : selectedSiteId
+    // The home (Orbital view, default site and stay) keeps a clean address: just "/".
+    const isHome = tab === 'orbital' && siteId === DEFAULT_SITE_ID && stayDays === DEFAULT_STAY_DAYS
+    writeUrlState(isHome ? null : { view: tab, siteId, timeMs, stayDays }, encodeScenarios(scenarios))
+  }, [tab, skySiteId, selectedSiteId, timeMs, stayDays, scenarios])
 
   function openSkyView(siteId: string) {
     setSkySiteId(siteId)
@@ -102,7 +109,18 @@ export default function App() {
         </Suspense>
       )}
       {tab === 'dashboard' && (
-        <Placeholder title="Dashboard" description="Summary metrics for the selected site." />
+        <DashboardTab
+          siteId={selectedSiteId}
+          onSelectSite={setSelectedSiteId}
+          timeMs={timeMs}
+          onTimeChange={setTimeMs}
+          stayDays={stayDays}
+          onOpenHorizon={openSkyView}
+          onOpenCompare={() => setTab('compare')}
+        />
+      )}
+      {tab === 'compare' && (
+        <CompareTab stayDays={stayDays} fallbackTimeMs={timeMs} />
       )}
       </ErrorBoundary>
     </div>
@@ -135,7 +153,7 @@ function HorizonTab({ current, siteName, timeMs, onTimeChange, stayDays, onStayD
         <button
           type="button"
           onClick={onBackToMap}
-          className="absolute left-[19rem] top-3 rounded bg-[#303030]/90 px-3 py-1.5 text-xs text-gray-100 hover:bg-[#3a3a3a]"
+          className="absolute right-4 top-4 rounded-lg border border-[#444] bg-[#303030] px-3 py-1.5 text-xs text-gray-100 shadow-lg hover:bg-[var(--nasa-blue)] hover:text-white"
         >
           ← Back to Orbital view
         </button>

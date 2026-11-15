@@ -1,3 +1,5 @@
+import { FlagButton } from './FlagButton'
+import { ClpsWithoutSiteNote, MissionList } from './MissionList'
 import { useEffect, useState } from 'react'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
 import { SITES, type SiteEntry } from '../data/sites'
@@ -68,13 +70,13 @@ export function SitePanel({
   const current = lightState && lightState.siteId === selectedId ? lightState : null
 
   return (
-    <div className="absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-3 overflow-y-auto rounded-lg border border-[#444] bg-[#303030]/95 p-3 text-gray-100">
+    <div className="absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-3 overflow-y-auto rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg">
       <label className="flex flex-col gap-1">
         <span className="text-sm font-medium">Site</span>
         <select
           value={selected?.id ?? ''}
           onChange={(e) => onSelect(e.target.value)}
-          className="rounded border border-[#555] bg-[#262626] px-2 py-1.5 text-sm [color-scheme:dark]"
+          className="rounded border border-[#555] bg-[#262626] px-2 py-1.5 text-sm text-gray-100 [color-scheme:dark]"
         >
           {!selected && <option value="">Choose a site…</option>}
           {[...new Set(SITES.map((s) => s.group))].map((group) => (
@@ -95,20 +97,23 @@ export function SitePanel({
           <section className="flex flex-col gap-1 border-t border-[#444] pt-2">
             <p className="flex items-baseline justify-between gap-2">
               <span className="text-sm font-medium">{selected.name}</span>
-              <span className="text-xs text-gray-400">
+              <FlagButton siteId={selected.id} timeMs={timeMs} />
+              <span className="text-xs text-gray-300">
                 {selected.latitudeDeg.toFixed(4)}°, {selected.longitudeDeg.toFixed(2)}° E
               </span>
             </p>
-            <p className="text-[11px] text-gray-500">{selected.source}</p>
+            <p className="text-[11px] text-gray-300">{selected.source}</p>
           </section>
 
+          <MissionList site={selected} />
+
           {!selected.hasSkyData && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-300">
               Horizon view data for this site is not generated yet (Horizons + LOLA scripts).
             </p>
           )}
-          {current?.status === 'error' && <p className="text-xs text-gray-400">{current.message}</p>}
-          {selected.hasSkyData && !current && <p className="text-xs text-gray-400">Loading preview…</p>}
+          {current?.status === 'error' && <p className="text-xs text-gray-300">{current.message}</p>}
+          {selected.hasSkyData && !current && <p className="text-xs text-gray-300">Loading preview…</p>}
 
           {current?.status === 'ready' && (
             <>
@@ -132,7 +137,7 @@ export function SitePanel({
                 <button
                   type="button"
                   onClick={() => onOpenSkyView(selected.id)}
-                  className="mt-1 rounded bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-950 hover:bg-white"
+                  className="mt-1 rounded bg-[var(--nasa-blue)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#164fb0]"
                 >
                   Open Horizon view
                 </button>
@@ -149,23 +154,23 @@ export function SitePanel({
                 className="w-full rounded bg-black"
               />
             ) : (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-300">
                 {zonePending ? 'Preparing zone image…' : 'No zone image yet. Topography view flies there and takes one.'}
               </p>
             )}
-            <p className="text-[10px] text-gray-500">Snapshot of the globe over this zone, with the active map layer.</p>
+            <p className="text-[10px] text-gray-300">Snapshot of the globe over this zone, with the active map layer.</p>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => onOpenTopography(selected.id)}
-                className="flex-1 rounded border border-[#555] px-2 py-1 text-xs hover:bg-[#3a3a3a]"
+                className="flex-1 rounded border border-[#555] px-2 py-1 text-xs hover:bg-[var(--nasa-blue)] hover:text-white"
               >
                 Topography view
               </button>
               <button
                 type="button"
                 onClick={onZoomOut}
-                className="flex-1 rounded border border-[#555] px-2 py-1 text-xs hover:bg-[#3a3a3a]"
+                className="flex-1 rounded border border-[#555] px-2 py-1 text-xs hover:bg-[var(--nasa-blue)] hover:text-white"
               >
                 Back to globe
               </button>
@@ -173,6 +178,7 @@ export function SitePanel({
           </section>
         </>
       )}
+      <ClpsWithoutSiteNote />
     </div>
   )
 }

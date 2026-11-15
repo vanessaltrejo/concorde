@@ -9,7 +9,7 @@ type StatusBadgeProps = {
 // Okabe-Ito colors (safe for common color vision deficiencies), always paired
 // with a symbol and text so color is never the only signal.
 const styles: Record<Visibility, { color: string; symbol: string; label: string }> = {
-  visible: { color: '#56B4E9', symbol: '●', label: 'Visible' },
+  visible: { color: '#7fb0ff', symbol: '●', label: 'Visible' },
   partial: { color: '#E69F00', symbol: '◐', label: 'Partly hidden' },
   hidden: { color: '#F0793A', symbol: '○', label: 'Hidden' },
 }

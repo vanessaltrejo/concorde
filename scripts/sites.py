@@ -21,6 +21,11 @@ NSSDC_APOLLO = (
     "Icarus 283, 92-103; https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
 )
 
+# CLPS (Commercial Lunar Payload Services) landing sites, coordinates as listed
+# on NASA's CLPS pages and read from the challenge brief on 2026-11-14. To
+# confirm against the NASA pages. Longitudes are east, 0 to 360.
+CLPS_NASA = "NASA CLPS mission pages (https://www.nasa.gov/commercial-lunar-payload-services/), coordinates to confirm"
+
 SITES = {
     "shackleton-rim": {
         "name": "Shackleton rim",
@@ -64,6 +69,42 @@ SITES = {
         "latitude_deg": 20.1911,
         "east_longitude_deg": 30.7723,
         "source": NSSDC_APOLLO,
+    },
+    "mons-mouton": {
+        "name": "Mons Mouton",
+        "latitude_deg": -84.6,
+        "east_longitude_deg": 31.0,
+        "source": CLPS_NASA,
+    },
+    "malapert-a": {
+        "name": "Malapert A",
+        "latitude_deg": -84.10,
+        "east_longitude_deg": 129.1,
+        "source": CLPS_NASA,
+    },
+    "schrodinger-basin": {
+        "name": "Schrödinger Basin",
+        "latitude_deg": -75.0,
+        "east_longitude_deg": 132.4,
+        "source": CLPS_NASA,
+    },
+    "mare-crisium": {
+        "name": "Mare Crisium",
+        "latitude_deg": 17.0,
+        "east_longitude_deg": 59.1,
+        "source": CLPS_NASA,
+    },
+    "reiner-gamma": {
+        "name": "Reiner Gamma",
+        "latitude_deg": 7.5,
+        "east_longitude_deg": 301.0,
+        "source": CLPS_NASA,
+    },
+    "gruithuisen-domes": {
+        "name": "Gruithuisen Domes",
+        "latitude_deg": 36.3,
+        "east_longitude_deg": 320.0,
+        "source": CLPS_NASA,
     },
 }
 

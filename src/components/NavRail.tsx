@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type TabId = 'orbital' | 'horizon' | 'dashboard'
+export type TabId = 'orbital' | 'horizon' | 'dashboard' | 'compare'
 
 type Tab = { id: TabId; label: string; icon: ReactNode }
 
@@ -17,6 +17,18 @@ const iconProps = {
 }
 
 const tabs: Tab[] = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    icon: (
+      <svg {...iconProps}>
+        <rect x="3" y="3" width="7" height="9" rx="1" />
+        <rect x="14" y="3" width="7" height="5" rx="1" />
+        <rect x="14" y="12" width="7" height="9" rx="1" />
+        <rect x="3" y="16" width="7" height="5" rx="1" />
+      </svg>
+    ),
+  },
   {
     id: 'orbital',
     label: 'Orbital view',
@@ -37,14 +49,12 @@ const tabs: Tab[] = [
     ),
   },
   {
-    id: 'dashboard',
-    label: 'Dashboard',
+    id: 'compare',
+    label: 'Compare sites',
     icon: (
       <svg {...iconProps}>
-        <rect x="3" y="3" width="7" height="9" rx="1" />
-        <rect x="14" y="3" width="7" height="5" rx="1" />
-        <rect x="14" y="12" width="7" height="9" rx="1" />
-        <rect x="3" y="16" width="7" height="5" rx="1" />
+        <rect x="3" y="5" width="8" height="14" rx="1.5" />
+        <rect x="13" y="5" width="8" height="14" rx="1.5" />
       </svg>
     ),
   },
@@ -73,12 +83,13 @@ export function NavRail({ active, onChange }: NavRailProps) {
             aria-current={isActive ? 'page' : undefined}
             onClick={() => onChange(tab.id)}
             className={
-              'flex h-10 w-10 items-center justify-center rounded-lg transition-colors ' +
+              'relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ' +
               (isActive
-                ? 'bg-[#3d3d3d] text-white'
+                ? 'bg-[var(--nasa-blue)] text-white'
                 : 'text-gray-400 hover:bg-[#333] hover:text-white')
             }
           >
+            {isActive && <span aria-hidden className="absolute -left-2 top-2 h-6 w-[3px] rounded-r bg-[var(--nasa-red)]" />}
             {tab.icon}
           </button>
         )

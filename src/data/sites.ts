@@ -11,11 +11,30 @@ export type SiteEntry = {
   source: string
   hasSkyData: boolean
   // Heading in the site menu.
-  group: 'South pole' | 'Apollo landing sites'
+  group: 'South pole' | 'CLPS missions' | 'Apollo landing sites'
+  // CLPS missions that land (or landed) here. Several missions can share a site.
+  missions?: Mission[]
 }
+
+export type Mission = {
+  name: string
+  lander: string
+  // Landing year, as stated by NASA.
+  year: number
+  status: 'Completed' | 'Scheduled'
+}
+
+// Missions that have no landing site we can compute from (no point on the Moon):
+// shown as a note, never on the map.
+export const CLPS_WITHOUT_SITE: string[] = [
+  'Peregrine Mission-1 (did not land on the Moon)',
+  'Blue Moon Pathfinder (south polar region, exact site not defined yet)',
+  'Blue Ghost Mission 2 (lunar farside and orbit)',
+]
 
 const GLASER_2018 = 'Gläser et al. 2018, Planetary and Space Science 162, Table 1 ("this study", surface level)'
 const NSSDC_APOLLO = 'NSSDC Apollo Landing Site Coordinates (Lunar Module), Wagner et al. 2017'
+const CLPS_NASA = 'NASA CLPS mission pages (nasa.gov/commercial-lunar-payload-services); coordinates to confirm'
 const GLASER_2018_2M ='Gläser et al. 2018, Planetary and Space Science 162, Table 2 (2 m above ground)'
 
 export const SITES: SiteEntry[] = [
@@ -48,6 +67,71 @@ export const SITES: SiteEntry[] = [
     source: GLASER_2018_2M,
     hasSkyData: true,
     group: 'South pole',
+  },
+  // CLPS landing sites. Terrain from the LOLA 118 m global DEM, 50 km radius.
+  {
+    id: 'mons-mouton',
+    name: 'Mons Mouton',
+    latitudeDeg: -84.6,
+    longitudeDeg: 31.0,
+    source: CLPS_NASA,
+    hasSkyData: false,
+    group: 'CLPS missions',
+    missions: [
+      { name: 'IM-2 Athena', lander: 'Nova-C', year: 2025, status: 'Completed' },
+      { name: 'Griffin Mission 1', lander: 'Griffin', year: 2027, status: 'Scheduled' },
+      { name: 'IM-4', lander: 'Nova-C', year: 2028, status: 'Scheduled' },
+    ],
+  },
+  {
+    id: 'malapert-a',
+    name: 'Malapert A',
+    latitudeDeg: -84.1,
+    longitudeDeg: 129.1,
+    source: CLPS_NASA,
+    hasSkyData: false,
+    group: 'CLPS missions',
+    missions: [{ name: 'IM-1 Odysseus', lander: 'Nova-C', year: 2024, status: 'Completed' }],
+  },
+  {
+    id: 'schrodinger-basin',
+    name: 'Schrödinger Basin',
+    latitudeDeg: -75.0,
+    longitudeDeg: 132.4,
+    source: CLPS_NASA,
+    hasSkyData: false,
+    group: 'CLPS missions',
+    missions: [{ name: 'Draper (ispace-U.S. APEX 1.0)', lander: 'APEX 1.0', year: 2026, status: 'Scheduled' }],
+  },
+  {
+    id: 'mare-crisium',
+    name: 'Mare Crisium',
+    latitudeDeg: 17.0,
+    longitudeDeg: 59.1,
+    source: CLPS_NASA,
+    hasSkyData: false,
+    group: 'CLPS missions',
+    missions: [{ name: 'Blue Ghost Mission 1', lander: 'Blue Ghost', year: 2025, status: 'Completed' }],
+  },
+  {
+    id: 'reiner-gamma',
+    name: 'Reiner Gamma',
+    latitudeDeg: 7.5,
+    longitudeDeg: 301.0,
+    source: CLPS_NASA,
+    hasSkyData: false,
+    group: 'CLPS missions',
+    missions: [{ name: 'IM-3 Trinity', lander: 'Nova-C', year: 2026, status: 'Scheduled' }],
+  },
+  {
+    id: 'gruithuisen-domes',
+    name: 'Gruithuisen Domes',
+    latitudeDeg: 36.3,
+    longitudeDeg: 320.0,
+    source: CLPS_NASA,
+    hasSkyData: false,
+    group: 'CLPS missions',
+    missions: [{ name: 'Blue Ghost Mission 3', lander: 'Blue Ghost', year: 2028, status: 'Scheduled' }],
   },
   // Apollo Lunar Module positions: NSSDC "Apollo Landing Site Coordinates"
   // (planetocentric, Mean Earth/Polar Axis, DE421; Wagner et al. 2017).
