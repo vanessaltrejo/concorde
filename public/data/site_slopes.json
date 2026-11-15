@@ -1,0 +1,41 @@
+{
+ "method": "Plane fit to terrain nodes around the site (scripts/site_slopes.py). Slope depends on the baseline; compare only values with the same baseline.",
+ "sites": {
+  "shackleton-rim": {
+   "slopeDeg": 3.0,
+   "baselineM": 100,
+   "nodes": 18,
+   "dataSpacingM": 20.0
+  },
+  "connecting-ridge-c1": {
+   "slopeDeg": 0.9,
+   "baselineM": 100,
+   "nodes": 18,
+   "dataSpacingM": 20.0
+  },
+  "connecting-ridge-c2": {
+   "slopeDeg": 0.79,
+   "baselineM": 100,
+   "nodes": 18,
+   "dataSpacingM": 20.0
+  },
+  "apollo-11": {
+   "slopeDeg": 1.26,
+   "baselineM": 355,
+   "nodes": 7,
+   "dataSpacingM": 118.4505876
+  },
+  "apollo-16": {
+   "slopeDeg": 1.45,
+   "baselineM": 355,
+   "nodes": 7,
+   "dataSpacingM": 118.4505876
+  },
+  "apollo-17": {
+   "slopeDeg": 1.42,
+   "baselineM": 355,
+   "nodes": 7,
+   "dataSpacingM": 118.4505876
+  }
+ }
+}

@@ -1,3 +1,4 @@
+import { summarizeTerrain } from '../scene/terrainInfo'
 import { Canvas } from '@react-three/fiber'
 import { Suspense, useCallback, useRef, useState } from 'react'
 import type { HorizonProfile, SkySample, TerrainData, Visibility } from '../types'
@@ -97,7 +98,7 @@ export function MainView({
         onLookAtEarth={() => lookAt(sample.earth.azimuthDeg, sample.earth.elevationDeg)}
       />
       <p className="pointer-events-none absolute bottom-3 left-3 max-w-[50%] text-xs text-gray-500">
-        Terrain: LOLA 20 m to 10 km, 320 m to 80 km, 640 m to 200 km. Shadows computed from the
+        Terrain: LOLA {summarizeTerrain(terrain).levels}. Shadows computed from the
         same terrain. Earthshine is boosted to be visible (visual aid). Drag to look around,
         scroll to zoom. Observer height {observerHeightM} m.
       </p>

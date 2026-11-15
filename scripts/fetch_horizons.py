@@ -42,9 +42,10 @@ SITE = {
     "source": _SITE["source"],
 }
 
-# One lunar day (about 29.5 Earth days), hourly, starting 2026-11-14 00:00 UTC.
+# About three lunar days (90 Earth days, Nov 14 2026 to Feb 12 2027), hourly,
+# starting 2026-11-14 00:00 UTC. Was one lunar day (29.5 days) until 2026-11-14.
 START_UTC = datetime(2026, 11, 14, 0, 0, tzinfo=timezone.utc)
-STOP_UTC = START_UTC + timedelta(days=29.5)
+STOP_UTC = START_UTC + timedelta(days=90)
 STEP_SIZE = "1 h"
 
 # Horizons target codes: 10 = Sun, 399 = Earth.

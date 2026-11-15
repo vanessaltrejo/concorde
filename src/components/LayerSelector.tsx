@@ -11,10 +11,12 @@ export function LayerSelector({ activeId, onChange }: LayerSelectorProps) {
   const active = getLayer(activeId)
 
   return (
-    <div className="absolute left-4 top-4 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-3 overflow-y-auto rounded-lg border border-[#444] bg-[#303030]/95 p-3 text-gray-100">
+    <div className="flex flex-col gap-3 rounded-lg border border-[#444] bg-[#303030]/95 p-3 text-gray-100">
       <h1 className="text-lg font-semibold">{APP_NAME}</h1>
       <fieldset className="flex flex-col gap-1">
         <legend className="mb-1 text-sm font-medium">Map layer</legend>
+        {/* Two columns, filled top to bottom: 3 on the left, 2 on the right. */}
+        <div className="grid grid-flow-col grid-rows-3 items-start gap-x-4 gap-y-1">
         {SELECTOR.map((entry) => {
           const selected = entry.id === activeId || (entry.options?.includes(activeId) ?? false)
           return (
@@ -46,6 +48,7 @@ export function LayerSelector({ activeId, onChange }: LayerSelectorProps) {
             </div>
           )
         })}
+        </div>
       </fieldset>
 
       <section className="flex flex-col gap-1 border-t border-[#444] pt-2 text-xs text-gray-400">

@@ -68,6 +68,8 @@ export type TerrainGrid = {
 
 // near: 20 m out to 10 km, mid: 320 m out to 80 km, far: 640 m out to 200 km.
 export type TerrainData = {
+  // Where the heights come from (terrain.json provenance).
+  source: string
   near: TerrainGrid
   mid: TerrainGrid
   far: TerrainGrid

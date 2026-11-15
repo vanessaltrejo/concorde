@@ -28,13 +28,14 @@ set CURL_CA_BUNDLE to the exported macOS certificate file.
 
 import json
 import math
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 import pyproj
 import rasterio
-from rasterio.windows import from_bounds
+from rasterio.windows import Window, from_bounds
 
 from sites import site_from_argv
 
@@ -48,6 +49,22 @@ DEM_SOURCE = (
 SITE_ID, _SITE = site_from_argv()
 SITE_LON_DEG = _SITE["east_longitude_deg"]
 SITE_LAT_DEG = _SITE["latitude_deg"]
+
+# Away from the south pole the 20 m polar file does not reach 200 km around
+# the site, so the LOLA 118 m global DEM is used instead (USGS Astrogeology,
+# 256 pixels per degree, int16 heights with scale 0.5, simple cylindrical).
+# Its rows are stored one per block, so it is read in chunks of rows.
+# Measured on Apollo 11 (2026-11-14): a 50 km horizon equals the 200 km one
+# (0 of 1440 bins differ), so 50 km is used there. Near the poles terrain far
+# away matters (PROJECT_MEMORY problem #14) and the polar path keeps 200 km.
+GLOBAL_DEM_URL = "https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"
+GLOBAL_DEM_SOURCE = (
+    "LOLA global DEM 118 m (LDEM_256), USGS Astrogeology "
+    "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014"
+)
+GLOBAL_RADIUS_M = 50_000.0
+# The polar file covers about 304 km around the pole; the site needs 200 km more.
+USE_POLAR_DEM = SITE_LAT_DEG <= -86.0
 
 MOON_RADIUS_M = 1_737_400.0  # Radius of the DEM reference sphere (from the file CRS).
 OBSERVER_HEIGHT_M = 2.0  # Lander height, as in Glaser et al. 2018.
@@ -74,13 +91,30 @@ GRIDS = [
     ("far", 4, MAX_DISTANCE_M),
 ]
 
+if not USE_POLAR_DEM:
+    DEM_URL = GLOBAL_DEM_URL
+    DEM_SOURCE = GLOBAL_DEM_SOURCE
+    MAX_DISTANCE_M = GLOBAL_RADIUS_M
+    # Simple cylindrical map: east-west map meters are stretched by 1/cos(lat),
+    # so rays go a little further in map units to reach the radius on the ground.
+    _STRETCH = 1 / math.cos(math.radians(SITE_LAT_DEG))
+    # (decimation factor, resolution m, max distance in map units, ray step m)
+    LEVELS = [(None, 118.45, GLOBAL_RADIUS_M * _STRETCH, 60.0)]
+    # Grids: near = full 118 m data, mid and far = block averages (no overviews in the file).
+    GRIDS = [
+        ("near", None, 10_000.0),
+        ("mid", 4, GLOBAL_RADIUS_M * _STRETCH),
+        ("far", 8, GLOBAL_RADIUS_M * _STRETCH),
+    ]
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = PROJECT_ROOT / "public" / "data" / SITE_ID
 
 
 def open_dem(overview_level: int | None):
     url = f"/vsicurl/{DEM_URL}"
-    if overview_level is None:
+    # The global DEM has no overviews: the level is a decimation factor there.
+    if overview_level is None or not USE_POLAR_DEM:
         return rasterio.open(url)
     return rasterio.open(url, overview_level=overview_level)
 
@@ -115,11 +149,43 @@ def local_frame(lon_deg: float, lat_deg: float) -> tuple[np.ndarray, np.ndarray,
     return east, north, up
 
 
-def read_window(ds, cx: float, cy: float, half_size: float) -> tuple[np.ndarray, rasterio.Affine]:
+def read_window(
+    ds, cx: float, cy: float, half_size: float, decimate: int | None = None
+) -> tuple[np.ndarray, rasterio.Affine]:
     window = from_bounds(cx - half_size, cy - half_size, cx + half_size, cy + half_size, ds.transform)
     window = window.round_offsets().round_lengths()
-    data = ds.read(1, window=window).astype(np.float64)
-    return data, ds.window_transform(window)
+    if USE_POLAR_DEM:
+        data = ds.read(1, window=window).astype(np.float64)
+        return data, ds.window_transform(window)
+    return read_global_window(ds, window, decimate or 1)
+
+
+def read_global_window(ds, window, factor: int) -> tuple[np.ndarray, rasterio.Affine]:
+    """Read the global DEM in chunks of rows (with retries), scale to meters,
+    mark no-data as NaN, and average factor x factor blocks if asked."""
+    parts = []
+    for start in range(0, int(window.height), 200):
+        rows = min(200, int(window.height) - start)
+        chunk = Window(window.col_off, window.row_off + start, window.width, rows)
+        for attempt in range(5):
+            try:
+                parts.append(ds.read(1, window=chunk).astype(np.float64))
+                break
+            except rasterio.errors.RasterioIOError:
+                if attempt == 4:
+                    raise
+                time.sleep(3 * (attempt + 1))
+    data = np.vstack(parts)
+    if ds.nodata is not None:
+        data[data == ds.nodata] = np.nan
+    data = data * ds.scales[0] + ds.offsets[0]
+    transform = ds.window_transform(window)
+    if factor > 1:
+        rows = data.shape[0] // factor * factor
+        cols = data.shape[1] // factor * factor
+        data = np.nanmean(data[:rows, :cols].reshape(rows // factor, factor, cols // factor, factor), axis=(1, 3))
+        transform = transform * rasterio.Affine.scale(factor)
+    return data, transform
 
 
 def bilinear(data: np.ndarray, transform: rasterio.Affine, x: np.ndarray, y: np.ndarray) -> np.ndarray:
@@ -172,7 +238,7 @@ def build_horizon(geom: Geometry, x0: float, y0: float, observer: np.ndarray) ->
     start = MIN_DISTANCE_M
     for level, res, max_dist, step in LEVELS:
         with open_dem(level) as ds:
-            data, transform = read_window(ds, x0, y0, max_dist + 4 * res)
+            data, transform = read_window(ds, x0, y0, max_dist + 4 * res, level)
         print(f"  level {res:.0f} m: window {data.shape}, distances {start:.0f}-{max_dist:.0f} m")
         distances = np.arange(start, max_dist, step)
         for chunk in np.array_split(np.arange(len(ray_dirs)), 16):
@@ -205,7 +271,7 @@ def build_grid(
     """
     east, north, up = local_frame(SITE_LON_DEG, SITE_LAT_DEG)
     with open_dem(overview_level) as ds:
-        data, transform = read_window(ds, x0, y0, half_size_m)
+        data, transform = read_window(ds, x0, y0, half_size_m, overview_level)
     size = min(data.shape)
     data = data[:size, :size]
     spacing = transform.a

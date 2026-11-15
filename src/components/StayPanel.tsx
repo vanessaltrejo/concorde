@@ -50,14 +50,14 @@ export function StayPanel({ samples, horizon, timeMs, stayDays, onStayDaysChange
         value={stayDays}
         onChange={(e) => onStayDaysChange(Number(e.target.value))}
       />
-      <p className="text-xs text-gray-400">
-        Arrival {formatUtc(stay.arrivalMs)} until {formatUtc(stay.coveredEndMs)}
+      <p className="truncate text-xs text-gray-400">
+        {formatUtc(stay.arrivalMs).replace(' UTC', '')} → {formatUtc(stay.coveredEndMs)}
       </p>
       <Bar label="Stay with Sun" value={stay.sunPercent} />
       <Bar label="Stay with Earth link" value={stay.earthPercent} />
       {stay.truncated && (
-        <p className="text-xs text-[#E69F00]">
-          The data ends first: only {stay.coveredDays.toFixed(1)} of {stay.requestedDays} days are counted.
+        <p className="truncate text-xs text-[#E69F00]">
+          Data ends: {stay.coveredDays.toFixed(1)} of {stay.requestedDays} days counted.
         </p>
       )}
     </section>

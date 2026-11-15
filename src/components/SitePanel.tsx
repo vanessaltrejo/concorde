@@ -69,30 +69,35 @@ export function SitePanel({
 
   return (
     <div className="absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-3 overflow-y-auto rounded-lg border border-[#444] bg-[#303030]/95 p-3 text-gray-100">
-      <section className="flex flex-col gap-1">
-        <h2 className="text-sm font-medium">Sites</h2>
-        {SITES.map((site) => (
-          <button
-            key={site.id}
-            type="button"
-            onClick={() => onSelect(site.id)}
-            className={
-              'rounded px-2 py-1 text-left text-sm transition-colors ' +
-              (selected?.id === site.id ? 'bg-[#444] text-white' : 'text-gray-300 hover:bg-[#3a3a3a]')
-            }
-          >
-            {site.name}
-            {!site.hasSkyData && <span className="ml-1 text-xs text-gray-500">(no Horizon view data yet)</span>}
-          </button>
-        ))}
-      </section>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Site</span>
+        <select
+          value={selected?.id ?? ''}
+          onChange={(e) => onSelect(e.target.value)}
+          className="rounded border border-[#555] bg-[#262626] px-2 py-1.5 text-sm [color-scheme:dark]"
+        >
+          {!selected && <option value="">Choose a site…</option>}
+          {[...new Set(SITES.map((s) => s.group))].map((group) => (
+            <optgroup key={group} label={group}>
+              {SITES.filter((s) => s.group === group).map((site) => (
+                <option key={site.id} value={site.id}>
+                  {site.name}
+                  {site.hasSkyData ? '' : ' (no Horizon view data yet)'}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
 
       {selected && (
         <>
           <section className="flex flex-col gap-1 border-t border-[#444] pt-2">
-            <p className="text-sm font-medium">{selected.name}</p>
-            <p className="text-xs text-gray-400">
-              {selected.latitudeDeg.toFixed(4)}°, {selected.longitudeDeg.toFixed(2)}° E
+            <p className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-medium">{selected.name}</span>
+              <span className="text-xs text-gray-400">
+                {selected.latitudeDeg.toFixed(4)}°, {selected.longitudeDeg.toFixed(2)}° E
+              </span>
             </p>
             <p className="text-[11px] text-gray-500">{selected.source}</p>
           </section>

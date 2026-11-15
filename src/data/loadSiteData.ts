@@ -126,7 +126,9 @@ async function loadTerrain(siteId: string): Promise<TerrainData> {
     loadGrid(siteId, meta.grids.mid),
     loadGrid(siteId, meta.grids.far),
   ])
-  return { near, mid, far }
+  const provenance = isRecord(meta.provenance) ? meta.provenance : {}
+  const source = typeof provenance.source === 'string' ? provenance.source : 'LOLA (source not recorded)'
+  return { source, near, mid, far }
 }
 
 export async function loadSiteData(siteId: string): Promise<SiteData> {

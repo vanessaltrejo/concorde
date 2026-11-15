@@ -8,7 +8,7 @@ import { buildTimeline, type BodyTimeline } from './windows'
 
 export const DEFAULT_STAY_DAYS = 6.5 // early Artemis sites: about 6 to 6.5 days sunlit (NASA lunar site selection, 2023)
 export const MIN_STAY_DAYS = 0.5
-export const MAX_STAY_DAYS = 29.5 // one lunar day, the length of the data
+export const MAX_STAY_DAYS = 29.5 // one lunar day (the data covers 90 days)
 
 const DAY_MS = 24 * 60 * 60 * 1000
 

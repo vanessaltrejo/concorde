@@ -10,10 +10,13 @@ export type SiteEntry = {
   longitudeDeg: number
   source: string
   hasSkyData: boolean
+  // Heading in the site menu.
+  group: 'South pole' | 'Apollo landing sites'
 }
 
 const GLASER_2018 = 'Gläser et al. 2018, Planetary and Space Science 162, Table 1 ("this study", surface level)'
-const GLASER_2018_2M = 'Gläser et al. 2018, Planetary and Space Science 162, Table 2 (2 m above ground)'
+const NSSDC_APOLLO = 'NSSDC Apollo Landing Site Coordinates (Lunar Module), Wagner et al. 2017'
+const GLASER_2018_2M ='Gläser et al. 2018, Planetary and Space Science 162, Table 2 (2 m above ground)'
 
 export const SITES: SiteEntry[] = [
   {
@@ -23,6 +26,7 @@ export const SITES: SiteEntry[] = [
     longitudeDeg: 203.97,
     source: GLASER_2018,
     hasSkyData: true,
+    group: 'South pole',
   },
   // Connecting Ridge: Table 2 points (2 m above ground, the same height as our
   // observer), read from the PDF text on 2026-11-14. To confirm visually in the
@@ -34,6 +38,7 @@ export const SITES: SiteEntry[] = [
     longitudeDeg: 222.83,
     source: GLASER_2018_2M,
     hasSkyData: true,
+    group: 'South pole',
   },
   {
     id: 'connecting-ridge-c2',
@@ -42,6 +47,37 @@ export const SITES: SiteEntry[] = [
     longitudeDeg: 245.98,
     source: GLASER_2018_2M,
     hasSkyData: true,
+    group: 'South pole',
+  },
+  // Apollo Lunar Module positions: NSSDC "Apollo Landing Site Coordinates"
+  // (planetocentric, Mean Earth/Polar Axis, DE421; Wagner et al. 2017).
+  // Terrain from the LOLA 118 m global DEM, 50 km radius (see scripts/build_terrain.py).
+  {
+    id: 'apollo-11',
+    name: 'Apollo 11',
+    latitudeDeg: 0.67416,
+    longitudeDeg: 23.47314,
+    source: NSSDC_APOLLO,
+    hasSkyData: true,
+    group: 'Apollo landing sites',
+  },
+  {
+    id: 'apollo-16',
+    name: 'Apollo 16',
+    latitudeDeg: -8.9734,
+    longitudeDeg: 15.5011,
+    source: NSSDC_APOLLO,
+    hasSkyData: true,
+    group: 'Apollo landing sites',
+  },
+  {
+    id: 'apollo-17',
+    name: 'Apollo 17',
+    latitudeDeg: 20.1911,
+    longitudeDeg: 30.7723,
+    source: NSSDC_APOLLO,
+    hasSkyData: true,
+    group: 'Apollo landing sites',
   },
 ]
 

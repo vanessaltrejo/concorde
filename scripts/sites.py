@@ -16,6 +16,11 @@ GLASER_2018_2M = (
     "(2 m above ground), doi:10.1016/j.pss.2017.07.006"
 )
 
+NSSDC_APOLLO = (
+    "NSSDC Apollo Landing Site Coordinates (Lunar Module), Wagner et al. 2017, "
+    "Icarus 283, 92-103; https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+)
+
 SITES = {
     "shackleton-rim": {
         "name": "Shackleton rim",
@@ -38,6 +43,27 @@ SITES = {
         "latitude_deg": -89.3130,
         "east_longitude_deg": 245.98,
         "source": GLASER_2018_2M,
+    },
+    # Apollo Lunar Module positions, NSSDC "Apollo Landing Site Coordinates"
+    # (planetocentric, Mean Earth/Polar Axis, DE421; from LRO images, Wagner et
+    # al. 2017, Icarus 283, 92-103). Read 2026-11-14.
+    "apollo-11": {
+        "name": "Apollo 11",
+        "latitude_deg": 0.67416,
+        "east_longitude_deg": 23.47314,
+        "source": NSSDC_APOLLO,
+    },
+    "apollo-16": {
+        "name": "Apollo 16",
+        "latitude_deg": -8.9734,
+        "east_longitude_deg": 15.5011,
+        "source": NSSDC_APOLLO,
+    },
+    "apollo-17": {
+        "name": "Apollo 17",
+        "latitude_deg": 20.1911,
+        "east_longitude_deg": 30.7723,
+        "source": NSSDC_APOLLO,
     },
 }
 

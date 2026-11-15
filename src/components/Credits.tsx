@@ -1,5 +1,10 @@
 // Data sources, methods and the planning disclaimer.
-export function Credits() {
+type CreditsProps = {
+  siteSource: string
+  terrainSource: string
+}
+
+export function Credits({ siteSource, terrainSource }: CreditsProps) {
   return (
     <section className="flex flex-col gap-2 border-t border-[#444] pt-4 text-xs text-gray-400">
       <p className="font-medium text-gray-200">Planning aid, not flight grade.</p>
@@ -8,11 +13,10 @@ export function Credits() {
         <ul className="mt-2 flex list-disc flex-col gap-1 pl-4">
           <li>Sun and Earth positions: NASA/JPL Horizons API (observer on the Moon, airless).</li>
           <li>
-            Terrain: LOLA 20 m south pole DEM, Barker et al. 2023, Planet. Sci. J. 4, 183
-            (NASA PGDA product 90).
+            Terrain: {terrainSource}.
           </li>
           <li>
-            Site: Shackleton rim, Gläser et al. 2018, Planetary and Space Science 162, Table 1.
+            Site coordinates: {siteSource}.
           </li>
           <li>
             Earth image: NASA Blue Marble Next Generation with topography and bathymetry (December

@@ -426,6 +426,26 @@ re-read sections 0 to 0.2, question the phase, and ask what is missing.
   equatorial point vs the Horizons web app at 3 times.
 - **Model:** **Fable**, high effort.
 
+**Phase 6 result (2026-11-14, option A chosen by Vanessa, not committed):**
+- Measured first: (1) Sun/Earth for any point from one Horizons table (Moon
+  seen from Earth) plus geometry match Horizons' own per-site values within
+  0.006° at Shackleton, C1, C2 and Apollo 11, so SPICE is not needed; (2) the
+  118 m global DEM (USGS) reads by parts but row by row (~17 s for 200 km);
+  (3) at Apollo 11 a 50 km horizon equals the 200 km one (0 of 1440 bins).
+  Browsers cannot read LOLA or Horizons (no CORS), so "anywhere" is a script
+  per point, not live.
+- Done: `build_terrain.py` uses the LOLA 118 m global DEM with a 50 km radius
+  when the site is north of 86°S; the polar path (20 m, 200 km) is unchanged.
+  Apollo 11, 16 and 17 added (NSSDC Lunar Module coordinates, Wagner et al.
+  2017), about 1.3 MB each. Horizons echoed the right coordinates.
+- Horizons/terrain texts in the Horizon view and credits now come from each
+  site's own files (they said "LOLA 20 m up to 200 km" and "Shackleton" for
+  every site before).
+- Checked: Apollo 17 on Nov 20: Sun 58.8° (sunset Nov 29 01:39 UTC), horizon up
+  to 14.2° (Taurus-Littrow massifs); Shackleton regression unchanged.
+- Not validated: Apollo horizons against an independent source (for example
+  QuickMap); 50 km tested only at Apollo 11 (a flat mare site).
+
 ### Phase 7. Requirements finder (if time allows)
 - **What:** criteria panel (sketch: Illumination, Earth connection, Terrain
   incline), must-have / nice-to-have, presets. **Limited area first** (Artemis
@@ -435,6 +455,69 @@ re-read sections 0 to 0.2, question the phase, and ask what is missing.
   must be downloaded and processed.
 - **Check:** Plan B section 8 tests; colour-blind check.
 - **Model:** Fable or Opus, high effort (scoring + data processing).
+
+**Phase 7 result, step 1 = curated sites (2026-11-14, not committed):**
+- Done: "Requirements" card under the map layers (from the sketch's Criteria
+  input): Sun during stay ≥ (default 100%), Earth link during stay ≥ (default
+  25%, origin not verified), slope at the site ≤ (default 10°). Each can be
+  switched off. Applied to the 6 curated sites for the selected arrival and stay.
+  Markers turn bluish green with ✓ (meets) or gray with ✕ (excluded); the list
+  says which criterion failed. Wording: "screening only, not safe".
+- Slope: `scripts/site_slopes.py` fits a plane to the existing terrain nodes
+  (no download). Polar sites 100 m baseline (0.8° to 3.0°), Apollo about 355 m
+  (1.3° to 1.5°). The baseline is shown next to each value.
+- Checked: arrival Nov 28, 6.5 days: Shackleton Earth 48% (same as Phase 5),
+  C1/C2 44%, all polar sites pass; Apollo sites fail the Sun requirement (lunar
+  night: 17% to 40%). Horizon view regression unchanged.
+- Not done (needs downloads and Vanessa's approval): coloured **zones** on the
+  globe (the sketch's green areas). That needs gridded data: slope maps
+  (SLDEM2015 / LOLA), and Sun/Earth visibility per date for a grid (pole: heavy
+  terrain computation). Also not done: nice-to-have scores, weights, presets.
+
+**Phase 7 result, step 2 = coloured zones (2026-11-14, not committed):**
+- `scripts/build_zones.py`: 50 x 50 km box around the south pole, 1 km cells
+  (2,500). Per cell: slope share (% of area under 1..30°, 100 m baseline, LOLA
+  20 m) and a horizon (360 bins, terrain 20 m to 2 km, 80 m to 20 km, 160 m to
+  60 km, 320 m to 200 km). Ran in 7.1 min; 2.2 MB of files. LOLA read by parts,
+  no download.
+- `scripts/fetch_ephemeris.py`: one Horizons table -> `public/data/ephemeris.json`
+  (49 KB) for Sun/Earth at any point. In the browser it matches Horizons'
+  per-site tables within 0.006° (Shackleton, C1, C2, Apollo 17).
+- Horizon check (same code at the exact site points vs the validated 20 m
+  horizons): max 0.23°, p95 0.10° (Shackleton, C1, C2). Without the 20 m first
+  2 km it was up to 1.1° (fixed).
+- App: with "Show on map" on, cells are drawn on the globe (bluish green =
+  meets, faint gray = excluded) and recomputed in the browser for any arrival,
+  stay and thresholds. Clicking a cell shows its Sun %, Earth % and slope share.
+  A cell passes slope when at least 20% of its area is under the limit
+  (Vanessa's choice, not an official value).
+- Checked (arrival Nov 28, 6.5 days, defaults): 19 of 2,500 cells meet; 56 have
+  Sun 100%. The cells holding C1 and C2 give the same Sun/Earth % as the sites
+  (100% / 44%).
+- Important limit: a cell is judged at its **centre point**. The Shackleton rim
+  site is 0.48 km from its cell centre, and that centre is inside the crater
+  (Sun 0%), so the cell is gray although the rim site passes. Finer cells or
+  "best point in the cell" would fix this (to decide with Vanessa).
+- **Fixed (Vanessa chose "best point"):** each cell is now judged at its 4
+  highest 20 m spots, at least 200 m apart (rims and ridges get the most light);
+  a cell meets Sun/Earth if any spot does. 10,000 horizons, 27 min, 7.6 MB.
+  Same check as before (max 0.23°). Arrival Nov 28, defaults: the Shackleton
+  rim cell now gives Sun 100% / Earth 48.7% (site: 100% / 48%) and meets;
+  C1 and C2 cells unchanged (100% / 44.2%); 53 of 2,500 cells meet, 127 have
+  Sun 100%.
+- Also: Sites became a dropdown (grouped South pole / Apollo), Map layer in two
+  columns, and the Horizon preview looks like a small 3D view (bodies hide
+  behind the terrain; no "not to scale" note).
+
+**Data period extended (2026-11-14, Vanessa's choice):** Sun/Earth data now
+covers 90 days (2026-11-14 to 2027-02-12, hourly, 2,161 samples) for all six
+sites and `ephemeris.json`; terrain and zones unchanged. Checked: the first
+709 samples are identical to the old files (0.0° difference); the Horizons web
+check still gives 0.0°; Shackleton regression unchanged (52% partial on Nov 17,
+Earthset Dec 1 02:34 UTC). The period summary now reads Nov 14 – Feb 12:
+Shackleton Sun 99%, Earth 55% (was 100% / 50% for one lunar day), so the
+README pitch story ("Sun visible 100% of this period") must be updated in the
+docs pass. A Dec 11 arrival with 6.5 days is now fully counted.
 
 ### Phase 8. Polish and video
 - **What:** larger text for the video, honest labels, credits, record the full

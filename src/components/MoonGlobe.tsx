@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Cartographic,
   Ellipsoid,
@@ -18,14 +18,26 @@ import {
   VerticalOrigin,
   ConstantProperty,
   type ImageryLayer,
+  type Primitive,
 } from 'cesium'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 import { getLayer, photoBase, tileUrl, type TileSource } from '../data/layers'
+import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
 import { getSite, SITES } from '../data/sites'
+import {
+  DEFAULT_CRITERIA,
+  evaluateSite,
+  loadSiteSlopes,
+  type Criteria,
+  type SiteSlope,
+} from '../scene/requirements'
+import { RequirementsPanel } from './RequirementsPanel'
+import { evaluateZones, loadEphemeris, loadZoneGrid, MIN_SLOPE_AREA_PERCENT, type Ephemeris, type ZoneGrid } from '../scene/zones'
+import { addZonePrimitive, colorZones, removeZonePrimitive } from './zoneLayer'
 import { LayerSelector } from './LayerSelector'
 import { SitePanel } from './SitePanel'
 
-type Picked = { latitudeDeg: number; longitudeDeg: number }
+type Picked = { latitudeDeg: number; longitudeDeg: number; cell: number | null }
 
 function makeProvider(source: TileSource) {
   const [west, south, east, north] = source.rectangle
@@ -41,16 +53,28 @@ function makeProvider(source: TileSource) {
 }
 
 const SITE_COLOR = Color.fromCssColorString('#56B4E9') // Okabe-Ito sky blue
+const MEETS_COLOR = Color.fromCssColorString('#009E73') // Okabe-Ito bluish green
+const EXCLUDED_COLOR = Color.fromCssColorString('#8a8a8a')
 const SELECTED_COLOR = Color.WHITE
 
 // Cesium objects are mutable by design; the mutation lives in a helper
 // (same pattern as the Horizon view, PROJECT_MEMORY problem #22).
-function highlightSite(viewer: Viewer, siteId: string | null) {
+// `meets` is null when requirements are off; then every site has the default colour.
+function highlightSite(viewer: Viewer, siteId: string | null, meets: Record<string, boolean> | null) {
   for (const entity of viewer.entities.values) {
-    if (entity.point) entity.point.color = new ConstantProperty(entity.id === siteId ? SELECTED_COLOR : SITE_COLOR)
+    const status = meets ? meets[entity.id] : undefined
+    const base = status === undefined ? SITE_COLOR : status ? MEETS_COLOR : EXCLUDED_COLOR
+    if (entity.point) entity.point.color = new ConstantProperty(entity.id === siteId ? SELECTED_COLOR : base)
+    if (entity.label) {
+      const name = getSite(entity.id).name
+      // Text, not only colour: ✓ meets, ✕ excluded.
+      entity.label.text = new ConstantProperty(status === undefined ? name : `${name} ${status ? '✓' : '✕'}`)
+    }
   }
   viewer.scene.requestRender()
 }
+
+type RequirementsData = { lights: Record<string, SiteLight>; slopes: Record<string, SiteSlope> }
 
 const ZONE_ALTITUDE_M = 150_000
 const TOPOGRAPHY_ALTITUDE_M = 40_000
@@ -140,6 +164,76 @@ export default function MoonGlobe({
   const [layerId, setLayerId] = useState('image')
   const [zoneImage, setZoneImage] = useState<ZoneImage | null>(null)
   const [zonePending, setZonePending] = useState(false)
+  const [requirementsOn, setRequirementsOn] = useState(false)
+  const [criteria, setCriteria] = useState<Criteria>(DEFAULT_CRITERIA)
+  const [requirementsData, setRequirementsData] = useState<RequirementsData | null>(null)
+  const [requirementsError, setRequirementsError] = useState<string | null>(null)
+  const [zoneData, setZoneData] = useState<{ grid: ZoneGrid; ephemeris: Ephemeris } | null>(null)
+  const zonePrimitiveRef = useRef<Primitive | null>(null)
+
+  // Zone grid (about 1 MB) and ephemeris (50 KB), only when requirements are on.
+  useEffect(() => {
+    if (!requirementsOn || zoneData) return
+    let cancelled = false
+    Promise.all([loadZoneGrid(), loadEphemeris()])
+      .then(([grid, ephemeris]) => {
+        if (!cancelled) setZoneData({ grid, ephemeris })
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setRequirementsError(error instanceof Error ? error.message : String(error))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [requirementsOn, zoneData])
+
+  const zoneResults = useMemo(() => {
+    if (!requirementsOn || !zoneData) return null
+    return evaluateZones(zoneData.grid, zoneData.ephemeris, criteria, timeMs, stayDays)
+  }, [requirementsOn, zoneData, criteria, timeMs, stayDays])
+
+  // Draw the cells while requirements are on; remove them when off.
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!viewer || !requirementsOn || !zoneData) return
+    const primitive = addZonePrimitive(viewer, zoneData.grid)
+    zonePrimitiveRef.current = primitive
+    return () => {
+      if (!viewer.isDestroyed()) removeZonePrimitive(viewer, primitive)
+      zonePrimitiveRef.current = null
+    }
+  }, [requirementsOn, zoneData])
+
+  useEffect(() => {
+    const viewer = viewerRef.current
+    const primitive = zonePrimitiveRef.current
+    if (viewer && primitive && zoneResults) colorZones(viewer, primitive, zoneResults)
+  }, [zoneResults])
+
+  // Requirements need the small files of every site (about 0.4 MB each) and the slopes.
+  useEffect(() => {
+    if (!requirementsOn || requirementsData) return
+    let cancelled = false
+    const withData = SITES.filter((s) => s.hasSkyData)
+    Promise.all([Promise.all(withData.map((s) => loadSiteLight(s.id))), loadSiteSlopes()])
+      .then(([lights, slopes]) => {
+        if (cancelled) return
+        setRequirementsData({ lights: Object.fromEntries(withData.map((s, i) => [s.id, lights[i]])), slopes })
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setRequirementsError(error instanceof Error ? error.message : String(error))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [requirementsOn, requirementsData])
+
+  const results = useMemo(() => {
+    if (!requirementsOn || !requirementsData) return null
+    return Object.entries(requirementsData.lights).map(([siteId, light]) =>
+      evaluateSite(siteId, light, requirementsData.slopes[siteId] ?? null, criteria, timeMs, stayDays),
+    )
+  }, [requirementsOn, requirementsData, criteria, timeMs, stayDays])
 
   useEffect(() => {
     const container = containerRef.current
@@ -217,6 +311,9 @@ export default function MoonGlobe({
         showZoneRef.current(hit.id.id)
         return
       }
+      // A zone cell (primitive id "cell-<n>") is reported with its results.
+      const cellMatch =
+        typeof hit === 'object' && hit !== null && 'id' in hit && typeof hit.id === 'string' ? /^cell-(\d+)$/.exec(hit.id) : null
       const cartesian = viewer.camera.pickEllipsoid(event.position, Ellipsoid.MOON)
       if (!cartesian) {
         setPicked(null)
@@ -228,6 +325,7 @@ export default function MoonGlobe({
         latitudeDeg: CesiumMath.toDegrees(cartographic.latitude),
         // The app uses degrees east, 0 to 360 (Shackleton rim = 203.97° E).
         longitudeDeg: ((longitude % 360) + 360) % 360,
+        cell: cellMatch ? Number(cellMatch[1]) : null,
       })
     }, ScreenSpaceEventType.LEFT_CLICK)
 
@@ -256,8 +354,8 @@ export default function MoonGlobe({
   useEffect(() => {
     const viewer = viewerRef.current
     if (!viewer) return
-    highlightSite(viewer, selectedSiteId)
-  }, [selectedSiteId])
+    highlightSite(viewer, selectedSiteId, results ? Object.fromEntries(results.map((r) => [r.siteId, r.meets])) : null)
+  }, [selectedSiteId, results])
 
   // Fly to a site, then take a snapshot of the zone for the Topography preview.
   function flyAndCapture(siteId: string, altitudeM: number) {
@@ -312,7 +410,28 @@ export default function MoonGlobe({
   return (
     <div className="relative h-full min-w-0 flex-1 bg-black">
       <div ref={containerRef} className="h-full w-full" />
-      <LayerSelector activeId={layerId} onChange={setLayerId} />
+      <div className="absolute left-4 top-4 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-3 overflow-y-auto">
+        <LayerSelector activeId={layerId} onChange={setLayerId} />
+        <RequirementsPanel
+          enabled={requirementsOn}
+          onEnabledChange={setRequirementsOn}
+          criteria={criteria}
+          onCriteriaChange={setCriteria}
+          results={results}
+          error={requirementsError}
+          stayDays={stayDays}
+          zoneSummary={
+            zoneResults && zoneData
+              ? {
+                  meets: zoneResults.filter((r) => r.meets).length,
+                  total: zoneResults.length,
+                  cellKm: zoneData.grid.cellSizeM / 1000,
+                  minSlopeArea: MIN_SLOPE_AREA_PERCENT,
+                }
+              : null
+          }
+        />
+      </div>
       <SitePanel
         selected={selectedSite}
         timeMs={timeMs}
@@ -332,6 +451,13 @@ export default function MoonGlobe({
           <p>
             {picked.latitudeDeg.toFixed(4)}°, {picked.longitudeDeg.toFixed(2)}° E
           </p>
+          {picked.cell !== null && zoneResults?.[picked.cell] && (
+            <p className="mt-1 text-xs text-gray-300">
+              Zone cell (best of its highest spots): {zoneResults[picked.cell].meets ? '✓ meets' : '✕ excluded'} · Sun{' '}
+              {zoneResults[picked.cell].sunPercent.toFixed(0)}% · Earth {zoneResults[picked.cell].earthPercent.toFixed(0)}% ·{' '}
+              {zoneResults[picked.cell].slopeAreaPercent}% of area under {criteria.slope.maxDeg}°
+            </p>
+          )}
         </div>
       )}
       <p className="pointer-events-none absolute bottom-1 right-2 text-[10px] text-gray-400">

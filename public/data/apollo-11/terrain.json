@@ -1,0 +1,54 @@
+{
+ "siteId": "apollo-11",
+ "grids": {
+  "near": {
+   "size": 169,
+   "spacingM": 118.4505876,
+   "affine": [
+    118.31099501762876,
+    -0.00031421947352033755,
+    -10012.102841135338,
+    -0.00017030878500746358,
+    118.31936207996475,
+    -9928.749212633918
+   ],
+   "maxResidualM": 1.5043687766841203,
+   "file": "terrain_near.f32"
+  },
+  "mid": {
+   "size": 211,
+   "spacingM": 473.8023504,
+   "affine": [
+    473.1684652261122,
+    -0.022913334774652877,
+    -49697.712755148095,
+    -0.022706833702776222,
+    473.265482008987,
+    -49739.424309117494
+   ],
+   "maxResidualM": 42.311687554819244,
+   "file": "terrain_mid.f32"
+  },
+  "far": {
+   "size": 105,
+   "spacingM": 947.6047008,
+   "affine": [
+    946.337719432145,
+    -0.04809110894402996,
+    -49461.0369214911,
+    -0.043061325331554455,
+    946.5305182733379,
+    -49502.89359461133
+   ],
+   "maxResidualM": 41.2320105983589,
+   "file": "terrain_far.f32"
+  }
+ },
+ "layout": "float32 x,y,z per grid node, row-major (row = map row). Scene axes: x = east, y = up, z = -north (meters); site ground at (0,0,0), observer eye at (0, observerHeightM, 0). Affine (col,row) -> scene x,z is approximate (see maxResidualM) and only used for shadow height lookups.",
+ "observerHeightM": 2.0,
+ "provenance": {
+  "source": "LOLA global DEM 118 m (LDEM_256), USGS Astrogeology Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014",
+  "url": "https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif",
+  "generatedUtc": "2026-11-15T01:42:04.511107Z"
+ }
+}

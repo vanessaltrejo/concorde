@@ -7,6 +7,7 @@ import { DateTimeControl } from './DateTimeControl'
 import { MetricsPanel } from './MetricsPanel'
 import { PeriodSummary } from './PeriodSummary'
 import { StayPanel } from './StayPanel'
+import type { TerrainSummary } from '../scene/terrainInfo'
 
 type SidebarProps = {
   site: LandingSite
@@ -16,6 +17,7 @@ type SidebarProps = {
   sunVisibility: BodyVisibility
   earthVisibility: BodyVisibility
   timing: TimingMetrics
+  terrainSummary: TerrainSummary
   horizon: HorizonProfile
   timeMs: number
   stayDays: number
@@ -30,6 +32,7 @@ export function Sidebar({
   sunVisibility,
   earthVisibility,
   timing,
+  terrainSummary,
   horizon,
   timeMs,
   stayDays,
@@ -41,9 +44,11 @@ export function Sidebar({
 
       <section className="flex flex-col gap-1">
         <h2 className="text-sm font-medium">Site</h2>
-        <p className="text-sm">{site.name}</p>
-        <p className="text-xs text-gray-400">
-          {site.latitudeDeg.toFixed(4)}°, {site.longitudeDeg.toFixed(2)}° E
+        <p className="flex items-baseline justify-between gap-2">
+          <span className="text-sm">{site.name}</span>
+          <span className="text-xs text-gray-400">
+            {site.latitudeDeg.toFixed(4)}°, {site.longitudeDeg.toFixed(2)}° E
+          </span>
         </p>
       </section>
 
@@ -54,6 +59,7 @@ export function Sidebar({
         earthVisibility={earthVisibility}
         sunNext={timing.sunNext}
         earthNext={timing.earthNext}
+        terrainNote={`LOLA ${terrainSummary.nearSpacingM} m terrain up to ${terrainSummary.radiusKm} km`}
       />
       <StayPanel
         samples={samples}
@@ -63,7 +69,7 @@ export function Sidebar({
         onStayDaysChange={onStayDaysChange}
       />
       <PeriodSummary timing={timing} />
-      <Credits />
+      <Credits siteSource={site.source} terrainSource={terrainSummary.source} />
     </aside>
   )
 }

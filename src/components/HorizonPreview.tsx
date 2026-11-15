@@ -9,7 +9,6 @@ type HorizonPreviewProps = SiteLight & { timeMs: number | null }
 const WIDTH = 360 // one unit per degree of azimuth
 const HEIGHT = 100
 const MARKER_RADIUS = 5
-const EARTH_COLOR = '#56B4E9'
 
 type Range = { min: number; max: number }
 
@@ -53,46 +52,46 @@ export function HorizonPreview({ sky, horizon, timeMs }: HorizonPreviewProps) {
         role="img"
         aria-label={`Horizon preview. Sun ${sun.state}, Earth ${earth.state}.`}
       >
-        <path d={terrainPath} fill="#4a4a4a" stroke="#9a9a9a" strokeWidth={0.8} />
+        <defs>
+          <linearGradient id="previewTerrain" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#a8a8a8" />
+            <stop offset="35%" stopColor="#5a5a5a" />
+            <stop offset="100%" stopColor="#262626" />
+          </linearGradient>
+          <radialGradient id="previewSunGlow">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="previewEarth" cx="35%" cy="35%">
+            <stop offset="0%" stopColor="#9fd0ff" />
+            <stop offset="100%" stopColor="#2a6fb8" />
+          </radialGradient>
+        </defs>
+        {/* Bodies first: the terrain is drawn over them, so they hide behind it as in the 3D view. */}
+        <circle cx={sample.sun.azimuthDeg} cy={y(sample.sun.elevationDeg)} r={MARKER_RADIUS * 2.6} fill="url(#previewSunGlow)" />
+        <circle cx={sample.sun.azimuthDeg} cy={y(sample.sun.elevationDeg)} r={MARKER_RADIUS} fill="#fff" />
+        <circle cx={sample.earth.azimuthDeg} cy={y(sample.earth.elevationDeg)} r={MARKER_RADIUS} fill="url(#previewEarth)" />
+        <path d={terrainPath} fill="url(#previewTerrain)" stroke="#bdbdbd" strokeWidth={0.6} />
         {[0, 90, 180, 270].map((az, i) => (
-          <text key={az} x={az === 0 ? 3 : az} y={HEIGHT - 3} fill="#bbb" fontSize={9} textAnchor={az === 0 ? 'start' : 'middle'}>
+          <text key={az} x={az === 0 ? 3 : az} y={9} fill="#888" fontSize={8} textAnchor={az === 0 ? 'start' : 'middle'}>
             {['N', 'E', 'S', 'W'][i]}
           </text>
         ))}
-        <circle
-          cx={sample.sun.azimuthDeg}
-          cy={y(sample.sun.elevationDeg)}
-          r={MARKER_RADIUS}
-          fill={sun.state === 'hidden' ? 'none' : '#fff'}
-          stroke="#fff"
-          strokeWidth={1.5}
-        />
-        <circle
-          cx={sample.earth.azimuthDeg}
-          cy={y(sample.earth.elevationDeg)}
-          r={MARKER_RADIUS - 1}
-          fill={earth.state === 'hidden' ? 'none' : EARTH_COLOR}
-          stroke={EARTH_COLOR}
-          strokeWidth={1.5}
-        />
       </svg>
       <dl className="flex flex-col gap-0.5 text-xs">
         <div className="flex justify-between">
-          <dt className="text-gray-400">Sun (white)</dt>
+          <dt className="text-gray-400">Sun</dt>
           <dd>
             <StatusBadge state={sun.state} fraction={sun.fraction} />
           </dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-400">Earth (blue)</dt>
+          <dt className="text-gray-400">Earth</dt>
           <dd>
             <StatusBadge state={earth.state} fraction={earth.fraction} />
           </dd>
         </div>
       </dl>
-      <p className="text-[10px] text-gray-500">
-        Markers are not to scale (the Sun is 0.5° wide, the Earth 1.8°). Hollow = hidden by terrain.
-      </p>
     </div>
   )
 }

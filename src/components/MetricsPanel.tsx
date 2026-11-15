@@ -10,6 +10,8 @@ type MetricsPanelProps = {
   earthVisibility: BodyVisibility
   sunNext: NextTransition
   earthNext: NextTransition
+  // "LOLA 20 m terrain up to 200 km", from the site's own data.
+  terrainNote: string
 }
 
 type MetricRowProps = {
@@ -70,6 +72,7 @@ export function MetricsPanel({
   earthVisibility,
   sunNext,
   earthNext,
+  terrainNote,
 }: MetricsPanelProps) {
   const { sun, earth } = sample
 
@@ -97,7 +100,7 @@ export function MetricsPanel({
         </dl>
       </div>
       <p className="text-xs text-gray-400">
-        Sun and Earth: JPL Horizons. Horizon: LOLA 20 m terrain up to 200 km. A body is partly
+        Sun and Earth: JPL Horizons. Horizon: {terrainNote}. A body is partly
         hidden when terrain covers part of its disc. Set and rise times use the same rule (set =
         no part visible), interpolated between hourly samples.
       </p>
