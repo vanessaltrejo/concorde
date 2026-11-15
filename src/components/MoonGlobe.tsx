@@ -623,10 +623,13 @@ export default function MoonGlobe({
     showZoneRef.current = showZone
   })
 
-  // A site selected without a click on the globe (link, first load) gets the
-  // same flight and topography picture.
+  // A site selected without a click on the globe (first load, default Shackleton
+  // rim) gets its topography picture but the camera stays on the whole Moon.
   useEffect(() => {
-    if (selectedSiteId && capturedSiteRef.current !== selectedSiteId) flyAndCapture(selectedSiteId, TOPOGRAPHY_ALTITUDE_M)
+    if (selectedSiteId && capturedSiteRef.current !== selectedSiteId) {
+      capturedSiteRef.current = selectedSiteId
+      setZoneImage({ siteId: selectedSiteId, url: `/topography/${selectedSiteId}.jpg` })
+    }
   })
 
   // Fly when the assistant selects a site, or to a saved place. Runs after the viewer exists.

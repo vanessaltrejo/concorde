@@ -162,7 +162,7 @@ function describeView(state: AppSnapshot) {
       panels: [
         '3D first-person view from 2 m above the ground, with the real terrain, the Sun and the Earth discs, labels and a compass.',
         'Left sidebar: date slider, Sun and Earth status, set/rise times, elevation, azimuth, terrain horizon, Earth lit fraction, stay summary, period summary, credits.',
-        'Buttons: Look at Sun, Look at Earth, zoom - / +, Back to Orbital view.',
+        'Buttons: Reset view (top of the left panel), Look at Sun, Look at Earth and zoom - / + (top right).',
       ],
     }
   }

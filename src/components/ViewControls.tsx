@@ -6,30 +6,25 @@ type ViewControlsProps = {
   onZoom: (factor: number) => void
   onLookAtSun: () => void
   onLookAtEarth: () => void
-  // Back to the starting direction, level horizon, widest field of view.
-  onCenter: () => void
 }
 
 const buttonClassName =
-  'rounded bg-white/10 px-2 py-1 text-xs text-white hover:bg-white/20 disabled:opacity-40'
+  'rounded bg-[#FFD400] px-3 py-1.5 text-xs font-semibold text-black hover:brightness-110 disabled:opacity-40'
 const zoomClassName =
   'h-8 w-8 rounded-lg border border-white/20 bg-[#303030]/90 text-lg leading-none text-white hover:bg-[#3a3a3a] disabled:opacity-40'
 
 // Zoom and quick-aim buttons for the 3D view. Zoom only narrows the field of
 // view (like binoculars); the Sun and Earth keep their real angular size.
-export function ViewControls({ fovDeg, onZoom, onLookAtSun, onLookAtEarth, onCenter }: ViewControlsProps) {
+export function ViewControls({ fovDeg, onZoom, onLookAtSun, onLookAtEarth }: ViewControlsProps) {
   const magnification = maxFovDeg / fovDeg
   return (
-    <div className="absolute bottom-3 flex flex-col items-end gap-2 transition-[right] duration-300" style={{ right: 'calc(4.75rem + var(--assistant-w, 0px))' }}>
+    <div className="absolute top-4 flex flex-col items-end gap-2 transition-[right] duration-300" style={{ right: 'calc(1rem + var(--assistant-w, 0px))' }}>
       <div className="flex gap-2">
         <button type="button" className={buttonClassName} onClick={onLookAtSun}>
           Look at Sun
         </button>
         <button type="button" className={buttonClassName} onClick={onLookAtEarth}>
           Look at Earth
-        </button>
-        <button type="button" className={buttonClassName} onClick={onCenter} title="Starting direction, level horizon, no zoom">
-          ⌖ Center view
         </button>
       </div>
       <div className="flex items-center gap-2">

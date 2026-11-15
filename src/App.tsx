@@ -314,13 +314,6 @@ function HorizonTab({ current, siteName, progress, timeMs, onTimeChange, stayDay
             onStayDaysChange={onStayDaysChange}
           />
         </Suspense>
-        <button
-          type="button"
-          onClick={onBackToMap}
-          className="absolute right-4 top-4 rounded-lg border border-[#444] bg-[#303030] px-3 py-1.5 text-xs text-gray-100 shadow-lg hover:bg-[var(--nasa-blue)] hover:text-white"
-        >
-          ← Back to Orbital view
-        </button>
       </div>
     )
   }
@@ -328,7 +321,7 @@ function HorizonTab({ current, siteName, progress, timeMs, onTimeChange, stayDay
     return (
       <div className={`${centered} flex-col gap-3 px-6 text-center`}>
         <p className="max-w-md">{current.message}</p>
-        <button type="button" onClick={onBackToMap} className="rounded border border-[#555] px-3 py-1.5 text-xs text-gray-100 hover:bg-[#3a3a3a]">
+        <button type="button" onClick={onBackToMap} className="rounded-lg bg-[#FFD400] px-3 py-1.5 text-xs font-semibold text-black shadow-lg hover:brightness-110">
           ← Back to Orbital view
         </button>
       </div>

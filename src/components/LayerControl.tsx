@@ -118,7 +118,7 @@ export function LayerControl({ activeId, onChange, filter, onFilterChange }: Pro
         aria-expanded={open}
         aria-label="Map layers"
         title="Map layers"
-        className="group relative h-[4.5rem] w-[4.5rem] overflow-hidden rounded-xl border-2 border-[#111] shadow-lg ring-1 ring-white/30 hover:ring-white/70"
+        className="group relative h-[6.5rem] w-[6.5rem] overflow-hidden rounded-xl border-2 border-[#111] shadow-lg ring-1 ring-white/30 hover:ring-white/70"
       >
         <img src={thumbUrl(activeId)} alt="" className="h-full w-full object-cover" />
         <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/60 py-0.5 text-[11px] font-medium text-white">

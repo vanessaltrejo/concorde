@@ -1,12 +1,11 @@
 import { SITES } from '../data/sites'
+import { GROUP_COLOR } from '../data/siteGroups'
 import { FlagButton } from './FlagButton'
-import { MissionList } from './MissionList'
 import type { HorizonProfile, LandingSite, SiteData, SkySample } from '../types'
 import type { TimingMetrics } from '../scene/timing'
 import type { BodyVisibility } from '../scene/visibility'
 import { DateTimeControl } from './DateTimeControl'
 import { MetricsPanel } from './MetricsPanel'
-import { PeriodSummary } from './PeriodSummary'
 import { StayPanel } from './StayPanel'
 
 type SidebarProps = {
@@ -23,6 +22,7 @@ type SidebarProps = {
   timeMs: number
   stayDays: number
   onStayDaysChange: (days: number) => void
+  onResetView: () => void
 }
 
 export function Sidebar({
@@ -38,32 +38,45 @@ export function Sidebar({
   timeMs,
   stayDays,
   onStayDaysChange,
+  onResetView,
 }: SidebarProps) {
+  const entry = SITES.find((s) => s.id === site.id)
+  const groupColor = entry ? GROUP_COLOR[entry.group] : null
   return (
-    <aside className="absolute left-4 top-4 z-10 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-6 overflow-y-auto rounded-lg border border-[#444] bg-[#303030] p-4 shadow-lg text-gray-100">
-      <h1 className="flex items-center gap-2 text-lg font-semibold">
-        <span aria-hidden className="h-4 w-1 rounded-sm bg-[var(--nasa-red)]" />
-        Horizon view
-      </h1>
+    <aside className="absolute left-4 top-4 z-10 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-4 overflow-y-auto rounded-lg border border-[#444] bg-[#303030] p-4 shadow-lg text-gray-100">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="flex items-center gap-2 text-lg font-semibold">
+          <span aria-hidden className="h-4 w-1 rounded-sm bg-[var(--nasa-red)]" />
+          Horizon view
+        </h1>
+        <button
+          type="button"
+          onClick={onResetView}
+          title="Back to the starting direction, level horizon, no zoom"
+          className="flex items-center gap-1.5 rounded bg-[#FFD400] px-2.5 py-1 text-xs font-semibold text-black hover:brightness-110"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />
+          </svg>
+          Reset view
+        </button>
+      </div>
 
-      <section className="flex flex-col gap-1">
-        <h2 className="text-sm font-medium">Site</h2>
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm">{site.name}</span>
-          {!anywhere && <FlagButton siteId={site.id} timeMs={timeMs} />}
+      <section className="flex flex-col gap-2">
+        <div className="flex flex-col gap-0.5">
+          <p className="flex items-center gap-2 text-sm font-medium">
+            {groupColor && <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: groupColor }} />}
+            {site.name}
+          </p>
+          <p className="text-xs text-gray-400">
+            {site.latitudeDeg.toFixed(4)}°, {site.longitudeDeg.toFixed(2)}° E
+          </p>
         </div>
-        <p className="text-xs text-gray-400">
-          {site.latitudeDeg.toFixed(4)}°, {site.longitudeDeg.toFixed(2)}° E
-        </p>
-        {(() => {
-          const entry = SITES.find((s) => s.id === site.id)
-          return entry ? <MissionList site={entry} /> : null
-        })()}
+        {!anywhere && <FlagButton siteId={site.id} timeMs={timeMs} wide />}
       </section>
 
       <DateTimeControl samples={samples} index={index} onIndexChange={onIndexChange} />
       <MetricsPanel
-        sample={samples[index]}
         sunVisibility={sunVisibility}
         earthVisibility={earthVisibility}
         sunNext={timing.sunNext}
@@ -76,7 +89,6 @@ export function Sidebar({
         stayDays={stayDays}
         onStayDaysChange={onStayDaysChange}
       />
-      <PeriodSummary timing={timing} />
     </aside>
   )
 }

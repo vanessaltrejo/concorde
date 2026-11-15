@@ -1,6 +1,6 @@
 import { Canvas } from '@react-three/fiber'
 import { StarSky } from './StarSky'
-import { Suspense, useCallback, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { HorizonProfile, SkySample, TerrainData, Visibility } from '../types'
 import { observerHeightM } from '../scene/constants'
 import { skyPointM } from '../scene/skyMath'
@@ -23,6 +23,8 @@ type MainViewProps = {
   sunVisibility: BodyVisibility
   earthVisibility: BodyVisibility
   initialAzimuthDeg: number
+  // Changes each time the user presses Reset view.
+  resetToken: number
 }
 
 const observerPosition: [number, number, number] = [0, observerHeightM, 0]
@@ -41,6 +43,7 @@ export function MainView({
   sunVisibility,
   earthVisibility,
   initialAzimuthDeg,
+  resetToken,
 }: MainViewProps) {
   const [headingDeg, setHeadingDeg] = useState(initialAzimuthDeg)
   const [fovDeg, setFovDeg] = useState(maxFovDeg)
@@ -50,6 +53,12 @@ export function MainView({
       setLookTarget((previous) => ({ azimuthDeg, elevationDeg, requestId: (previous?.requestId ?? 0) + 1 })),
     [],
   )
+  // Reset view: back to the starting direction, level horizon, widest view.
+  useEffect(() => {
+    if (resetToken === 0) return
+    lookAt(initialAzimuthDeg, 0)
+    setFovDeg(maxFovDeg)
+  }, [resetToken, initialAzimuthDeg, lookAt])
   const sunLabelRef = useRef<HTMLDivElement>(null)
   const earthLabelRef = useRef<HTMLDivElement>(null)
 
@@ -96,11 +105,6 @@ export function MainView({
         onZoom={(factor) => setFovDeg((previous) => clampFov(previous * factor))}
         onLookAtSun={() => lookAt(sample.sun.azimuthDeg, sample.sun.elevationDeg)}
         onLookAtEarth={() => lookAt(sample.earth.azimuthDeg, sample.earth.elevationDeg)}
-        onCenter={() => {
-          // Back to the starting direction, horizon level, widest view.
-          lookAt(initialAzimuthDeg, 0)
-          setFovDeg(maxFovDeg)
-        }}
       />
     </main>
   )

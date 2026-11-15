@@ -1,44 +1,17 @@
-import type { SkySample } from '../types'
 import type { BodyVisibility } from '../scene/visibility'
 import { formatDuration, formatUtc } from '../scene/formatTime'
 import { StatusBadge } from './StatusBadge'
 import type { NextTransition } from '../scene/windows'
 
 type MetricsPanelProps = {
-  sample: SkySample
   sunVisibility: BodyVisibility
   earthVisibility: BodyVisibility
   sunNext: NextTransition
   earthNext: NextTransition
 }
 
-type MetricRowProps = {
-  label: string
-  value: string
-}
-
-function MetricRow({ label, value }: MetricRowProps) {
-  return (
-    <div className="flex justify-between text-sm">
-      <dt className="text-gray-300">{label}</dt>
-      <dd className="font-medium">{value}</dd>
-    </div>
-  )
-}
-
-function StatusRow({ visibility }: { visibility: BodyVisibility }) {
-  return (
-    <div className="flex justify-between text-sm">
-      <dt className="text-gray-300">Status</dt>
-      <dd>
-        <StatusBadge state={visibility.state} fraction={visibility.fraction} />
-      </dd>
-    </div>
-  )
-}
-
 function transitionLabel(body: 'Sun' | 'Earth', next: NextTransition): string {
-  return `${body}${next.kind === 'set' ? 'set' : 'rise'} in`
+  return `${body} ${next.kind === 'set' ? 'sets' : 'rises'} in`
 }
 
 function transitionValue(next: NextTransition): string {
@@ -46,56 +19,44 @@ function transitionValue(next: NextTransition): string {
   return `${formatDuration(next.inMs)}`
 }
 
-function transitionTime(next: NextTransition): string | null {
-  return next.found ? formatUtc(next.timeMs) : null
-}
-
-function TransitionRow({ body, next }: { body: 'Sun' | 'Earth'; next: NextTransition }) {
-  const at = transitionTime(next)
+// One card per body: its name and what it is for, a clear status, and the next
+// change (when it sets or rises) in plain words.
+function BodyCard({
+  body,
+  role,
+  color,
+  visibility,
+  next,
+}: {
+  body: 'Sun' | 'Earth'
+  role: string
+  color: string
+  visibility: BodyVisibility
+  next: NextTransition
+}) {
   return (
-    <div className="flex flex-col">
-      <MetricRow label={transitionLabel(body, next)} value={transitionValue(next)} />
-      {at && <p className="text-right text-xs text-gray-300">{at}</p>}
+    <div className="flex flex-col gap-1 rounded-lg border border-[#444] bg-[#262626] px-3 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-sm font-medium">
+          <span aria-hidden className="h-3 w-3 rounded-full" style={{ background: color }} />
+          {body} <span className="font-normal text-gray-400">· {role}</span>
+        </h2>
+        <StatusBadge state={visibility.state} fraction={visibility.fraction} />
+      </div>
+      <div className="flex items-baseline justify-between gap-2 text-sm">
+        <span className="text-gray-300">{transitionLabel(body, next)}</span>
+        <span className="font-medium">{transitionValue(next)}</span>
+      </div>
+      {next.found && <p className="text-right text-xs text-gray-400">{formatUtc(next.timeMs)}</p>}
     </div>
   )
 }
 
-function degrees(value: number): string {
-  return `${value.toFixed(2)}°`
-}
-
-export function MetricsPanel({
-  sample,
-  sunVisibility,
-  earthVisibility,
-  sunNext,
-  earthNext,
-}: MetricsPanelProps) {
-  const { sun, earth } = sample
-
+export function MetricsPanel({ sunVisibility, earthVisibility, sunNext, earthNext }: MetricsPanelProps) {
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-sm font-medium">Sun (power)</h2>
-        <dl className="flex flex-col gap-1">
-          <StatusRow visibility={sunVisibility} />
-          <TransitionRow body="Sun" next={sunNext} />
-          <MetricRow label="Elevation" value={degrees(sun.elevationDeg)} />
-          <MetricRow label="Terrain horizon there" value={degrees(sunVisibility.horizonDeg)} />
-          <MetricRow label="Azimuth" value={degrees(sun.azimuthDeg)} />
-        </dl>
-      </div>
-      <div className="flex flex-col gap-1">
-        <h2 className="text-sm font-medium">Earth (direct link)</h2>
-        <dl className="flex flex-col gap-1">
-          <StatusRow visibility={earthVisibility} />
-          <TransitionRow body="Earth" next={earthNext} />
-          <MetricRow label="Elevation" value={degrees(earth.elevationDeg)} />
-          <MetricRow label="Terrain horizon there" value={degrees(earthVisibility.horizonDeg)} />
-          <MetricRow label="Azimuth" value={degrees(earth.azimuthDeg)} />
-          <MetricRow label="Lit fraction" value={`${sample.earthIlluminatedPct.toFixed(0)}%`} />
-        </dl>
-      </div>
+    <section className="flex flex-col gap-2">
+      <BodyCard body="Sun" role="power" color="#FFD400" visibility={sunVisibility} next={sunNext} />
+      <BodyCard body="Earth" role="direct link" color="#56B4E9" visibility={earthVisibility} next={earthNext} />
     </section>
   )
 }

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { TimingMetrics } from '../scene/timing'
 import type { SiteData } from '../types'
 import { bodyVisibility } from '../scene/visibility'
@@ -18,6 +18,7 @@ type SiteViewProps = {
 // One site: shared time selection for the sidebar and the 3D view.
 export function SiteView({ data, sampleIndex, onSampleIndexChange, stayDays, onStayDaysChange }: SiteViewProps) {
   const { sky, horizon, terrain } = data
+  const [resetToken, setResetToken] = useState(0)
 
   const sunTimeline = useMemo(() => buildTimeline(sky.samples, horizon, 'sun'), [sky, horizon])
   const earthTimeline = useMemo(() => buildTimeline(sky.samples, horizon, 'earth'), [sky, horizon])
@@ -50,6 +51,7 @@ export function SiteView({ data, sampleIndex, onSampleIndexChange, stayDays, onS
         timeMs={Date.parse(sample.timeUtc)}
         stayDays={stayDays}
         onStayDaysChange={onStayDaysChange}
+        onResetView={() => setResetToken((t) => t + 1)}
       />
       <MainView
         sample={sample}
@@ -58,6 +60,7 @@ export function SiteView({ data, sampleIndex, onSampleIndexChange, stayDays, onS
         sunVisibility={sunVisibility}
         earthVisibility={earthVisibility}
         initialAzimuthDeg={Math.round(sky.samples[0].earth.azimuthDeg)}
+        resetToken={resetToken}
       />
     </div>
   )
