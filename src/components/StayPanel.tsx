@@ -50,6 +50,12 @@ export function StayPanel({ samples, horizon, timeMs, stayDays, onStayDaysChange
         value={stayDays}
         onChange={(e) => onStayDaysChange(Number(e.target.value))}
       />
+      <ul className="list-disc pl-4 text-xs text-gray-300">
+        <li>
+          Longer stays make green less likely: the Sun must stay up for the whole stay, and the sunlit half of the
+          Moon moves about 12° west per day.
+        </li>
+      </ul>
       <p className="truncate text-xs text-gray-300">
         {formatUtc(stay.arrivalMs).replace(' UTC', '')} → {formatUtc(stay.coveredEndMs)}
       </p>

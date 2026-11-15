@@ -102,7 +102,6 @@ export function SitePanel({
                 {selected.latitudeDeg.toFixed(4)}°, {selected.longitudeDeg.toFixed(2)}° E
               </span>
             </p>
-            <p className="text-[11px] text-gray-300">{selected.source}</p>
           </section>
 
           <MissionList site={selected} />

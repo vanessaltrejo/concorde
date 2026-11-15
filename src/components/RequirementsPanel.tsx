@@ -1,5 +1,7 @@
 import { getSite } from '../data/sites'
-import type { Criteria, SiteResult } from '../scene/requirements'
+import { GREEN_FULL, GREEN_WEAK, type Criteria, type SiteResult } from '../scene/requirements'
+
+// Default values and their sources are documented in src/scene/requirements.ts.
 
 type RequirementsPanelProps = {
   enabled: boolean
@@ -8,11 +10,12 @@ type RequirementsPanelProps = {
   onCriteriaChange: (criteria: Criteria) => void
   results: SiteResult[] | null
   error: string | null
-  stayDays: number
-  zoneSummary: { meets: number; total: number; cellKm: number; minSlopeArea: number } | null
+  zoneSummary: { meets: number; total: number; cellKm: number } | null
+  globalSummary: { meets: number; total: number; cellLabel: string; hasSlope: boolean } | null
 }
 
-const MEETS_COLOR = '#009E73' // Okabe-Ito bluish green, always with a symbol and text
+const MEETS_COLOR = GREEN_FULL // always with a symbol and text
+const EXCLUDED_COLOR = '#9a9a9a' // gray, always with ✕
 
 function Row({
   label,
@@ -25,7 +28,6 @@ function Row({
   unit,
   sign,
   onValue,
-  note,
 }: {
   label: string
   on: boolean
@@ -37,7 +39,6 @@ function Row({
   unit: string
   sign: '≥' | '≤'
   onValue: (value: number) => void
-  note: string
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -61,13 +62,17 @@ function Row({
         disabled={!on}
         onChange={(e) => onValue(Number(e.target.value))}
       />
-      <p className="text-[11px] text-gray-300">{note}</p>
     </div>
   )
 }
 
+function Swatch({ background }: { background: string }) {
+  return <span className="mt-0.5 inline-block h-3 w-3 shrink-0 rounded-sm" style={{ background }} aria-hidden />
+}
+
 // Criteria input (from the team sketch): Sun, Earth link and slope, applied to
-// the curated sites for the selected arrival date and stay length.
+// the curated sites, the south pole zones and the whole Moon for the selected
+// arrival date and stay length.
 export function RequirementsPanel({
   enabled,
   onEnabledChange,
@@ -75,9 +80,10 @@ export function RequirementsPanel({
   onCriteriaChange,
   results,
   error,
-  stayDays,
   zoneSummary,
+  globalSummary,
 }: RequirementsPanelProps) {
+  const gradient = !criteria.sun.on || criteria.sun.minPercent < 100
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg">
       <label className="flex items-center justify-between text-sm font-medium">
@@ -101,7 +107,6 @@ export function RequirementsPanel({
             unit="%"
             sign="≥"
             onValue={(minPercent) => onCriteriaChange({ ...criteria, sun: { ...criteria.sun, minPercent } })}
-            note="Default 100%: NASA Artemis lander requirement (team plan)."
           />
           <Row
             label="Earth link during stay"
@@ -114,7 +119,6 @@ export function RequirementsPanel({
             unit="%"
             sign="≥"
             onValue={(minPercent) => onCriteriaChange({ ...criteria, earth: { ...criteria.earth, minPercent } })}
-            note="Default 25%: team plan value, NASA origin not verified yet."
           />
           <Row
             label="Slope at the site"
@@ -127,31 +131,56 @@ export function RequirementsPanel({
             unit="°"
             sign="≤"
             onValue={(maxDeg) => onCriteriaChange({ ...criteria, slope: { ...criteria.slope, maxDeg } })}
-            note="Default 10° (NASA Artemis, about 100 m scale). Polar sites use a 100 m baseline, Apollo sites about 355 m."
           />
 
-          <p className="text-xs text-gray-300">
-            For the selected arrival date and a {stayDays} day stay. Green = meets your requirements
-            (screening only, not "safe"): rocks, small craters and dust are not in the data.
-          </p>
+          <ul className="flex flex-col gap-1 text-xs text-gray-300">
+            <li className="flex gap-2">
+              <Swatch background={GREEN_FULL} />
+              Green: meets every requirement
+            </li>
+            {gradient && (
+              <li className="flex gap-2">
+                <Swatch background={`linear-gradient(to right, ${GREEN_FULL}, ${GREEN_WEAK})`} />
+                Green to yellow: less Sun during the stay
+              </li>
+            )}
+            <li className="flex gap-2">
+              <Swatch background="#8a8a8a" />
+              Gray: fails at least one
+            </li>
+          </ul>
 
-          {zoneSummary && (
-            <p className="text-xs text-gray-300">
-              Zones (south pole, 50 × 50 km, {zoneSummary.cellKm} km cells):{' '}
-              <span style={{ color: MEETS_COLOR }}>
-                ✓ {zoneSummary.meets} of {zoneSummary.total}
-              </span>{' '}
-              cells meet. A cell passes slope when at least {zoneSummary.minSlopeArea}% of its area is under the
-              limit (100 m baseline). Click a cell for its values.
-            </p>
+          {(globalSummary || zoneSummary) && (
+            <ul className="flex flex-col gap-0.5 text-xs text-gray-300">
+              {globalSummary && (
+                <li>
+                  Whole Moon ({globalSummary.cellLabel}):{' '}
+                  <span style={{ color: MEETS_COLOR }}>
+                    ✓ {globalSummary.meets.toLocaleString('en-US')} of {globalSummary.total.toLocaleString('en-US')}
+                  </span>{' '}
+                  cells
+                  {!globalSummary.hasSlope && ' (slope data missing)'}
+                </li>
+              )}
+              {zoneSummary && (
+                <li>
+                  South pole ({zoneSummary.cellKm} km):{' '}
+                  <span style={{ color: MEETS_COLOR }}>
+                    ✓ {zoneSummary.meets.toLocaleString('en-US')} of {zoneSummary.total.toLocaleString('en-US')}
+                  </span>{' '}
+                  cells
+                </li>
+              )}
+            </ul>
           )}
+
           {error && <p className="text-xs text-gray-300">{error}</p>}
           {!results && !error && <p className="text-xs text-gray-300">Checking sites…</p>}
           {results && (
             <ul className="flex flex-col gap-1 text-xs">
               {results.map((r) => (
                 <li key={r.siteId} className="flex flex-col">
-                  <span className="font-medium" style={{ color: r.meets ? MEETS_COLOR : '#6b7280' }}>
+                  <span className="font-medium" style={{ color: r.meets ? MEETS_COLOR : EXCLUDED_COLOR }}>
                     {r.meets ? '✓' : '✕'} {getSite(r.siteId).name}
                   </span>
                   <span className="text-gray-300">

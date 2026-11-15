@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Cartographic,
   Ellipsoid,
@@ -32,8 +32,22 @@ import {
   type SiteSlope,
 } from '../scene/requirements'
 import { RequirementsPanel } from './RequirementsPanel'
-import { evaluateZones, loadEphemeris, loadZoneGrid, MIN_SLOPE_AREA_PERCENT, type Ephemeris, type ZoneGrid } from '../scene/zones'
+import { classifyZones, loadEphemeris, loadZoneGrid, type Ephemeris, type ZoneGrid } from '../scene/zones'
 import { addZonePrimitive, colorZones, removeZonePrimitive } from './zoneLayer'
+import { useZoneShares } from '../scene/useZoneShares'
+import {
+  classifyGlobal,
+  computeGlobalShares,
+  fineSlopeAt,
+  globalCellIndex,
+  globalSlopeShare,
+  loadFineSlope,
+  loadGlobalSlope,
+  meetsAt,
+  type FineSlope,
+  type GlobalSlope,
+} from '../scene/globalCells'
+import { addGlobalLayer, raiseGlobalLayer, removeGlobalLayer } from './globalLayer'
 import { LayerSelector } from './LayerSelector'
 import { SitePanel } from './SitePanel'
 
@@ -74,7 +88,20 @@ function highlightSite(viewer: Viewer, siteId: string | null, meets: Record<stri
   viewer.scene.requestRender()
 }
 
-type RequirementsData = { lights: Record<string, SiteLight>; slopes: Record<string, SiteSlope> }
+// Labels show when the camera is close (so the three south pole sites, about
+// 15 km apart, do not overlap from far away) or while the cursor is on the marker.
+const LABEL_NEAR = new DistanceDisplayCondition(0, 400_000)
+
+function showHoverLabel(viewer: Viewer, hoveredId: string | null) {
+  for (const entity of viewer.entities.values) {
+    if (entity.label) {
+      entity.label.distanceDisplayCondition = new ConstantProperty(entity.id === hoveredId ? undefined : LABEL_NEAR)
+    }
+  }
+  viewer.scene.requestRender()
+}
+
+type RequirementsData ={ lights: Record<string, SiteLight>; slopes: Record<string, SiteSlope> }
 
 const ZONE_ALTITUDE_M = 150_000
 const TOPOGRAPHY_ALTITUDE_M = 40_000
@@ -183,6 +210,11 @@ export default function MoonGlobe({
   const [requirementsError, setRequirementsError] = useState<string | null>(null)
   const [zoneData, setZoneData] = useState<{ grid: ZoneGrid; ephemeris: Ephemeris } | null>(null)
   const zonePrimitiveRef = useRef<Primitive | null>(null)
+  // Whole-Moon slope table; null = files not built yet. `undefined` = still loading.
+  const [globalSlopes, setGlobalSlopes] = useState<{ coarse: GlobalSlope | null; fine: FineSlope | null } | undefined>(
+    undefined,
+  )
+  const globalLayerRef = useRef<ImageryLayer | null>(null)
 
   // Zone grid (about 1 MB) and ephemeris (50 KB), only when requirements are on.
   useEffect(() => {
@@ -200,10 +232,19 @@ export default function MoonGlobe({
     }
   }, [requirementsOn, zoneData])
 
+  // Heavy work follows these deferred copies, so sliders stay smooth while the
+  // map catches up a moment later.
+  const deferredTimeMs = useDeferredValue(timeMs)
+  const deferredStayDays = useDeferredValue(stayDays)
+  const deferredCriteria = useDeferredValue(criteria)
+
+  // Zone Sun/Earth shares (the slow part) run in a Web Worker; thresholds are
+  // applied here, so moving a threshold is instant.
+  const zoneShares = useZoneShares(requirementsOn, deferredTimeMs, deferredStayDays)
   const zoneResults = useMemo(() => {
-    if (!requirementsOn || !zoneData) return null
-    return evaluateZones(zoneData.grid, zoneData.ephemeris, criteria, timeMs, stayDays)
-  }, [requirementsOn, zoneData, criteria, timeMs, stayDays])
+    if (!requirementsOn || !zoneData || !zoneShares.shares) return null
+    return classifyZones(zoneData.grid, zoneShares.shares, deferredCriteria)
+  }, [requirementsOn, zoneData, zoneShares.shares, deferredCriteria])
 
   // Draw the cells while requirements are on; remove them when off.
   useEffect(() => {
@@ -220,8 +261,52 @@ export default function MoonGlobe({
   useEffect(() => {
     const viewer = viewerRef.current
     const primitive = zonePrimitiveRef.current
-    if (viewer && primitive && zoneResults) colorZones(viewer, primitive, zoneResults)
-  }, [zoneResults])
+    if (viewer && primitive && zoneResults) colorZones(viewer, primitive, zoneResults, deferredCriteria)
+  }, [zoneResults, deferredCriteria])
+
+  // Whole-Moon slope, only when requirements are on: the 2 km table (16.6 MB)
+  // when it exists, else the 0.5° table (8 MB).
+  useEffect(() => {
+    if (!requirementsOn || globalSlopes !== undefined) return
+    let cancelled = false
+    loadFineSlope()
+      .then(async (fine) => ({ fine, coarse: fine ? null : await loadGlobalSlope() }))
+      .then((slopes) => {
+        if (!cancelled) setGlobalSlopes(slopes)
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return
+        setGlobalSlopes({ coarse: null, fine: null })
+        setRequirementsError(error instanceof Error ? error.message : String(error))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [requirementsOn, globalSlopes])
+
+  // Whole-Moon cells (smooth sphere, no terrain horizon). Sun/Earth shares are
+  // recomputed only when the arrival or the stay changes (about 50 ms for 6.5
+  // days, on 0.5° cells); thresholds only re-classify them.
+  const globalShares = useMemo(() => {
+    if (!requirementsOn || !zoneData || globalSlopes === undefined) return null
+    return computeGlobalShares(zoneData.ephemeris, deferredTimeMs, deferredStayDays, globalSlopes.coarse?.cellDeg)
+  }, [requirementsOn, zoneData, globalSlopes, deferredTimeMs, deferredStayDays])
+  const globalCells = useMemo(() => {
+    if (!globalShares || globalSlopes === undefined) return null
+    return { result: classifyGlobal(globalShares, deferredCriteria, globalSlopes.coarse, globalSlopes.fine) }
+  }, [globalShares, globalSlopes, deferredCriteria])
+
+  // Draw them as map tiles under the south pole zone cells; redraw on every change.
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!viewer || !globalCells) return
+    const layer = addGlobalLayer(viewer, globalCells.result, deferredCriteria)
+    globalLayerRef.current = layer
+    return () => {
+      if (layer && !viewer.isDestroyed()) removeGlobalLayer(viewer, layer)
+      globalLayerRef.current = null
+    }
+  }, [globalCells, deferredCriteria])
 
   // Requirements need the small files of every site (about 0.4 MB each) and the slopes.
   useEffect(() => {
@@ -244,9 +329,9 @@ export default function MoonGlobe({
   const results = useMemo(() => {
     if (!requirementsOn || !requirementsData) return null
     return Object.entries(requirementsData.lights).map(([siteId, light]) =>
-      evaluateSite(siteId, light, requirementsData.slopes[siteId] ?? null, criteria, timeMs, stayDays),
+      evaluateSite(siteId, light, requirementsData.slopes[siteId] ?? null, deferredCriteria, deferredTimeMs, deferredStayDays),
     )
-  }, [requirementsOn, requirementsData, criteria, timeMs, stayDays])
+  }, [requirementsOn, requirementsData, deferredCriteria, deferredTimeMs, deferredStayDays])
 
   useEffect(() => {
     const container = containerRef.current
@@ -321,7 +406,7 @@ export default function MoonGlobe({
           // Alternate above / below so close sites do not cover each other.
           verticalOrigin: index % 2 === 0 ? VerticalOrigin.BOTTOM : VerticalOrigin.TOP,
           pixelOffset: new Cartesian2(0, index % 2 === 0 ? -10 : 10),
-          distanceDisplayCondition: new DistanceDisplayCondition(0, 400_000),
+          distanceDisplayCondition: LABEL_NEAR,
         },
       })
     })
@@ -351,6 +436,17 @@ export default function MoonGlobe({
       })
     }, ScreenSpaceEventType.LEFT_CLICK)
 
+    // Hovering a site marker shows its name at any zoom, with a pointer cursor.
+    let hovered: string | null = null
+    handler.setInputAction((event: ScreenSpaceEventHandler.MotionEvent) => {
+      const hit: unknown = viewer.scene.pick(event.endPosition)
+      const id = typeof hit === 'object' && hit !== null && 'id' in hit && hit.id instanceof Entity ? hit.id.id : null
+      if (id === hovered) return
+      hovered = id
+      showHoverLabel(viewer, id)
+      viewer.scene.canvas.style.cursor = id ? 'pointer' : ''
+    }, ScreenSpaceEventType.MOUSE_MOVE)
+
     return () => {
       cancelCaptureRef.current?.()
       removeTileListener()
@@ -369,6 +465,7 @@ export default function MoonGlobe({
     overlaysRef.current = getLayer(layerId).sources.map((source) =>
       viewer.imageryLayers.addImageryProvider(makeProvider(source)),
     )
+    if (globalLayerRef.current) raiseGlobalLayer(viewer, globalLayerRef.current)
     viewer.scene.requestRender()
   }, [layerId])
 
@@ -450,15 +547,23 @@ export default function MoonGlobe({
           criteria={criteria}
           onCriteriaChange={setCriteria}
           results={results}
-          error={requirementsError}
-          stayDays={stayDays}
+          error={requirementsError ?? zoneShares.error}
           zoneSummary={
             zoneResults && zoneData
               ? {
                   meets: zoneResults.filter((r) => r.meets).length,
                   total: zoneResults.length,
                   cellKm: zoneData.grid.cellSizeM / 1000,
-                  minSlopeArea: MIN_SLOPE_AREA_PERCENT,
+                }
+              : null
+          }
+          globalSummary={
+            globalCells
+              ? {
+                  meets: globalCells.result.meetsCount,
+                  total: globalCells.result.totalCells,
+                  cellLabel: globalCells.result.fine ? 'about 2 km' : `${globalCells.result.cellDeg}°`,
+                  hasSlope: globalCells.result.hasSlope,
                 }
               : null
           }
@@ -490,6 +595,27 @@ export default function MoonGlobe({
               {zoneResults[picked.cell].slopeAreaPercent}% of area under {criteria.slope.maxDeg}°
             </p>
           )}
+          {picked.cell === null &&
+            globalCells &&
+            (() => {
+              const r = globalCells.result
+              const k = globalCellIndex(r, picked.latitudeDeg, picked.longitudeDeg)
+              const fine = globalSlopes?.fine ?? null
+              let slopeText = 'slope n/a'
+              if (fine) {
+                const p90 = fineSlopeAt(fine, picked.latitudeDeg, picked.longitudeDeg)
+                slopeText = p90 === null ? `${fine.areaPercent}% of 2 km cell under: steeper than 31°` : `${fine.areaPercent}% of 2 km cell under ${p90}°`
+              } else {
+                const share = globalSlopeShare(globalSlopes?.coarse ?? null, k, criteria.slope.maxDeg)
+                if (share !== null) slopeText = `${share}% of area under ${criteria.slope.maxDeg}°`
+              }
+              return (
+                <p className="mt-1 text-xs text-gray-300">
+                  Whole-Moon point (smooth sphere): {meetsAt(r, picked.latitudeDeg, picked.longitudeDeg) ? '✓ meets' : '✕ excluded'} ·
+                  Sun {r.sunPercent[k].toFixed(0)}% · Earth {r.earthPercent[k].toFixed(0)}% · {slopeText}
+                </p>
+              )
+            })()}
         </div>
       )}
       <p className="pointer-events-none absolute bottom-1 right-2 text-[10px] text-gray-400">

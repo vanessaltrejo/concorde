@@ -1,0 +1,16 @@
+{
+  "description": "Slope (degrees x 8, rounded up) under which 90 % of each cell lies.",
+  "layout": "uint8, row-major [lat row][lon column]; row 0 is the north edge (+90), column 0 starts at longitude 0 east. 255 = steeper than 31.75 degrees or no data.",
+  "use": "a cell passes a whole-degree limit L when value <= 8 * L",
+  "area_percent": 90,
+  "cell_deg": 0.0625,
+  "cells_lat": 2880,
+  "cells_lon": 5760,
+  "pixels_per_cell": 256,
+  "weighting": "none inside a cell (a cell spans 1/16 degree of latitude)",
+  "source_file": "SLDEM2015_256_SL_90S_90N_000_360.IMG",
+  "source": "SLDEM2015 slope, LOLA science team, PGDA product 67 (https://pgda.gsfc.nasa.gov/products/67); SLDEM2015 between 60 N and 60 S, LOLA only nearer the poles",
+  "km_per_pixel": 0.118451,
+  "baseline_note": "slope baseline assumed to be about one pixel (118 m); not stated in the label",
+  "generated_utc": "2026-11-15T06:33:35Z"
+}

@@ -28,8 +28,10 @@ const SUN_RADIUS_KM = 695_700
 const BINS = 360
 const SLOPE_STEPS = 30
 // A cell passes the slope requirement when at least this share of its area is
-// below the slope limit. Chosen by Vanessa (2026-11-14); not an official value.
-export const MIN_SLOPE_AREA_PERCENT = 20
+// below the slope limit. Chosen by Vanessa: 20 % on 2026-11-14, changed to 90 %
+// the same day (stricter, fewer false greens). Not an official value.
+// Used by the south pole zones and the whole-Moon cells (globalCells.ts).
+export const MIN_SLOPE_AREA_PERCENT = 90
 
 const RAD = Math.PI / 180
 
@@ -52,25 +54,6 @@ function localFrame(lonDeg: number, latDeg: number): Frame {
     up: unit(lonDeg, latDeg),
     east: [-Math.sin(lo), Math.cos(lo), 0],
     north: [-Math.sin(la) * Math.cos(lo), -Math.sin(la) * Math.sin(lo), Math.cos(la)],
-  }
-}
-
-type SkyPoint = { azimuthDeg: number; elevationDeg: number; radiusDeg: number }
-
-// Azimuth (clockwise from north), elevation and apparent radius of a body at
-// `bodyKm` (Moon-fixed, from the Moon centre) seen from the point with this frame.
-function lookAt(frame: Frame, bodyKm: Vec3, bodyRadiusKm: number): SkyPoint {
-  const d: Vec3 = [
-    bodyKm[0] - MOON_RADIUS_KM * frame.up[0],
-    bodyKm[1] - MOON_RADIUS_KM * frame.up[1],
-    bodyKm[2] - MOON_RADIUS_KM * frame.up[2],
-  ]
-  const length = Math.hypot(...d)
-  const azimuthDeg = ((Math.atan2(dot(d, frame.east), dot(d, frame.north)) / RAD) % 360 + 360) % 360
-  return {
-    azimuthDeg,
-    elevationDeg: Math.asin(dot(d, frame.up) / length) / RAD,
-    radiusDeg: Math.asin(bodyRadiusKm / length) / RAD,
   }
 }
 
@@ -104,39 +87,122 @@ export type ZoneResult = {
   bestPoint: number
 }
 
-export function evaluateZones(
+// Sun and Earth share of the stay at every candidate spot (cells x points).
+// This is the slow part; it depends only on the arrival and the stay, not on the
+// thresholds, so moving a threshold only needs classifyZones().
+export type ZoneShares = { sun: Float32Array; earth: Float32Array }
+
+// Lowest and highest horizon of each spot: when a body is clearly above or below
+// both, its azimuth (atan2) and the horizon lookup are not needed. Same result.
+const horizonRange = new WeakMap<Int16Array, { min: Float64Array; max: Float64Array }>()
+
+function rangeOf(horizons: Int16Array): { min: Float64Array; max: Float64Array } {
+  let range = horizonRange.get(horizons)
+  if (!range) {
+    const rows = horizons.length / BINS
+    const min = new Float64Array(rows)
+    const max = new Float64Array(rows)
+    for (let r = 0; r < rows; r++) {
+      let lo = Infinity
+      let hi = -Infinity
+      for (let b = 0; b < BINS; b++) {
+        const v = horizons[r * BINS + b]
+        if (v < lo) lo = v
+        if (v > hi) hi = v
+      }
+      min[r] = lo / 100
+      max[r] = hi / 100
+    }
+    range = { min, max }
+    horizonRange.set(horizons, range)
+  }
+  return range
+}
+
+export function computeZoneShares(
   grid: ZoneGrid,
   ephemeris: Ephemeris,
-  criteria: ZoneCriteria,
   arrivalMs: number | null,
   stayDays: number,
-): ZoneResult[] {
+): ZoneShares {
   const first = arrivalMs === null ? 0 : Math.round((arrivalMs - ephemeris.startMs) / ephemeris.stepMs)
   const start = Math.min(Math.max(first, 0), ephemeris.rows.length - 1)
   const count = Math.max(1, Math.round((stayDays * 24 * 3_600_000) / ephemeris.stepMs))
   const end = Math.min(start + count, ephemeris.rows.length)
   const steps = ephemeris.rows.slice(start, end).map(bodies)
-  const slopeIndex = Math.min(Math.max(Math.round(criteria.slope.maxDeg), 1), SLOPE_STEPS) - 1
+  const n = steps.length
+  // Body positions as flat arrays, and |body|^2, for a tight loop.
+  const sx = new Float64Array(n), sy = new Float64Array(n), sz = new Float64Array(n), s2 = new Float64Array(n)
+  const ex = new Float64Array(n), ey = new Float64Array(n), ez = new Float64Array(n), e2 = new Float64Array(n)
+  steps.forEach(({ sun, earth }, t) => {
+    sx[t] = sun[0]; sy[t] = sun[1]; sz[t] = sun[2]; s2[t] = dot(sun, sun)
+    ex[t] = earth[0]; ey[t] = earth[1]; ez[t] = earth[2]; e2[t] = dot(earth, earth)
+  })
+  const { min, max } = rangeOf(grid.horizons)
+  const total = grid.cells.length * grid.pointsPerCell
+  const sunShare = new Float32Array(total)
+  const earthShare = new Float32Array(total)
+  const R = MOON_RADIUS_KM
 
+  const horizons = grid.horizons
+  const R2 = R * R
+  // Seen from a spot at R * up: d = body - R * up, elevation = asin(d.up / |d|),
+  // apparent radius = asin(radius / |d|), azimuth clockwise from north from the
+  // east and north parts (d.east = body.east and d.north = body.north, because
+  // up is normal to both).
+  const visible = (
+    ux: number, uy: number, uz: number,
+    exx: number, exy: number,
+    nx: number, ny: number, nz: number,
+    row: number,
+    bx: number, by: number, bz: number, b2: number,
+    radiusKm: number,
+  ) => {
+    const bu = bx * ux + by * uy + bz * uz
+    const length = Math.sqrt(b2 - 2 * R * bu + R2)
+    const top = (Math.asin((bu - R) / length) + Math.asin(radiusKm / length)) / RAD
+    if (top > max[row]) return true
+    if (top <= min[row]) return false
+    const east = bx * exx + by * exy // east has no z part
+    const north = bx * nx + by * ny + bz * nz
+    let azimuth = Math.atan2(east, north) / RAD
+    if (azimuth < 0) azimuth += 360
+    return top > horizonAt(horizons, row, azimuth)
+  }
+
+  const pointsPerCell = grid.pointsPerCell
+  for (let i = 0; i < grid.cells.length; i++) {
+    const points = grid.cells[i].points
+    for (let k = 0; k < points.length; k++) {
+      const [lon, lat] = points[k]
+      const { up, east, north } = localFrame(lon, lat)
+      const row = i * pointsPerCell + k
+      let sunVisible = 0
+      let earthVisible = 0
+      for (let t = 0; t < n; t++) {
+        if (visible(up[0], up[1], up[2], east[0], east[1], north[0], north[1], north[2], row, sx[t], sy[t], sz[t], s2[t], SUN_RADIUS_KM)) sunVisible += 1
+        if (visible(up[0], up[1], up[2], east[0], east[1], north[0], north[1], north[2], row, ex[t], ey[t], ez[t], e2[t], EARTH_RADIUS_KM)) earthVisible += 1
+      }
+      sunShare[row] = (100 * sunVisible) / n
+      earthShare[row] = (100 * earthVisible) / n
+    }
+  }
+  return { sun: sunShare, earth: earthShare }
+}
+
+// Fast part: thresholds applied to precomputed shares.
+export function classifyZones(grid: ZoneGrid, shares: ZoneShares, criteria: ZoneCriteria): ZoneResult[] {
+  const slopeIndex = Math.min(Math.max(Math.round(criteria.slope.maxDeg), 1), SLOPE_STEPS) - 1
   const sunOk = (p: number) => !criteria.sun.on || p >= criteria.sun.minPercent
   const earthOk = (p: number) => !criteria.earth.on || p >= criteria.earth.minPercent
 
   // A cell meets the Sun and Earth requirements if any of its candidate spots does.
   return grid.cells.map((cell, i) => {
     let best = { sun: -1, earth: -1, point: 0, ok: false }
-    cell.points.forEach(([lon, lat], k) => {
-      const frame = localFrame(lon, lat)
+    cell.points.forEach((_, k) => {
       const row = i * grid.pointsPerCell + k
-      let sunVisible = 0
-      let earthVisible = 0
-      for (const { sun, earth } of steps) {
-        const s = lookAt(frame, sun, SUN_RADIUS_KM)
-        if (s.elevationDeg + s.radiusDeg > horizonAt(grid.horizons, row, s.azimuthDeg)) sunVisible += 1
-        const e = lookAt(frame, earth, EARTH_RADIUS_KM)
-        if (e.elevationDeg + e.radiusDeg > horizonAt(grid.horizons, row, e.azimuthDeg)) earthVisible += 1
-      }
-      const sunP = (100 * sunVisible) / steps.length
-      const earthP = (100 * earthVisible) / steps.length
+      const sunP = shares.sun[row]
+      const earthP = shares.earth[row]
       const ok = sunOk(sunP) && earthOk(earthP)
       // Prefer a spot that passes; then more Sun; then more Earth.
       if ((ok && !best.ok) || (ok === best.ok && (sunP > best.sun || (sunP === best.sun && earthP > best.earth)))) {
@@ -147,6 +213,16 @@ export function evaluateZones(
     const meets = best.ok && (!criteria.slope.on || slopeAreaPercent >= MIN_SLOPE_AREA_PERCENT)
     return { sunPercent: best.sun, earthPercent: best.earth, slopeAreaPercent, meets, bestPoint: best.point }
   })
+}
+
+export function evaluateZones(
+  grid: ZoneGrid,
+  ephemeris: Ephemeris,
+  criteria: ZoneCriteria,
+  arrivalMs: number | null,
+  stayDays: number,
+): ZoneResult[] {
+  return classifyZones(grid, computeZoneShares(grid, ephemeris, arrivalMs, stayDays), criteria)
 }
 
 let gridPromise: Promise<ZoneGrid> | null = null
