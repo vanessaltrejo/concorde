@@ -21,9 +21,11 @@ pole) and **Apollo 11, 16 and 17**. Current period: **90 days, 2026-11-14 to
 
 **Status (2026-11-14).** Working: Orbital view with 5 map layers, 6 sites,
 arrival date and stay length, requirements with a zone map around the south
-pole, Horizon view with real shadows. Not built yet: zones for the whole Moon,
-custom coordinates, the Dashboard with impact numbers, the assistant/chatbot
-(see [Next steps](#10-next-steps)).
+pole, Horizon view with real shadows. Built but not tested with a live model yet:
+the AI assistant (it needs a model key, see
+[`docs/AI_ASSISTANT_PLAN.md`](docs/AI_ASSISTANT_PLAN.md)). Not built yet: zones
+for the whole Moon, custom coordinates, the Dashboard with impact numbers (see
+[Next steps](#10-next-steps)).
 
 The full history of the project (every decision, problem, fix, discarded idea
 and correction) is in [`docs/PROJECT_MEMORY.md`](docs/PROJECT_MEMORY.md).
@@ -163,6 +165,14 @@ folder). `package.json` asks for Node 22 or newer. The canonical address and the
 social preview (title, description, image) are in `index.html` for
 `https://concordemoon.com`.
 
+**AI assistant.** One serverless function, `api/chat.ts`, holds the model key
+(Vercel runs it; `npm run dev` serves it through a plugin in `vite.config.ts`).
+Copy `.env.example` to `.env.local` locally, and set the same names in Vercel's
+environment variables. Never prefix the key with `VITE_`. Without a key the rest of the app
+works and the assistant panel says it is not configured. Design, limits and the
+test set: [`docs/AI_ASSISTANT_PLAN.md`](docs/AI_ASSISTANT_PLAN.md),
+[`docs/AI_ASSISTANT_EVAL.md`](docs/AI_ASSISTANT_EVAL.md).
+
 ## 4. How it works
 
 ### 4.1 Architecture
@@ -284,7 +294,7 @@ data ends, the app says "> X (end of data)".
 
 | Choice | Why |
 |---|---|
-| **Vite** (not Next.js) | Client-side 3D app reading static files: no server rendering or API routes needed. Next.js would only add client-only boundaries and hydration issues. Static deploy (Vercel/Netlify). |
+| **Vite** (not Next.js) | Client-side 3D app reading static files: no server rendering or API routes needed. Next.js would only add client-only boundaries and hydration issues. Static deploy (Vercel/Netlify); the AI assistant adds one serverless function (`api/chat.ts`). |
 | **React 19 + TypeScript** | Typed data contract, no `any` (enforced by `tsc`). |
 | **Tailwind CSS 4** | Fast, consistent layout. |
 | **three.js + react-three-fiber + drei** | Full control of the camera, custom shaders and offline data (Horizon view). |
@@ -536,7 +546,8 @@ After that:
 - **Requirement scores** (nice-to-have with weights, presets for lander types).
 - **Dashboard** with impact numbers (hours or money saved) from the team's research of
   today's process; no numbers until that research is read.
-- **Assistant / chatbot** (in the sketches, not started).
+- **AI assistant**: built (tools over the app's data, strict number check, voice
+  input), not yet tested with a live model; run the test set once the key exists.
 - **Compare mode** (two sites or dates side by side), a timeline of the lunar day,
   a 2D horizon chart, finer zone cells (500 m, about 4 times slower).
 - The full plan by phases and its results are in [`docs/PLAN.md`](docs/PLAN.md).

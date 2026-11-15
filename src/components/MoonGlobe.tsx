@@ -25,7 +25,6 @@ import { getLayer, photoBase, tileUrl, type TileSource } from '../data/layers'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
 import { getSite, SITES } from '../data/sites'
 import {
-  DEFAULT_CRITERIA,
   evaluateSite,
   loadSiteSlopes,
   type Criteria,
@@ -141,6 +140,15 @@ type MoonGlobeProps = {
   onStayDaysChange: (days: number) => void
   onSelectSite: (siteId: string) => void
   onOpenSkyView: (siteId: string) => void
+  // Layer and requirements live in the app, so the assistant can read and set them.
+  layerId: string
+  onLayerChange: (id: string) => void
+  requirementsOn: boolean
+  onRequirementsOnChange: (on: boolean) => void
+  criteria: Criteria
+  onCriteriaChange: (criteria: Criteria) => void
+  // A site the assistant asked to show: select it and fly over it (new object = new request).
+  flyRequest: { siteId: string } | null
 }
 
 // Orbital view: smooth Moon sphere with NASA imagery. Cesium loads only the
@@ -153,6 +161,13 @@ export default function MoonGlobe({
   onStayDaysChange,
   onSelectSite,
   onOpenSkyView,
+  layerId,
+  onLayerChange: setLayerId,
+  requirementsOn,
+  onRequirementsOnChange: setRequirementsOn,
+  criteria,
+  onCriteriaChange: setCriteria,
+  flyRequest,
 }: MoonGlobeProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<Viewer | null>(null)
@@ -161,11 +176,8 @@ export default function MoonGlobe({
   // Latest "select a site" action for the Cesium click handler (created once).
   const showZoneRef = useRef<(siteId: string) => void>(() => {})
   const [picked, setPicked] = useState<Picked | null>(null)
-  const [layerId, setLayerId] = useState('image')
   const [zoneImage, setZoneImage] = useState<ZoneImage | null>(null)
   const [zonePending, setZonePending] = useState(false)
-  const [requirementsOn, setRequirementsOn] = useState(false)
-  const [criteria, setCriteria] = useState<Criteria>(DEFAULT_CRITERIA)
   const [requirementsData, setRequirementsData] = useState<RequirementsData | null>(null)
   const [requirementsError, setRequirementsError] = useState<string | null>(null)
   const [zoneData, setZoneData] = useState<{ grid: ZoneGrid; ephemeris: Ephemeris } | null>(null)
@@ -403,6 +415,11 @@ export default function MoonGlobe({
   useEffect(() => {
     showZoneRef.current = showZone
   })
+
+  // Fly when the assistant selects a site. Runs after the viewer exists.
+  useEffect(() => {
+    if (flyRequest) showZoneRef.current(flyRequest.siteId)
+  }, [flyRequest])
 
   const active = getLayer(layerId)
   const selectedSite = selectedSiteId ? getSite(selectedSiteId) : null

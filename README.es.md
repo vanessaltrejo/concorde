@@ -23,8 +23,10 @@ Simulator"*. Sitios actuales: **borde de Shackleton, Connecting Ridge C1 y C2**
 **Estado (2026-11-14).** Funciona: Orbital view con 5 capas de mapa, 6 sitios,
 fecha de llegada y duración de la estancia, requisitos con mapa de zonas en el
 polo sur, y Horizon view con sombras reales. Todavía no está: zonas para toda la
-Luna, coordenadas personalizadas, el Dashboard con números de impacto y el
-asistente/chatbot (ver [Siguientes pasos](#10-siguientes-pasos)).
+Luna, coordenadas personalizadas y el Dashboard con números de impacto (ver
+[Siguientes pasos](#10-siguientes-pasos)). El asistente de IA está construido pero
+aún no se probó con un modelo real (necesita una llave del modelo, ver
+[`docs/AI_ASSISTANT_PLAN.md`](docs/AI_ASSISTANT_PLAN.md)).
 
 La historia completa del proyecto (cada decisión, problema, solución, idea
 descartada y corrección) está en [`docs/PROJECT_MEMORY.md`](docs/PROJECT_MEMORY.md)
@@ -172,6 +174,15 @@ carpeta de salida `dist`. Publica solo el proyecto `concorde` (no la carpeta
 vista previa para redes (título, descripción, imagen) están en `index.html` para
 `https://concordemoon.com`.
 
+**Asistente de IA.** Una función serverless, `api/chat.ts`, guarda la llave del
+modelo (Vercel la ejecuta; `npm run dev` la sirve con un plugin en
+`vite.config.ts`). En local copia `.env.example` a `.env.local`, y en Vercel pon
+los mismos nombres en las variables de entorno. Nunca uses el prefijo `VITE_` para
+la llave. Sin llave, el resto de la app funciona y el panel del asistente dice que
+no está configurado. Diseño, límites y set de pruebas:
+[`docs/AI_ASSISTANT_PLAN.md`](docs/AI_ASSISTANT_PLAN.md),
+[`docs/AI_ASSISTANT_EVAL.md`](docs/AI_ASSISTANT_EVAL.md).
+
 ## 4. Cómo funciona
 
 ### 4.1 Arquitectura
@@ -300,7 +311,7 @@ obtener el minuto. Si nada cambia antes de que se acaben los datos, la app dice
 
 | Elección | Por qué |
 |---|---|
-| **Vite** (no Next.js) | App 3D del lado del cliente que lee archivos estáticos: no necesita renderizado en servidor ni rutas de API. Next.js solo agregaría límites de "solo cliente" y problemas de hidratación. Se puede publicar como sitio estático (Vercel/Netlify). |
+| **Vite** (no Next.js) | App 3D del lado del cliente que lee archivos estáticos: no necesita renderizado en servidor ni rutas de API. Next.js solo agregaría límites de "solo cliente" y problemas de hidratación. Se puede publicar como sitio estático (Vercel/Netlify); el asistente de IA agrega una función serverless (`api/chat.ts`). |
 | **React 19 + TypeScript** | Contrato de datos tipado, sin `any` (lo revisa `tsc`). |
 | **Tailwind CSS 4** | Diseño rápido y consistente. |
 | **CesiumJS** | La Orbital view: globo de la Luna, imágenes en tiles que se cargan según el zoom, selección de puntos. Se carga solo para esa vista. |
@@ -564,7 +575,9 @@ Después:
 - **Dashboard** con números de impacto (horas o dinero ahorrados) a partir de la
   investigación del equipo del proceso de hoy; sin números hasta leer esa
   investigación.
-- **Asistente / chatbot** (está en los bocetos, sin empezar).
+- **Asistente de IA**: construido (herramientas sobre los datos de la app,
+  revisión estricta de números, entrada por voz), aún sin probar con un modelo
+  real; correr el set de pruebas cuando exista la llave.
 - **Modo comparar** (dos sitios o fechas lado a lado), una línea de tiempo del día
   lunar, una gráfica 2D del horizonte, celdas de zona más finas (500 m, unas 4 veces
   más lento).

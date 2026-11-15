@@ -1,10 +1,14 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { ActionBanner, type BannerItem } from './assistant/ActionBanner'
+import { AssistantPanel } from './assistant/AssistantPanel'
+import type { AppBridge, AppSnapshot } from './assistant/tools'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { NavRail, type TabId } from './components/NavRail'
 import { Placeholder } from './components/Placeholder'
 import { SiteView } from './components/SiteView'
 import { loadSiteData } from './data/loadSiteData'
 import { DEFAULT_SITE_ID, getSite, SITES } from './data/sites'
+import { DEFAULT_CRITERIA, type Criteria } from './scene/requirements'
 import { DEFAULT_STAY_DAYS } from './scene/stay'
 import { indexForTime, timeOfIndex } from './scene/timeSelection'
 import { readUrlState, writeUrlState } from './state/urlState'
@@ -34,6 +38,31 @@ export default function App() {
   // Stay length in days, from the selected time on. Shared by both views.
   const [stayDays, setStayDays] = useState(initial.stayDays ?? DEFAULT_STAY_DAYS)
   const [loaded, setLoaded] = useState<Loaded | null>(null)
+  // Orbital view layer and requirements. Kept here so the assistant can use them.
+  const [layerId, setLayerId] = useState('image')
+  const [requirementsOn, setRequirementsOn] = useState(false)
+  const [criteria, setCriteria] = useState<Criteria>(DEFAULT_CRITERIA)
+  const [flyRequest, setFlyRequest] = useState<{ siteId: string } | null>(null)
+  const [assistantOpen, setAssistantOpen] = useState(false)
+  const [banners, setBanners] = useState<BannerItem[]>([])
+  const bannerIdRef = useRef(0)
+
+  // Latest state for the assistant's tools. Setters below also write it at
+  // once, so several tool calls in one turn see each other's changes.
+  const snapshot: AppSnapshot = {
+    view: tab,
+    orbitalSiteId: selectedSiteId,
+    horizonSiteId: skySiteId,
+    timeMs,
+    stayDays,
+    layerId,
+    requirementsOn,
+    criteria,
+  }
+  const stateRef = useRef(snapshot)
+  useEffect(() => {
+    stateRef.current = snapshot
+  })
 
   // Load the Horizon view site's files (about 19 MB) only when that tab is open and
   // the site is not already loaded. A late answer for an older site is ignored.
@@ -65,14 +94,78 @@ export default function App() {
   function openSkyView(siteId: string) {
     setSkySiteId(siteId)
     setTab('horizon')
+    setFlyRequest(null)
   }
+
+  function backToMap() {
+    setSelectedSiteId(skySiteId)
+    setTab('orbital')
+  }
+
+  function announce(text: string) {
+    const id = ++bannerIdRef.current
+    setBanners((prev) => [...prev.slice(-2), { id, text }])
+    window.setTimeout(() => setBanners((prev) => prev.filter((b) => b.id !== id)), 6000)
+  }
+
+  // Bridge between the assistant's tools and the app state. Each change is announced.
+  const [bridge] = useState<AppBridge>(() => {
+    const patch = (change: Partial<AppSnapshot>) => {
+      stateRef.current = { ...stateRef.current, ...change }
+    }
+    return {
+      getState: () => stateRef.current,
+      setTimeMs: (ms) => {
+        patch({ timeMs: ms })
+        setTimeMs(ms)
+      },
+      setStayDays: (days) => {
+        patch({ stayDays: days })
+        setStayDays(days)
+      },
+      setLayerId: (id) => {
+        patch({ layerId: id })
+        setLayerId(id)
+      },
+      selectSite: (siteId) => {
+        if (stateRef.current.view === 'horizon') {
+          patch({ horizonSiteId: siteId })
+          setSkySiteId(siteId)
+        } else {
+          patch({ orbitalSiteId: siteId })
+          setSelectedSiteId(siteId)
+          setFlyRequest({ siteId })
+        }
+      },
+      openHorizonView: (siteId) => {
+        patch({ horizonSiteId: siteId, view: 'horizon' })
+        setSkySiteId(siteId)
+        setTab('horizon')
+        setFlyRequest(null)
+      },
+      backToOrbitalView: () => {
+        const siteId = stateRef.current.horizonSiteId
+        patch({ orbitalSiteId: siteId, view: 'orbital' })
+        setSelectedSiteId(siteId)
+        setTab('orbital')
+      },
+      setRequirementsOn: (on) => {
+        patch({ requirementsOn: on })
+        setRequirementsOn(on)
+      },
+      setCriteria: (next) => {
+        patch({ criteria: next })
+        setCriteria(next)
+      },
+    }
+  })
 
   // Data that belongs to another site is not shown while the new one loads.
   const current = loaded && loaded.siteId === skySiteId ? loaded : null
 
   return (
-    <div className="flex h-full">
-      <NavRail active={tab} onChange={setTab} />
+    <div className="relative flex h-full">
+      <NavRail active={tab} onChange={setTab} assistantOpen={assistantOpen} onToggleAssistant={() => setAssistantOpen((o) => !o)} />
       <ErrorBoundary key={tab}>
       {tab === 'horizon' && (
         <HorizonTab
@@ -82,10 +175,7 @@ export default function App() {
           onTimeChange={setTimeMs}
           stayDays={stayDays}
           onStayDaysChange={setStayDays}
-          onBackToMap={() => {
-            setSelectedSiteId(skySiteId)
-            setTab('orbital')
-          }}
+          onBackToMap={backToMap}
         />
       )}
       {tab === 'orbital' && (
@@ -98,6 +188,13 @@ export default function App() {
             onStayDaysChange={setStayDays}
             onSelectSite={setSelectedSiteId}
             onOpenSkyView={openSkyView}
+            layerId={layerId}
+            onLayerChange={setLayerId}
+            requirementsOn={requirementsOn}
+            onRequirementsOnChange={setRequirementsOn}
+            criteria={criteria}
+            onCriteriaChange={setCriteria}
+            flyRequest={flyRequest}
           />
         </Suspense>
       )}
@@ -105,6 +202,11 @@ export default function App() {
         <Placeholder title="Dashboard" description="Summary metrics for the selected site." />
       )}
       </ErrorBoundary>
+      {/* Outside the error boundary: a view crash does not close the assistant. */}
+      <ActionBanner items={banners} onDismiss={(id) => setBanners((prev) => prev.filter((b) => b.id !== id))} />
+      {assistantOpen && (
+        <AssistantPanel bridge={bridge} onAnnounce={announce} onClose={() => setAssistantOpen(false)} />
+      )}
     </div>
   )
 }
