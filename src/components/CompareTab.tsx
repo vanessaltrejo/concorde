@@ -304,7 +304,7 @@ function AddSlot() {
   const options = SITES.filter((s) => s.hasSkyData)
   const places = usePlaces()
   return (
-    <div className="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#3a4560] p-4 text-center text-sm text-gray-300">
+    <div data-tour="compare-add" className="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#3a4560] p-4 text-center text-sm text-gray-300">
       <p>Add a scenario</p>
       <SitePicker
         value={null}

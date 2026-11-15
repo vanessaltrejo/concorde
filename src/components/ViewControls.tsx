@@ -18,7 +18,7 @@ const zoomClassName =
 export function ViewControls({ fovDeg, onZoom, onLookAtSun, onLookAtEarth }: ViewControlsProps) {
   const magnification = maxFovDeg / fovDeg
   return (
-    <div className="absolute top-4 flex flex-col items-end gap-2 transition-[right] duration-300" style={{ right: 'calc(1rem + var(--assistant-w, 0px))' }}>
+    <div data-tour="view-controls" className="absolute top-4 flex flex-col items-end gap-2 transition-[right] duration-300" style={{ right: 'calc(1rem + var(--assistant-w, 0px))' }}>
       <div className="flex gap-2">
         <button type="button" className={buttonClassName} onClick={onLookAtSun}>
           Look at Sun

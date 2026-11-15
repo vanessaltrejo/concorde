@@ -3,6 +3,8 @@ import { ActionBanner, type BannerItem } from './assistant/ActionBanner'
 import { AssistantPanel } from './assistant/AssistantPanel'
 import { EducationalTab } from './components/EducationalTab'
 import { ReferencesTab } from './components/ReferencesTab'
+import { ProfileTab } from './components/ProfileTab'
+import { Tutorial, TUTORIAL_STEPS } from './components/Tutorial'
 import type { AppBridge, AppSnapshot } from './assistant/tools'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { NavRail, type TabId } from './components/NavRail'
@@ -54,6 +56,23 @@ export default function App() {
   const [criteria, setCriteria] = useState<Criteria>(DEFAULT_CRITERIA)
   const [flyRequest, setFlyRequest] = useState<{ siteId: string } | { point: AnywherePoint } | null>(null)
   const [assistantOpen, setAssistantOpen] = useState(false)
+  // Guest mode (kept in this browser) and the step of the guest tutorial.
+  const [guest, setGuestState] = useState(() => {
+    try {
+      return window.localStorage.getItem('concorde.guest') === '1'
+    } catch {
+      return false
+    }
+  })
+  const [tutorialStep, setTutorialStep] = useState<number | null>(null)
+  function setGuest(value: boolean) {
+    setGuestState(value)
+    try {
+      window.localStorage.setItem('concorde.guest', value ? '1' : '0')
+    } catch {
+      // Storage blocked: guest mode lasts for this visit.
+    }
+  }
   const [banners, setBanners] = useState<BannerItem[]>([])
   const bannerIdRef = useRef(0)
 
@@ -265,6 +284,21 @@ export default function App() {
       )}
       {tab === 'educational' && <EducationalTab />}
       {tab === 'references' && <ReferencesTab />}
+      {tab === 'profile' && (
+        <ProfileTab
+          guest={guest}
+          onJoinGuest={() => {
+            setGuest(true)
+            setTab('dashboard')
+            setTutorialStep(0)
+          }}
+          onLeaveGuest={() => setGuest(false)}
+          onReplayTutorial={() => {
+            setTab('dashboard')
+            setTutorialStep(0)
+          }}
+        />
+      )}
       </ErrorBoundary>
       {/* Outside the error boundary: a view crash does not close the assistant. */}
       <ActionBanner items={banners} onDismiss={(id) => setBanners((prev) => prev.filter((b) => b.id !== id))} />
@@ -282,6 +316,17 @@ export default function App() {
           </svg>
           <span role="tooltip" className="pointer-events-none absolute bottom-full right-0 z-50 mb-2 whitespace-nowrap rounded bg-black px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">{assistantOpen ? 'Minimize assistant' : 'Assistant'}</span>
         </button>
+      )}
+      {tutorialStep !== null && (
+        <Tutorial
+          step={tutorialStep}
+          onStep={(next) => {
+            setTutorialStep(next)
+            const target = TUTORIAL_STEPS[next].tab
+            if (target) setTab(target)
+          }}
+          onClose={() => setTutorialStep(null)}
+        />
       )}
       <AssistantPanel bridge={bridge} onAnnounce={announce} open={assistantOpen} onToggle={() => setAssistantOpen((o) => !o)} />
     </div>

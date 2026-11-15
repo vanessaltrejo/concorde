@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type TabId = 'orbital' | 'horizon' | 'dashboard' | 'compare' | 'educational' | 'references'
+export type TabId = 'orbital' | 'horizon' | 'dashboard' | 'compare' | 'educational' | 'references' | 'profile'
 
 type Tab = { id: TabId; label: string; icon: ReactNode }
 
@@ -58,18 +58,6 @@ const tabs: Tab[] = [
       </svg>
     ),
   },
-  {
-    id: 'educational',
-    label: 'Educational',
-    icon: (
-      <svg {...iconProps}>
-        <rect x="2.5" y="7" width="19" height="11" rx="5" />
-        <path d="M7.5 10.5v4M5.5 12.5h4" />
-        <circle cx="15.5" cy="11.5" r="1" />
-        <circle cx="18" cy="14" r="1" />
-      </svg>
-    ),
-  },
 ]
 
 // Sits just above Profile, at the bottom of the bar.
@@ -85,6 +73,17 @@ const bottomTabs: Tab[] = [
     ),
   },
 ]
+
+const profileTab: Tab = {
+  id: 'profile',
+  label: 'Profile',
+  icon: (
+    <svg {...iconProps}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </svg>
+  ),
+}
 
 type NavRailProps = {
   active: TabId
@@ -124,17 +123,7 @@ export function NavRail({ active, onChange }: NavRailProps) {
       {tabs.map(renderTab)}
       <div className="mt-auto flex flex-col items-center gap-2">
         {bottomTabs.map(renderTab)}
-      <button
-        type="button"
-        aria-label="Profile"
-        className="group relative flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#333] hover:text-white"
-      >
-        <svg {...iconProps}>
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 21a8 8 0 0 1 16 0" />
-        </svg>
-        <span role="tooltip" className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Profile</span>
-      </button>
+      {renderTab(profileTab)}
       </div>
     </nav>
   )

@@ -80,7 +80,7 @@ export function SitePanel({
       style={{ right: 'calc(1rem + var(--assistant-w, 0px))', transform: collapsed ? 'translateX(calc(100% + 1rem))' : 'none' }}
     >
     <PanelHandle open={!collapsed} onClick={() => setCollapsed((c) => !c)} label="site panel" className="absolute -left-7 top-3" />
-    <div className={'flex max-h-full w-72 flex-col gap-3 overflow-y-auto rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg transition-opacity duration-300 ' + (collapsed ? 'pointer-events-none opacity-0' : 'pointer-events-auto')}>
+    <div data-tour="site-panel" className={'flex max-h-full w-72 flex-col gap-3 overflow-y-auto rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg transition-opacity duration-300 ' + (collapsed ? 'pointer-events-none opacity-0' : 'pointer-events-auto')}>
       {topSlot ?? (
       <>
       <div className="flex flex-col gap-1">

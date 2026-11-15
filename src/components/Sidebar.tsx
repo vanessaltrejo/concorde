@@ -43,7 +43,7 @@ export function Sidebar({
   const entry = SITES.find((s) => s.id === site.id)
   const groupColor = entry ? GROUP_COLOR[entry.group] : null
   return (
-    <aside className="absolute left-4 top-4 z-10 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-4 overflow-y-auto rounded-lg border border-[#444] bg-[#303030] p-4 shadow-lg text-gray-100">
+    <aside data-tour="horizon-panel" className="absolute left-4 top-4 z-10 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-4 overflow-y-auto rounded-lg border border-[#444] bg-[#303030] p-4 shadow-lg text-gray-100">
       <div className="flex items-center justify-between gap-2">
         <h1 className="flex items-center gap-2 text-lg font-semibold">
           <span aria-hidden className="h-4 w-1 rounded-sm bg-[var(--nasa-red)]" />

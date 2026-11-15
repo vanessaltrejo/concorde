@@ -1,11 +1,11 @@
 // Small part of the app state kept in the address bar so a link reopens the
-// screen: /dashboard, /orbital-view, /horizon-view, /compare, /educational or /references.
+// screen: /dashboard, /orbital-view, /horizon-view, /compare, /educational, /references or /profile.
 // Old links with ?view=&site=&t= still open on that state, then the address is cleaned.
 // A Horizon view of a point picked on the map adds &pt=<lat>,<lon east>.
 
 import { MAX_STAY_DAYS, MIN_STAY_DAYS } from '../scene/stay'
 
-export type View = 'orbital' | 'horizon' | 'dashboard' | 'compare' | 'educational' | 'references'
+export type View = 'orbital' | 'horizon' | 'dashboard' | 'compare' | 'educational' | 'references' | 'profile'
 
 type UrlState = {
   view: View | null
@@ -15,7 +15,7 @@ type UrlState = {
   point: { latDeg: number; lonDeg: number } | null
 }
 
-const VIEWS: View[] = ['orbital', 'horizon', 'dashboard', 'compare', 'educational', 'references']
+const VIEWS: View[] = ['orbital', 'horizon', 'dashboard', 'compare', 'educational', 'references', 'profile']
 
 const PATHS: Record<View, string> = {
   dashboard: '/dashboard',
@@ -24,6 +24,7 @@ const PATHS: Record<View, string> = {
   compare: '/compare',
   educational: '/educational',
   references: '/references',
+  profile: '/profile',
 }
 
 export function readUrlState(knownSiteIds: string[]): UrlState {

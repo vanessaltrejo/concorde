@@ -85,7 +85,7 @@ export function RequirementsPanel({
 }: RequirementsPanelProps) {
   const gradient = !criteria.sun.on || criteria.sun.minPercent < 100
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg">
+    <div data-tour="requirements" className="flex flex-col gap-3 rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg">
       <label className="flex items-center justify-between text-sm font-medium">
         <span>Requirements</span>
         <span className="flex items-center gap-2 text-xs font-normal text-gray-300">
