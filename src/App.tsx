@@ -203,14 +203,7 @@ export default function App() {
 
   return (
     <div className="relative flex h-full overflow-hidden" style={{ '--assistant-w': assistantOpen ? '24rem' : '0px' } as CSSProperties}>
-      <NavRail
-        active={tab}
-        onChange={setTab}
-        onOpenPlace={(place) => {
-          setFlyRequest({ point: { latDeg: place.latDeg, lonDeg: place.lonDeg } })
-          setTab('orbital')
-        }}
-      />
+      <NavRail active={tab} onChange={setTab} />
       <ErrorBoundary key={tab}>
       {tab === 'horizon' && (
         <HorizonTab
