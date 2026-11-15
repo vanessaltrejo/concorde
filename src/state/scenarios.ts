@@ -6,6 +6,8 @@ import { SITES } from '../data/sites'
 // how "what if the launch slips" is checked). Kept in a tiny shared store so the
 // flag buttons on every tab need no prop drilling, and mirrored in the URL as
 // ?cmp=<siteId>@<2026-11-14T00:00Z>,...
+// Any point on the Moon can be a scenario too: siteId "point:<lat>,<lon>",
+// written in the link as "pt:<lat>_<lon>" (the comma separates scenarios).
 
 export type Scenario = { id: string; siteId: string; timeMs: number | null }
 
@@ -16,8 +18,12 @@ function formatTime(timeMs: number | null): string {
   return timeMs === null ? '' : `${new Date(timeMs).toISOString().slice(0, 16)}Z`
 }
 
+const toLink = (siteId: string) => (siteId.startsWith('point:') ? `pt:${siteId.slice(6).replace(',', '_')}` : siteId)
+const fromLink = (part: string) => (part.startsWith('pt:') ? `point:${part.slice(3).replace('_', ',')}` : part)
+const POINT_RE = /^point:-?\d+(\.\d+)?,\d+(\.\d+)?$/
+
 export function encodeScenarios(list: Scenario[]): string | null {
-  return list.length ? list.map((s) => `${s.siteId}@${formatTime(s.timeMs)}`).join(',') : null
+  return list.length ? list.map((s) => `${toLink(s.siteId)}@${formatTime(s.timeMs)}`).join(',') : null
 }
 
 function decodeScenarios(text: string | null): Scenario[] {
@@ -25,8 +31,9 @@ function decodeScenarios(text: string | null): Scenario[] {
   const known = SITES.filter((s) => s.hasSkyData).map((s) => s.id)
   const out: Scenario[] = []
   text.split(',').forEach((part, i) => {
-    const [siteId, t] = part.split('@')
-    if (!known.includes(siteId) || out.length >= MAX_SCENARIOS) return
+    const [linkId, t] = part.split('@')
+    const siteId = fromLink(linkId)
+    if ((!known.includes(siteId) && !POINT_RE.test(siteId)) || out.length >= MAX_SCENARIOS) return
     const parsed = t ? Date.parse(t) : NaN
     out.push({ id: `s${i}`, siteId, timeMs: Number.isNaN(parsed) ? null : parsed })
   })

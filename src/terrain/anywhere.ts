@@ -12,7 +12,8 @@
 import { loadSiteLight } from '../data/loadSiteData'
 import { loadEphemeris, skyAtPoint } from '../scene/zones'
 import type { HorizonProfile, SiteData, SkyData, SkySample, TerrainGrid } from '../types'
-import { POLAR_LAT_LIMIT_DEG } from './engine'
+import { POLAR_LAT_LIMIT_DEG, siteSlope } from './engine'
+import type { SiteLight } from '../data/loadSiteData'
 import type { WorkerMessage, WorkerRequest } from './worker'
 
 export type AnywherePoint = { latDeg: number; lonDeg: number } // lon east, 0..360
@@ -59,7 +60,7 @@ export function pointName(p: AnywherePoint): string {
   return `Point ${p.latDeg.toFixed(4)}°, ${p.lonDeg.toFixed(2)}° E`
 }
 
-function computeTerrain(p: AnywherePoint, onProgress: (text: string) => void) {
+function computeTerrain(p: AnywherePoint, onProgress: (text: string) => void, grids: 'all' | 'near' = 'all') {
   return new Promise<Extract<WorkerMessage, { type: 'done' }>['result']>((resolve, reject) => {
     const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' })
     worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
@@ -73,7 +74,7 @@ function computeTerrain(p: AnywherePoint, onProgress: (text: string) => void) {
       worker.terminate()
       reject(new Error(event.message || 'The terrain worker failed'))
     }
-    const request: WorkerRequest = { baseUrl: TERRAIN_URL, lonDeg: p.lonDeg, latDeg: p.latDeg }
+    const request: WorkerRequest = { baseUrl: TERRAIN_URL, lonDeg: p.lonDeg, latDeg: p.latDeg, grids }
     worker.postMessage(request)
   })
 }
@@ -82,15 +83,9 @@ function grid(g: { size: number; spacingM: number; affine: TerrainGrid['affine']
   return { size: g.size, spacingM: g.spacingM, affine: g.affine, positions: g.positions }
 }
 
-export async function loadAnywhereSite(p: AnywherePoint, onProgress: (text: string) => void): Promise<AnywhereSiteData> {
-  const cover = coverage(p.latDeg)
-  if (!cover.ok) throw new Error(cover.reason)
-  const started = performance.now()
-  const [terrain, ephemeris, reference] = await Promise.all([
-    computeTerrain(p, onProgress),
-    loadEphemeris(),
-    loadSiteLight(REFERENCE_SITE),
-  ])
+// Sun and Earth for this point at every hourly sample (see the header).
+async function buildSky(p: AnywherePoint): Promise<SkyData> {
+  const [ephemeris, reference] = await Promise.all([loadEphemeris(), loadSiteLight(REFERENCE_SITE)])
   const refSamples = reference.sky.samples
   const samples: SkySample[] = ephemeris.rows.map((_, i) => {
     const ref = refSamples[i]
@@ -126,7 +121,16 @@ export async function loadAnywhereSite(p: AnywherePoint, onProgress: (text: stri
     },
     samples,
   }
-  const horizon: HorizonProfile = { siteId: id, azimuthStepDeg: 0.25, elevationDeg: Array.from(terrain.horizonDeg) }
+  return sky
+}
+
+export async function loadAnywhereSite(p: AnywherePoint, onProgress: (text: string) => void): Promise<AnywhereSiteData> {
+  const cover = coverage(p.latDeg)
+  if (!cover.ok) throw new Error(cover.reason)
+  const started = performance.now()
+  const [terrain, sky] = await Promise.all([computeTerrain(p, onProgress), buildSky(p)])
+  if (!terrain.mid || !terrain.far) throw new Error('The terrain worker returned no mid/far grids')
+  const horizon: HorizonProfile = { siteId: pointId(p), azimuthStepDeg: 0.25, elevationDeg: Array.from(terrain.horizonDeg) }
   return {
     sky,
     horizon,
@@ -138,4 +142,33 @@ export async function loadAnywhereSite(p: AnywherePoint, onProgress: (text: stri
       seconds: (performance.now() - started) / 1000,
     },
   }
+}
+
+// Light version for Compare: sky, horizon and the local slope (same plane fit
+// as scripts/site_slopes.py), without the mid/far 3D grids. Cached per point.
+export type PointLight = { light: SiteLight; slope: { slopeDeg: number; baselineM: number } | null }
+
+const lightCache = new Map<string, Promise<PointLight>>()
+
+export function loadAnywhereLight(p: AnywherePoint): Promise<PointLight> {
+  const key = pointId(p)
+  let cached = lightCache.get(key)
+  if (!cached) {
+    cached = (async () => {
+      const cover = coverage(p.latDeg)
+      if (!cover.ok) throw new Error(cover.reason)
+      const [terrain, sky] = await Promise.all([computeTerrain(p, () => {}, 'near'), buildSky(p)])
+      const horizon: HorizonProfile = { siteId: key, azimuthStepDeg: 0.25, elevationDeg: Array.from(terrain.horizonDeg) }
+      return { light: { sky, horizon }, slope: siteSlope(terrain.near) }
+    })()
+    cached.catch(() => lightCache.delete(key))
+    lightCache.set(key, cached)
+  }
+  return cached
+}
+
+// "point:-43.3100,348.7800" -> the point, or null for a curated site id.
+export function parsePointId(id: string): AnywherePoint | null {
+  const m = /^point:(-?\d+(?:\.\d+)?),(\d+(?:\.\d+)?)$/.exec(id)
+  return m ? { latDeg: Number(m[1]), lonDeg: Number(m[2]) } : null
 }

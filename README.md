@@ -82,7 +82,21 @@ are dark gray cards over the views, with NASA blue for buttons and selected
 items and a little NASA red only for small accents. Toggles and sliders are
 white.
 
+The left bar shows each tab's name under its icon and can collapse to icons
+only. Below the tabs, **Saved places** lists the pins you dropped on the Moon
+(name and coordinates): click one to fly to it, the pencil (or a double-click)
+renames it, the bin deletes it. Pins are kept in your browser only.
+
 **Orbital view (the Moon globe)**
+
+- Click any point: the **Picked point** box offers **Add pin** and **Open
+  Horizon view here**. Hovering (or clicking) a pin shows its coordinates and
+  two buttons: **Horizon view** and **Compare** (any point on the Moon can be
+  compared, not only the curated sites).
+- **Layers** (bottom left, a thumbnail of the active map): opens the map layers
+  with a short description each, and **Markers** toggles for study sites,
+  historic missions, future missions and your pins.
+- **+ / −** buttons zoom the globe in and out.
 
 - A smooth 3D Moon sphere (CesiumJS) with NASA Moon Trek imagery. It loads only
   the map tiles needed for the current zoom, so it needs internet. Click anywhere
@@ -121,7 +135,8 @@ white.
   view 60° down to 2°), **Look at Sun / Look at Earth**. Real LOLA terrain with
   **real cast shadows**, the Sun and Earth discs at their **real angular size**
   (the Earth with its real phase and the side that faces the Moon), a compass
-  and a thin gray line on the computed horizon. **← Back to Orbital view** keeps
+  and a thin gray line on the computed horizon. **⌖ Center view** returns to the
+  starting direction, level horizon and no zoom. **← Back to Orbital view** keeps
   the date. The sky is a real star map (Tycho-2) plus point stars. The sidebar
   floats over the view as a card and also shows the site's CLPS missions and a
   **Compare** flag button.

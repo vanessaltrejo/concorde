@@ -97,6 +97,11 @@ export function MainView({
         onZoom={(factor) => setFovDeg((previous) => clampFov(previous * factor))}
         onLookAtSun={() => lookAt(sample.sun.azimuthDeg, sample.sun.elevationDeg)}
         onLookAtEarth={() => lookAt(sample.earth.azimuthDeg, sample.earth.elevationDeg)}
+        onCenter={() => {
+          // Back to the starting direction, horizon level, widest view.
+          lookAt(initialAzimuthDeg, 0)
+          setFovDeg(maxFovDeg)
+        }}
       />
       <p className="pointer-events-none absolute bottom-3 left-[20rem] max-w-[40%] text-xs text-gray-500">
         Terrain: LOLA {summarizeTerrain(terrain).levels}. Shadows computed from the

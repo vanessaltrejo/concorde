@@ -86,7 +86,22 @@ tarjetas gris oscuro sobre las vistas, con azul NASA para botones y elementos
 seleccionados y un poco de rojo NASA solo en detalles pequeños. Los interruptores
 y deslizadores son blancos.
 
+La barra izquierda muestra el nombre de cada pestaña debajo de su ícono y se
+puede contraer a solo íconos. Debajo, **Saved places** lista los pines que
+pusiste en la Luna (nombre y coordenadas): un clic te lleva ahí, el lápiz (o
+doble clic) lo renombra y el bote de basura lo borra. Los pines se guardan solo
+en tu navegador.
+
 **Orbital view (el globo de la Luna)**
+
+- Haz clic en cualquier punto: el recuadro **Picked point** ofrece **Add pin** y
+  **Open Horizon view here**. Al pasar el mouse (o hacer clic) sobre un pin se
+  ven sus coordenadas y dos botones: **Horizon view** y **Compare** (se puede
+  comparar cualquier punto de la Luna, no solo los sitios curados).
+- **Layers** (abajo a la izquierda, una miniatura del mapa activo): abre las
+  capas con una descripción corta cada una, y los interruptores **Markers** para
+  sitios de estudio, misiones históricas, misiones futuras y tus pines.
+- Los botones **+ / −** acercan y alejan el globo.
 
 - Una esfera 3D lisa de la Luna (CesiumJS) con imágenes de NASA Moon Trek. Carga
   solo los tiles del mapa que necesita para el zoom actual, así que necesita

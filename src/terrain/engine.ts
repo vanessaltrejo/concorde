@@ -42,8 +42,9 @@ export type AnywhereResult = {
   horizonDeg: Float64Array // 1440 bins, bin k centered on k * 0.25°
   groundHeightM: number
   near: TerrainGridOut
-  mid: TerrainGridOut
-  far: TerrainGridOut
+  // Left out in the light mode (Compare needs only the horizon and the near grid).
+  mid?: TerrainGridOut
+  far?: TerrainGridOut
   source: string
   nearResolutionM: number
   maxDistanceM: number
@@ -159,8 +160,14 @@ export class TerrainEngine {
     return this.layer(id).meta
   }
 
-  async compute(lonDeg: number, latDeg: number, onProgress?: (text: string) => void): Promise<AnywhereResult> {
-    const p = plan(latDeg)
+  async compute(
+    lonDeg: number,
+    latDeg: number,
+    onProgress?: (text: string) => void,
+    grids: 'all' | 'near' = 'all',
+  ): Promise<AnywhereResult> {
+    const full = plan(latDeg)
+    const p = grids === 'all' ? full : { ...full, grids: full.grids.filter((g) => g.name === 'near') }
     const base = this.layer(p.levels[0].layerId)
     const [x0, y0] = base.proj.toMap(lonDeg, latDeg)
     const frame = localFrame(lonDeg, latDeg)
@@ -216,19 +223,19 @@ export class TerrainEngine {
     for (let k = 0; k < binCount; k++) if (horizon[k] === -Infinity) throw new Error(`Azimuth bin ${k} got no terrain samples`)
 
     // Grids (build_grid): nodes on the sphere, scene x = east, y = up, z = -north.
-    const grids: Partial<Record<'near' | 'mid' | 'far', TerrainGridOut>> = {}
+    const built: Partial<Record<'near' | 'mid' | 'far', TerrainGridOut>> = {}
     for (const [gi, g] of p.grids.entries()) {
       onProgress?.(`Building the ${g.name} 3D grid`)
       const win = await gridWinP[gi]
-      grids[g.name] = buildGrid(win, observer, frame)
+      built[g.name] = buildGrid(win, observer, frame)
     }
     const nearMeta = this.layerMeta(p.grids[0].layerId)
     return {
       horizonDeg: horizon,
       groundHeightM: ground,
-      near: grids.near!,
-      mid: grids.mid!,
-      far: grids.far!,
+      near: built.near!,
+      mid: built.mid,
+      far: built.far,
       source: nearMeta.source,
       nearResolutionM: nearMeta.pixelSizeM,
       maxDistanceM: p.maxDistance,
@@ -310,4 +317,29 @@ function affineFit(size: number, sx: Float64Array, sz: Float64Array) {
       maxResidual = Math.max(maxResidual, Math.hypot(ex, ez))
     }
   return { coef, coefZ, maxResidual }
+}
+
+// Local slope at the site, the same plane fit as scripts/site_slopes.py: nodes
+// of the near grid within 50 m (20 m data, 100 m baseline) or 1.5 grid steps
+// (118 m data, about 355 m baseline) of the site; slope = atan(|gradient|).
+export function siteSlope(near: TerrainGridOut): { slopeDeg: number; baselineM: number } | null {
+  const radius = near.spacingM <= 25 ? 50 : near.spacingM * 1.5
+  // Normal equations for y = a*x + b*z + c.
+  let sxx = 0, sxz = 0, sx = 0, szz = 0, sz = 0, n = 0, sxy = 0, szy = 0, sy = 0
+  const pos = near.positions
+  for (let i = 0; i < pos.length; i += 3) {
+    const x = pos[i], y = pos[i + 1], z = pos[i + 2]
+    if (Math.hypot(x, z) > radius) continue
+    sxx += x * x; sxz += x * z; sx += x; szz += z * z; sz += z; n++
+    sxy += x * y; szy += z * y; sy += y
+  }
+  if (n < 3) return null
+  // Solve the 3x3 system [sxx sxz sx; sxz szz sz; sx sz n] [a b c] = [sxy szy sy] (Cramer).
+  const det3 = (m: number[]) => m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6])
+  const A = [sxx, sxz, sx, sxz, szz, sz, sx, sz, n]
+  const D = det3(A)
+  if (Math.abs(D) < 1e-12) return null
+  const a = det3([sxy, sxz, sx, szy, szz, sz, sy, sz, n]) / D
+  const b = det3([sxx, sxy, sx, sxz, szy, sz, sx, sy, n]) / D
+  return { slopeDeg: Number(((Math.atan(Math.hypot(a, b)) * 180) / Math.PI).toFixed(2)), baselineM: Math.round(2 * radius) }
 }
