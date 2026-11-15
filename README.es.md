@@ -3,18 +3,28 @@
 [English](README.md) · **Español**
 (Si alguna vez las dos versiones no coinciden, la versión en inglés es la referencia).
 
-Una vista 3D en primera persona desde un sitio de alunizaje en el polo sur de la
-Luna. Muestra dónde están el **Sol** (energía) y la **Tierra** (comunicación
-directa) en el cielo a cualquier hora, y si el **terreno real** los tapa.
+Una herramienta web para **comparar sitios y fechas de alunizaje**. La **Orbital
+view** es un globo 3D de la Luna con mapas de la NASA donde eliges un sitio o una
+zona. La **Horizon view** te pone en la superficie de ese sitio y muestra dónde
+están el **Sol** (energía) y la **Tierra** (comunicación directa) en el cielo a
+cualquier hora, y si el **terreno real** los tapa. Dirección web:
+**concordemoon.com**.
 
 Hecho para el **NASA Space Apps Challenge 2026**, reto *"Lunar Landing Site
-Simulator"*. Sitio actual: **borde del cráter Shackleton**. Periodo actual: un
-día lunar, **del 2026-11-14 00:00 al 2026-12-13 12:00 UTC**, cada hora.
+Simulator"*. Sitios actuales: **borde de Shackleton, Connecting Ridge C1 y C2**
+(polo sur) y **Apollo 11, 16 y 17**. Periodo actual: **90 días, del 2026-11-14 al
+2027-02-12 UTC**, cada hora.
 
 > **Herramienta de apoyo para planear, no de grado de vuelo** ("Planning aid,
 > not flight grade"). Cada número sale de datos públicos de la NASA y está
 > comparado con una fuente independiente (ver [Validación](#6-validación)), pero
 > es una herramienta de hackathon, no software de misión.
+
+**Estado (2026-11-14).** Funciona: Orbital view con 5 capas de mapa, 6 sitios,
+fecha de llegada y duración de la estancia, requisitos con mapa de zonas en el
+polo sur, y Horizon view con sombras reales. Todavía no está: zonas para toda la
+Luna, coordenadas personalizadas, el Dashboard con números de impacto y el
+asistente/chatbot (ver [Siguientes pasos](#10-siguientes-pasos)).
 
 La historia completa del proyecto (cada decisión, problema, solución, idea
 descartada y corrección) está en [`docs/PROJECT_MEMORY.md`](docs/PROJECT_MEMORY.md)
@@ -55,49 +65,78 @@ de energía** y la **comunicación directa con la Tierra**. Casi todos los punto
 del reto son opcionales ("you may consider"). Criterios de evaluación a tener en
 cuenta: Impact, Creativity, **Validity**, Relevance, Presentation.
 
-**Nuestro enfoque:** un sitio bien hecho. Una vista en primera persona donde lo
-que *ves* (el terreno tapando la Tierra) y lo que *dicen* los números salen de
-los mismos datos de la NASA, y cada número está validado.
+**Nuestro enfoque:** pocos sitios bien hechos y comparación rápida. Una vista en
+primera persona donde lo que *ves* (el terreno tapando la Tierra) y lo que *dicen*
+los números salen de los mismos datos de la NASA, con un mapa para elegir y
+comparar sitios y fechas, y cada número validado.
 
 ## 2. Qué hace la app
 
-**Barra lateral (blanca)**
+Una barra a la izquierda cambia entre la **Orbital view**, la **Horizon view** y
+un **Dashboard** de relleno. La app abre en la Orbital view. El nombre del
+proyecto va arriba a la izquierda en cada vista.
 
-- **Site**: nombre y coordenadas (borde de Shackleton, -89.7849°, 203.97° E).
-- **Date and time (UTC)**: campo de fecha más un deslizador sobre 709 muestras
-  horarias.
-- **Sun (power)** y **Earth (direct link)**, cada uno con:
-  - **Status**: ● Visible, ◐ Partly hidden (con el % del disco visible),
-    ○ Hidden.
-  - **Sunset/Earthset in** (o **rise in** si está oculto): tiempo restante y hora
-    UTC exacta, interpolada al minuto.
-  - **Elevation**, **Azimuth** y **Terrain horizon there** (qué tan alto está el
-    terreno en esa dirección, para que el estado se entienda).
-  - Solo para la Tierra: **Lit fraction** (fase de la Tierra vista desde el sitio).
-- **Resumen del periodo**: % del periodo con Sol y con enlace a la Tierra.
-- **Créditos** y la nota "Planning aid, not flight grade".
+**Orbital view (el globo de la Luna)**
 
-**Área principal (vista 3D)**
+- Una esfera 3D lisa de la Luna (CesiumJS) con imágenes de NASA Moon Trek. Carga
+  solo los tiles del mapa que necesita para el zoom actual, así que necesita
+  internet. Haz clic en cualquier punto para ver latitud y longitud (grados
+  este, 0 a 360).
+- **Map layer**, una a la vez: Image (mosaico de fotos de LRO), Hillshade,
+  Elevation, Slope y Temperature (noche, máxima, mínima). La tarjeta de cada capa
+  da la fuente, la cobertura y sus límites. No hay leyendas con valores porque
+  Moon Trek no las da para estos tiles. Cerca del polo sur, Hillshade y Elevation
+  agregan el modelo del polo sur de LOLA a 5 m.
+- Menú **Site** (South pole: Shackleton rim, Connecting Ridge C1, C2. Apollo
+  landing sites: 11, 16, 17) o clic en un marcador: la cámara vuela ahí. Del sitio
+  elegido ves la fecha y hora, la **duración de la estancia**, el % de la estancia
+  con Sol y con enlace a la Tierra, un **Horizon preview** (el horizonte real con
+  el Sol y la Tierra, que se esconden detrás del terreno), una foto de la zona
+  (**Topography**) y los botones *Open Horizon view*, *Topography view* y *Back to
+  globe*.
+- **Requirements** (Sol durante la estancia, enlace con la Tierra durante la
+  estancia, pendiente en el sitio). Cada uno se puede apagar. Marcan los 6 sitios
+  (✓ verde cumple, ✕ gris excluido) y, con **Show on map**, colorean **2,500
+  celdas de zona** de 1 km alrededor del polo sur (verde cumple, gris tenue no).
+  Todo se recalcula al cambiar la fecha de llegada, la duración o un umbral. Haz
+  clic en una celda para ver sus valores. Redacción: *solo tamizaje, no
+  "seguro"*.
 
-- Cámara en primera persona, a 2 m del suelo (altura de un módulo de aterrizaje).
-  La cámara nunca se mueve de lugar; solo miras alrededor.
-- **Arrastra** para mirar alrededor; **rueda del mouse / pellizco** o
-  **− / +** para hacer zoom (campo de visión de 60° a 2°); botones
-  **Look at Sun / Look at Earth**.
-- Terreno real de LOLA hasta 200 km, con **sombras proyectadas reales**.
-- El disco del Sol y el de la Tierra a su **tamaño angular real** según Horizons.
-  La Tierra muestra su **fase real** y el lado de la Tierra que de verdad mira a
-  la Luna (imagen Blue Marble de la NASA).
-- Brújula (rumbo en grados), etiquetas "Sun"/"Earth" con "(partial)" u
-  "(hidden)", y una línea gris delgada sobre el horizonte calculado.
+**Horizon view (primera persona, desde el sitio)**
 
-**Ejemplo (historia para el pitch):** en el borde de Shackleton el Sol está
-visible el 100% de este periodo. La Tierra está visible cerca del 50%; el
-2026-11-17 a las 00:00 UTC está tapada a la mitad por una cresta (52% del disco
-visible), y la siguiente pérdida de comunicación directa es el 2026-12-01 a las
-02:34 UTC. El 2026-11-17 a las 12:00 la Tierra se ve aunque está a -0.40° de
-elevación, porque desde el borde alto el terreno baja hasta unos -1.35° en esa
-dirección; una herramienta con horizonte plano diría que está oculta.
+- **Barra izquierda**: nombre y coordenadas del sitio, fecha y hora (deslizador
+  sobre 2,161 muestras cada hora), **Sun (power)** y **Earth (direct link)**
+  (estado ●/◐/○, hora de puesta o salida al minuto, elevación, azimut, horizonte
+  del terreno ahí, fracción iluminada de la Tierra), el panel **Stay** (% de la
+  estancia con Sol y Tierra), el **resumen del periodo** y los créditos.
+- **Área principal**: cámara en primera persona a 2 m del suelo (altura del
+  módulo), solo miras alrededor. Arrastra para mirar, rueda o pellizco o **− / +**
+  para zoom (campo de visión de 60° a 2°), **Look at Sun / Look at Earth**.
+  Terreno real de LOLA con **sombras proyectadas reales**, los discos del Sol y la
+  Tierra a su **tamaño angular real** (la Tierra con su fase real y el lado que
+  mira a la Luna), una brújula y una línea gris delgada en el horizonte
+  calculado. **← Back to Orbital view** conserva la fecha.
+
+**Compartido por las dos vistas:** la fecha y hora y la duración de la estancia.
+La barra de direcciones guarda la pantalla
+(`?view=orbital|horizon&site=<id>&t=<UTC>&stay=<días>`), así que un enlace reabre
+la misma pantalla.
+
+**Ejemplos (historia para el pitch)**
+
+- Borde de Shackleton, 2026-11-17 00:00 UTC: la Tierra está a medias detrás de una
+  cresta (52% del disco visible) y la siguiente pérdida de enlace directo es el
+  2026-12-01 02:34 UTC. El 11-17 12:00 se ve incluso a -0.40° de elevación,
+  porque desde el borde alto el terreno baja a unos -1.35° ahí; una herramienta
+  de horizonte plano diría que está oculta. En los 90 días: Sol 99%, enlace con la
+  Tierra 55%.
+- Cambios pequeños de lugar importan: a 16 km de Shackleton, Connecting Ridge C2
+  pierde el Sol el 2026-11-14 a las 09:10 UTC detrás de terreno a 0.76°.
+- Llegada 2026-11-28, estancia de 6.5 días: los tres sitios del polo sur mantienen
+  el Sol el 100% de la estancia, mientras que Apollo 11, 16 y 17 solo tienen 28%,
+  40% y 17% (noche lunar), pero tienen la Tierra el 100% del tiempo.
+- Misma fecha y requisitos por defecto: cumplen 53 de las 2,500 celdas del polo
+  sur.
 
 ## 3. Cómo correrla
 
@@ -108,9 +147,13 @@ npm install
 npm run dev
 ```
 
-Abre http://localhost:5173. Todos los datos ya están en `public/data`, así que
-la app funciona **sin internet**. La primera carga lee unos 19 MB de datos de
-terreno.
+Abre la dirección que imprime Vite (http://localhost:5173). Todos los datos de los
+sitios ya están en `public/data`. La **Horizon view funciona sin internet**; la
+**Orbital view necesita internet** para los tiles de mapa de NASA Moon Trek. La app
+abre en la Orbital view (unos 4 MB de CesiumJS, que se cargan solo para esa vista).
+El terreno de un sitio (unos 19 MB en un sitio del polo sur, unos 1.3 MB en un sitio
+Apollo) se carga solo cuando se abre su Horizon view; las vistas previas del globo
+usan solo cerca de 1 MB.
 
 Otros comandos:
 
@@ -122,6 +165,12 @@ npm run preview  # sirve el build de producción
 
 Los scripts de Python solo se necesitan para **regenerar** los datos
 (ver [sección 12](#12-regenerar-los-datos)).
+
+**Publicarla.** Es un sitio estático (Vite): Vercel detecta `npm run build` y la
+carpeta de salida `dist`. Publica solo el proyecto `concorde` (no la carpeta
+`scripts`). `package.json` pide Node 22 o más nuevo. La dirección canónica y la
+vista previa para redes (título, descripción, imagen) están en `index.html` para
+`https://concordemoon.com`.
 
 ## 4. Cómo funciona
 
@@ -254,9 +303,83 @@ obtener el minuto. Si nada cambia antes de que se acaben los datos, la app dice
 | **Vite** (no Next.js) | App 3D del lado del cliente que lee archivos estáticos: no necesita renderizado en servidor ni rutas de API. Next.js solo agregaría límites de "solo cliente" y problemas de hidratación. Se puede publicar como sitio estático (Vercel/Netlify). |
 | **React 19 + TypeScript** | Contrato de datos tipado, sin `any` (lo revisa `tsc`). |
 | **Tailwind CSS 4** | Diseño rápido y consistente. |
+| **CesiumJS** | La Orbital view: globo de la Luna, imágenes en tiles que se cargan según el zoom, selección de puntos. Se carga solo para esa vista. |
 | **three.js + react-three-fiber + drei** | Control total de la cámara, shaders propios y datos sin internet. |
 | **Python** para los datos | numpy, rasterio (lee COGs remotos por partes, incluye GDAL), pyproj (matemática de proyección bien probada). El script de Horizons usa solo la librería estándar. |
 | **Archivos estáticos, sin base de datos, sin API en vivo** | Funciona sin internet; todos los cálculos se hacen antes de la demo. |
+
+### 4.8 Orbital view
+
+- **CesiumJS** (carga perezosa, su propio paquete de unos 4 MB) con el elipsoide
+  de la Luna (radio 1737.4 km) y sin terreno, así que el globo es liso. El relieve
+  solo se muestra con las capas de mapa. Por qué Cesium: carga de tiles según el
+  zoom, WMTS y obtener latitud / longitud sin escribirlo a mano.
+- **Imágenes**: tiles de NASA Moon Trek (equirectangulares, 256 px, 2 × 1 tiles en
+  el nivel 0). El mosaico de fotos LRO WAC es la base; una capa se dibuja encima.
+  La lista de capas es un registro (`src/data/layers.ts`) con, por cada producto,
+  el nivel de tile más alto real y su caja de cobertura, comprobados contra su
+  `WMTSCapabilities.xml` y con peticiones de tiles (el nivel siguiente da 404), así
+  que no se piden tiles fuera de los datos.
+- **Rendimiento**: dibujo bajo demanda, una sola vista 3D montada a la vez (el
+  globo se quita al abrir la Horizon view y al revés), solo los archivos del sitio
+  abierto en memoria, vistas previas con archivos chicos.
+- La vista previa de Topography es una foto del globo sobre la zona, tomada cuando
+  la cámara llega y los tiles están cargados.
+
+### 4.9 Sitios y sus datos
+
+- Los sitios están en `scripts/sites.py` (datos) y `src/data/sites.ts` (app), con
+  la fuente de cada coordenada. Cada sitio tiene una carpeta `public/data/<sitio>/`
+  con `sky.json`, `horizon.json` y las mallas de terreno.
+- **Sitios del polo sur** (Shackleton, Connecting Ridge C1, C2): DEM polar de LOLA
+  de 20 m, horizonte a **200 km**, tres mallas (20 m, 320 m, 640 m).
+- **Otros sitios** (Apollo 11, 16, 17): DEM global de LOLA de 118 m (USGS), leído
+  por bloques de filas, horizonte a **50 km**, mallas de 118 m, 474 m y 948 m. En
+  Apollo 11 un horizonte de 50 km es igual al de 200 km (0 de 1440 bins difieren).
+  Cerca del polo hacen falta 200 km (problema #14 de PROJECT_MEMORY), así que el
+  camino polar los conserva.
+- Sol y Tierra: una consulta a Horizons por sitio
+  (`fetch_horizons.py --site <id>`), cada hora durante 90 días.
+- Un sitio nuevo necesita los dos scripts (`--site <id>`) y una entrada en las dos
+  listas de sitios.
+
+### 4.10 Estancia y fecha de llegada
+
+La llegada es la fecha y hora elegidas; la estancia tiene una duración en días (por
+defecto 6.5, de NASA lunar site selection 2023; rango de 0.5 a 29.5). La app cuenta
+las muestras horarias del rango [llegada, llegada + estancia) con la misma regla de
+siempre (alguna parte del disco arriba del terreno). Si la estancia pasa del final de
+los datos, dice cuántos días se cuentan en realidad.
+
+### 4.11 Requisitos y mapa de zonas
+
+- **Sitios**: % de Sol y % de enlace con la Tierra de la estancia, y la pendiente en
+  el sitio (ajuste de un plano a los nodos de terreno alrededor,
+  `scripts/site_slopes.py`: base de 100 m en sitios polares, unos 355 m en Apollo; la
+  base siempre se muestra). Valores por defecto: Sol ≥ 100%, Tierra ≥ 25% (el origen
+  en NASA de este valor no está verificado), pendiente ≤ 10° (requisito de NASA
+  Artemis, escala de unos 100 m).
+- **Cuadrícula de zonas** (`scripts/build_zones.py`): un cuadro de 50 × 50 km centrado
+  en el polo sur en **celdas de 1 km** (2,500). Por celda guarda la proporción de
+  pendiente (% del área con pendiente ≤ 1…30°, base de 100 m, LOLA 20 m) y el horizonte
+  de sus **4 puntos más altos de 20 m** (separados al menos 200 m; los bordes y
+  crestas reciben más luz, Gläser et al. 2018), 360 bins de azimut, terreno de 20 m a
+  2 km, 80 m a 20 km, 160 m a 60 km y 320 m a 200 km. Unos 27 minutos, 7.6 MB.
+- **En el navegador** (`src/scene/zones.ts`): el Sol y la Tierra para cualquier punto
+  salen de `public/data/ephemeris.json` (puntos subsolar y subterrestre y distancias
+  de Horizons, cada hora), que incluye el paralaje de la Tierra (hasta 0.26°). Una
+  celda cumple Sol y Tierra si **alguno** de sus puntos cumple. Cumple la pendiente si
+  al menos el **20% de su área** está bajo el límite (valor elegido por el equipo, no
+  oficial).
+- Una celda es mucho más ancha que los mejores puntos (20 a 40 m, Gläser et al. 2018),
+  así que esto es tamizaje, no selección de sitio.
+
+### 4.12 Estado de la app y robustez
+
+El tiempo elegido y la duración de la estancia viven en `App` y se comparten entre las
+dos vistas; la barra de direcciones los refleja. TypeScript está en modo `strict`. Un
+"error boundary" muestra un mensaje en vez de una página en blanco si una vista falla
+(por ejemplo, sin WebGL).
 
 ## 5. Datos y fuentes
 
@@ -274,6 +397,17 @@ Altura del observador **2 m** (altura de los paneles solares de un módulo, como
 Gläser et al. 2018). Altitud del sitio en Horizons **0 km** sobre la esfera
 (supuesto: unos km de diferencia cambian la dirección del Sol y la Tierra de forma
 despreciable).
+
+**Agregado después de la primera versión (2026-11-14)**
+
+| Dato | Fuente | Notas |
+|---|---|---|
+| Connecting Ridge C1 y C2 | Gläser et al. 2018, Tabla 2 (a 2 m del suelo): C1 -89.4398°, 222.83° E; C2 -89.3130°, 245.98° E | La Tabla 3 lista los clusters C1-0, C1-1, C2-0, C2-1 sin coordenadas, así que no se usan. Valores leídos del texto del PDF; confirmar en el PDF. |
+| Apollo 11, 16, 17 | NSSDC *Apollo Landing Site Coordinates* (módulo lunar), Wagner et al. 2017, Icarus 283, 92-103 | Planetocéntricas, Mean Earth/Polar Axis, DE421. |
+| Terreno lejos del polo | DEM global de LOLA de 118 m (USGS Astrogeology, `Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014`) | Leído por bloques de filas, sin descarga completa. |
+| Mapas de la Orbital view | Tiles WMTS de NASA Moon Trek: mosaico LRO WAC, hillshade y hillshade en color de LOLA, pendiente LOLA/Kaguya, sombreado LOLA 5 m del polo sur, temperatura Diviner | No se encontraron los términos de uso de Moon Trek; se muestra con crédito. |
+| Sol/Tierra para cualquier punto | Tabla de Horizons de la Luna vista desde la Tierra (`ephemeris.json`) | Puntos subterrestre y subsolar y distancias. |
+| Pendiente en los sitios | Calculada de nuestros archivos de terreno (`site_slopes.json`) | La base se muestra con cada valor. |
 
 ## 6. Validación
 
@@ -293,6 +427,18 @@ Todas las pruebas son scripts que se pueden volver a correr.
 Los valores de Gläser (81.0%, 85.5%) se leyeron del texto del PDF; hay que
 confirmarlos en la Tabla 1, página 4 del paper.
 
+**Agregado después de la primera versión (2026-11-14)**
+
+| Prueba | Resultado | Script / archivo |
+|---|---|---|
+| Connecting Ridge, 20 años vs **Gläser Tabla 2** (2 m) | C1: iluminación **87.56%** vs 88.0%, visibilidad solar **91.8%** vs 92.1%. C2: **77.87%** vs 78.1%, **81.82%** vs 82.0% | `check_illumination.py --site <id>`, `data/validation/` |
+| Sol/Tierra para **cualquier punto** vs las tablas por sitio de Horizons | Dentro de **0.006°** en Shackleton, C1, C2, Apollo 11 y 17 | `fetch_ephemeris.py` |
+| Porcentajes de la estancia vs un conteo independiente (Shackleton, 6.5 días) | Llegada 14 nov: 62.8%; 28 nov: 48.1%; 30 nov: 17.3%; 2 dic: 0% (Sol 100%) | revisado con un conteo aparte en Python |
+| Horizontes de zona vs los horizontes de 20 m ya validados | Máx **0.23°**, percentil 95: 0.10° (3 sitios del polo sur) | `build_zones.py --check` |
+| Celdas de zona vs los sitios que contienen | Celda del borde de Shackleton Sol 100% / Tierra 48.7% (sitio 100% / 48%); celdas de C1 y C2 iguales a los sitios | revisado en el navegador |
+| Horizonte a 50 km vs 200 km lejos del polo | 0 de 1,440 bins difieren en Apollo 11 (un mar plano; no probado en tierras altas) | medición |
+| Datos de 90 días vs el primer mes | Las primeras 709 muestras son idénticas (0.0°) | revisado al extender |
+
 ## 7. Datos reales vs ayudas visuales
 
 **La app no tiene datos de ejemplo (dummy).** Al principio hubo datos de cielo de
@@ -311,13 +457,36 @@ También están en los créditos de la app:
 | Brillo suave alrededor del Sol | El disco en sí tiene el tamaño real. |
 | Zoom | Solo cambia el campo de visión (como binoculares); el indicador muestra el FOV y el aumento. Los cuerpos nunca se agrandan. |
 
+**Agregado después de la primera versión (2026-11-14)**
+
+| Ayuda visual | Por qué |
+|---|---|
+| Los mapas del globo son fotos y mapas de color, no mediciones | Su iluminación es parte de la imagen y no sigue la fecha. Hillshade tiene una dirección de luz fija. |
+| Celdas de zona en verde / gris | Un resumen de los requisitos para tamizar, no un mapa de seguridad. |
+| El Horizon preview dibuja el Sol y la Tierra como puntos pequeños | Es una vista rápida, sin escala (el Sol mide 0.5° y la Tierra 1.8°). |
+| Los colores de las capas no tienen escala de valores | Moon Trek no la da para estos tiles, así que no se inventa. |
+
 ## 8. Limitaciones conocidas
 
-- **Un solo sitio y un solo día lunar** (2026-11-14 a 2026-12-13). Todavía no hay
-  coordenadas personalizadas.
-- **El periodo de datos es corto.** En este periodo el Sol nunca se pone en este
-  sitio (es verano en el sur); la prueba de 20 años muestra cerca de 16% del tiempo
-  sin Sol.
+- **Sitios y periodo.** Seis sitios elegidos y 90 días (2026-11-14 a 2027-02-12).
+  Todavía no hay coordenadas personalizadas: un sitio nuevo necesita los scripts de
+  Python, porque los navegadores no pueden leer LOLA ni Horizons directamente (sin
+  CORS).
+- **Mapa de zonas.** Solo el polo sur, en un cuadro de 50 × 50 km, celdas de 1 km,
+  juzgadas en los 4 puntos más altos de cada celda. La pendiente usa una base de
+  100 m de LOLA 20 m. La regla del 20% del área y el umbral del 25% de Tierra son
+  valores del equipo, no oficiales. Lejos del polo no hay mapa de zonas.
+- **Los sitios Apollo** usan terreno de 118 m y radio de 50 km, probado contra 200 km
+  solo en Apollo 11. Sus horizontes todavía no se comparan con una fuente
+  independiente (Quickmap).
+- **La Orbital view** necesita internet para los tiles y no se pudieron encontrar sus
+  términos de uso (se muestra el crédito). La capa de fotos se ve mal en el polo sur
+  (los tiles equirectangulares se estiran ahí); Hillshade y Elevation usan el modelo
+  polar de 5 m. No hay leyendas con valores, y el mapa de temperatura nocturna se ve
+  grueso y tiene una costura.
+- **La pendiente** depende de la escala de medición; los valores con bases distintas
+  no son comparables.
+
 - **El suelo cercano se ve liso.** La resolución efectiva de LOLA cerca del sitio
   es de unos 16 m: no puede mostrar rocas ni cráteres pequeños. Es un límite de
   los datos.
@@ -361,77 +530,98 @@ También están en los créditos de la app:
 | **Etiquetas `Html` de drei** | Se perdían etiquetas con React 19 en desarrollo; se reemplazaron por etiquetas propias proyectadas. |
 | Algunos enlaces de la investigación de un compañero | Eran copias en vez de las fuentes originales (por ejemplo, un enlace de `lhorizon` en un dominio de redirección, una copia de la USGS en Mintlify, copias de la documentación de astronomy-engine). Usar las fuentes oficiales. |
 
+**Agregado después (2026-11-14)**
+
+| Opción | Estado |
+|---|---|
+| Llamar a Horizons / LOLA desde el navegador para coordenadas personalizadas | No es posible sin CORS. Haría falta un servidor pequeño (pospuesto para después del pitch). |
+| Kernels SPICE para las efemérides | No hacen falta: una tabla de Horizons más geometría coincide con Horizons a 0.006°. |
+| Tiles 3D de la Luna de Cesium | Siguen descartados. El globo usa la librería CesiumJS con tiles de Moon Trek sobre una esfera lisa. |
+| Imágenes del CGI Moon Kit para el globo | Se eligieron los tiles de Moon Trek (más nítidos, toda la Luna, misma fuente NASA). |
+
 ## 10. Siguientes pasos
 
 Prioridad para el pitch:
 
-1. Validar el horizonte contra **Quickmap / Moon Trek** en el mismo sitio.
-2. Grabar un **video de respaldo** de la demo.
-3. Preparar respuestas: por qué estos datos, qué tan precisos son, qué falta, por
-   qué es mejor que Quickmap/Horizons (una sola vista, los mismos datos para la
-   imagen y los números, todo validado).
+1. Validar los horizontes (incluidos los de Apollo) contra **Quickmap / Moon Trek** en
+   los mismos sitios.
+2. Grabar un **video de respaldo** del demo (Orbital view → sitio → Horizon view →
+   cambiar la fecha → requisitos y zonas).
+3. Revisar los umbrales con sus documentos de NASA (Tierra ≥ 25%, pendiente 10°) y
+   los términos de uso de Moon Trek.
+4. Preparar respuestas: por qué estos datos, qué tan exactos, qué falta, por qué es
+   mejor que Quickmap/Horizons (un solo lugar, mismos datos para la imagen y los
+   números, validado).
 
-Después del MVP (del reto y del brief):
+Después:
 
-- **Modo comparar**: dos sitios o dos fechas lado a lado, con la misma dirección
-  de cámara.
-- **Más sitios**: Connecting Ridge C1/C2 (Gläser et al. 2018 Tabla 1), regiones
-  candidatas de Artemis III, objetivos de CLPS; coordenadas personalizadas.
-- **Línea de tiempo** de un día lunar; periodos más largos (estaciones, el ciclo de
-  18.6 años).
-- **Gráfica 2D del horizonte** (perfil del terreno + recorridos del Sol y la
-  Tierra) con los mismos datos.
-- **Parche de terreno de 5 m** cerca de la cámara.
-- Validación contra los **mapas de visibilidad de la Tierra e iluminación de
-  PGDA** (producto 69, Mazarico et al. 2011).
-- Modo para educadores; publicarlo como sitio estático.
+- **Zonas para toda la Luna**: celdas de 1° con Sol y Tierra por geometría (sin
+  sombras de terreno, con la etiqueta que lo dice). Una pendiente global necesitaría
+  un DEM global (decisión pendiente: omitir la pendiente o usar una gruesa).
+- **Coordenadas personalizadas** con un servidor pequeño que corra el pipeline de
+  Python.
+- **Puntajes de requisitos** (deseables con pesos, presets por tipo de módulo).
+- **Dashboard** con números de impacto (horas o dinero ahorrados) a partir de la
+  investigación del equipo del proceso de hoy; sin números hasta leer esa
+  investigación.
+- **Asistente / chatbot** (está en los bocetos, sin empezar).
+- **Modo comparar** (dos sitios o fechas lado a lado), una línea de tiempo del día
+  lunar, una gráfica 2D del horizonte, celdas de zona más finas (500 m, unas 4 veces
+  más lento).
+- El plan completo por fases y sus resultados están en [`docs/PLAN.md`](docs/PLAN.md).
 
 ## 11. Estructura del proyecto
 
 ```
 concorde/
-├── README.md                 este archivo en inglés (referencia)
+├── README.md                 versión en inglés (referencia)
 ├── README.es.md              este archivo
-├── docs/PROJECT_MEMORY.md    historia completa del proyecto y decisiones (inglés)
+├── docs/PROJECT_MEMORY.md    historia completa del proyecto y sus decisiones
+├── docs/PLAN.md              plan de construcción por fases, con el resultado de cada una
 ├── reference-image.jpeg      imagen de referencia de la idea (paper externo, no se usa como dato)
-├── index.html, vite.config.ts, tsconfig*.json, package.json
+├── index.html                cabecera de la página: título, descripción, vista previa para redes, datos estructurados
+├── vite.config.ts, tsconfig*.json, package.json
 ├── public/
-│   ├── data/shackleton-rim/  sky.json, horizon.json, terrain.json, terrain_*.f32
-│   └── textures/             earth_bmng_topo_bathy_200412_2048.jpg
+│   ├── data/<sitio>/         sky.json, horizon.json, terrain.json, terrain_*.f32 (6 sitios)
+│   ├── data/zones/           south-pole-1km*.{json,bin}: celdas, horizontes, pendiente
+│   ├── data/ephemeris.json   Sol/Tierra para cualquier punto, cada hora
+│   ├── data/site_slopes.json pendiente en cada sitio
+│   ├── textures/             earth_bmng_topo_bathy_200412_2048.jpg
+│   └── og-image.jpg, favicon.svg, apple-touch-icon.png, robots.txt, sitemap.xml
 ├── data/
-│   ├── raw/                  respuestas originales de Horizons (evidencia)
-│   └── validation/           exportación de la web de Horizons, prueba de luz a 20 años
-├── scripts/                  Python: generación de datos y validación
-│   ├── fetch_horizons.py     Sol/Tierra desde Horizons -> sky.json
+│   ├── raw/                  respuestas crudas de Horizons (evidencia)
+│   └── validation/           exportación de la web de Horizons, pruebas de luz a 20 años
+├── scripts/                  Python: generación y validación de datos
+│   ├── sites.py              sitios elegidos (usa --site <id>)
+│   ├── fetch_horizons.py     Sol/Tierra de Horizons -> sky.json
 │   ├── build_terrain.py      LOLA -> horizon.json + mallas de terreno
-│   ├── compare_horizons_web.py
-│   ├── check_illumination.py
-│   ├── check_shadow_method.py
+│   ├── build_zones.py        celdas de zona alrededor del polo sur
+│   ├── fetch_ephemeris.py    Sol/Tierra para cualquier punto -> ephemeris.json
+│   ├── site_slopes.py        pendiente en cada sitio -> site_slopes.json
+│   ├── compare_horizons_web.py, check_illumination.py, check_shadow_method.py
 │   └── requirements.txt
 └── src/
-    ├── App.tsx               carga los datos, muestra carga/error, dibuja SiteView
+    ├── App.tsx               vistas, tiempo y estancia compartidos, estado en la barra de direcciones, carga perezosa
+    ├── appName.ts            nombre del proyecto arriba a la izquierda
     ├── types.ts              contrato de datos (todo tipado, sin `any`)
-    ├── data/loadSiteData.ts  capa de datos delgada: lee y valida los archivos estáticos
-    ├── scene/                lógica pura: geometría, visibilidad, tiempos, shaders
-    │   ├── constants.ts      altura del observador, ejes
-    │   ├── skyMath.ts        az/el -> dirección, tamaño del disco
-    │   ├── visibility.ts     búsqueda en el horizonte, fracción del disco, estado
-    │   ├── windows.ts        horas de salida/puesta, % visible
-    │   ├── timing.ts         tipo de las métricas de tiempo
-    │   ├── formatTime.ts     formato de UTC y duraciones
-    │   ├── terrainGrid.ts    geometría + texturas de alturas desde las mallas
-    │   ├── terrainShader.ts  sombras + sombreado lunar-Lambert (GLSL)
-    │   ├── earthOrientation.ts  polo de la Tierra / sistema del sub-observador (TRIAD)
-    │   └── viewLimits.ts     límites del zoom
-    └── components/           componentes de React (uno por tarea)
-        ├── SiteView.tsx      selección de tiempo compartida, barra lateral + vista 3D
-        ├── Sidebar.tsx, DateTimeControl.tsx, MetricsPanel.tsx,
-        │   StatusBadge.tsx, PeriodSummary.tsx, Credits.tsx
-        └── MainView.tsx      Canvas: Terrain, HorizonSilhouette, SunDisc,
-            EarthDisc, ScreenLabels, LookControls, CompassOverlay, ViewControls
+    ├── data/                 loadSiteData.ts (archivos estáticos), sites.ts, layers.ts (capas del mapa)
+    ├── state/urlState.ts     lee/escribe ?view=&site=&t=&stay=
+    ├── scene/                lógica pura
+    │   ├── visibility.ts, windows.ts, timing.ts   horizonte, salida/puesta, %
+    │   ├── stay.ts           porcentajes de la estancia
+    │   ├── requirements.ts   requisitos por sitio
+    │   ├── zones.ts          celdas de zona: Sol/Tierra para cualquier punto, requisitos
+    │   ├── timeSelection.ts, terrainInfo.ts, formatTime.ts, skyMath.ts, constants.ts, viewLimits.ts
+    │   └── terrainGrid.ts, terrainShader.ts, earthOrientation.ts   3D de la Horizon view
+    └── components/           componentes de React (cada uno con un trabajo)
+        ├── NavRail, ErrorBoundary, Placeholder
+        ├── Orbital view: MoonGlobe, LayerSelector, SitePanel, HorizonPreview,
+        │   StayPanel, RequirementsPanel, zoneLayer
+        └── Horizon view: SiteView, Sidebar, MetricsPanel, DateTimeControl, StatusBadge,
+            PeriodSummary, Credits, MainView (Terrain, SunDisc, EarthDisc, ...)
 ```
 
-Git: se trabaja en `stage`; `main` recibe lo de `stage` cuando está listo.
+Git: se trabaja en `stage`; `main` recibe `stage` cuando está lista.
 
 ## 12. Regenerar los datos
 
@@ -440,12 +630,29 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r scripts/requirements.txt
 ```
 
+Para un sitio (por defecto `shackleton-rim`; los ids están en `scripts/sites.py`, por
+ejemplo `connecting-ridge-c1`, `apollo-17`):
+
 ```bash
-python3 scripts/fetch_horizons.py
+python3 scripts/fetch_horizons.py --site apollo-17
 ```
 
 ```bash
-.venv/bin/python scripts/build_terrain.py
+.venv/bin/python scripts/build_terrain.py --site apollo-17
+```
+
+Datos compartidos y mapa de zonas:
+
+```bash
+python3 scripts/fetch_ephemeris.py
+```
+
+```bash
+.venv/bin/python scripts/build_zones.py
+```
+
+```bash
+.venv/bin/python scripts/site_slopes.py
 ```
 
 Validación:
@@ -455,16 +662,18 @@ python3 scripts/compare_horizons_web.py
 ```
 
 ```bash
-.venv/bin/python scripts/check_illumination.py
+.venv/bin/python scripts/check_illumination.py --site connecting-ridge-c1
 ```
 
 ```bash
 .venv/bin/python scripts/check_shadow_method.py
 ```
 
-Para cambiar el sitio o el periodo, edita `SITE`, `START_UTC` y `STOP_UTC` en
-`fetch_horizons.py` y las constantes del sitio en `build_terrain.py`, y luego
-corre los dos.
+Para cambiar el periodo, edita `START_UTC` y `STOP_UTC` en `fetch_horizons.py` y
+`fetch_ephemeris.py` y córrelos para cada sitio. Para agregar un sitio, agrégalo a
+`scripts/sites.py` y a `src/data/sites.ts`, y corre los dos comandos del sitio.
+`build_zones.py` tarda unos 27 minutos (agrega `--cells 20` para medirlo y `--check`
+para compararlo con los horizontes de los sitios).
 
 **Error de SSL en macOS** (`CERTIFICATE_VERIFY_FAILED`, común con el instalador
 de python.org): exporta los certificados de confianza de macOS y úsalos en
@@ -489,6 +698,11 @@ partes seguidas; los scripts de terreno reintentan solos.
 - Método del horizonte: Mazarico et al. 2011. Lunar-Lambert: McEwen 1991.
 - Imagen de la Tierra: NASA Earth Observatory, Blue Marble Next Generation.
 - USGS Gazetteer of Planetary Nomenclature.
+- Mapas de la Orbital view: NASA Moon Trek (mosaico LRO WAC; hillshade, hillshade en
+  color y pendiente de LOLA con Kaguya; modelo LOLA de 5 m del polo sur; temperatura
+  Diviner). CesiumJS (Apache 2.0).
+- DEM global de LOLA de 118 m: USGS Astrogeology. Coordenadas de Apollo: NASA NSSDC,
+  Wagner et al. 2017.
 - Imagen de referencia de la idea: un paper externo que dio Vanessa, usado solo
   como inspiración visual (no como dato, y no es parte de este reto).
 

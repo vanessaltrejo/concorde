@@ -3,17 +3,27 @@
 **English** · [Español](README.es.md)
 (If the two versions ever differ, this English file is the reference.)
 
-A first-person 3D view from a landing site at the Moon's south pole. It shows
-where the **Sun** (power) and the **Earth** (direct communication) are in the
-sky at any hour, and whether the **real terrain** hides them.
+A web tool to **compare Moon landing sites and dates**. The **Orbital view**
+is a 3D Moon globe with NASA maps where you pick a site or an area. The
+**Horizon view** puts you on the surface of that site and shows where the
+**Sun** (power) and the **Earth** (direct communication) are in the sky at any
+hour, and whether the **real terrain** hides them. Web address:
+**concordemoon.com**.
 
 Built for **NASA Space Apps Challenge 2026**, challenge *"Lunar Landing Site
-Simulator"*. Current site: **Shackleton crater rim**. Current period: one lunar
-day, **2026-11-14 00:00 to 2026-12-13 12:00 UTC**, hourly.
+Simulator"*. Current sites: **Shackleton rim, Connecting Ridge C1 and C2** (south
+pole) and **Apollo 11, 16 and 17**. Current period: **90 days, 2026-11-14 to
+2027-02-12 UTC**, hourly.
 
 > **Planning aid, not flight grade.** Every number comes from public NASA data
 > and is checked against an independent source (see [Validation](#6-validation)),
 > but this is a hackathon tool, not mission software.
+
+**Status (2026-11-14).** Working: Orbital view with 5 map layers, 6 sites,
+arrival date and stay length, requirements with a zone map around the south
+pole, Horizon view with real shadows. Not built yet: zones for the whole Moon,
+custom coordinates, the Dashboard with impact numbers, the assistant/chatbot
+(see [Next steps](#10-next-steps)).
 
 The full history of the project (every decision, problem, fix, discarded idea
 and correction) is in [`docs/PROJECT_MEMORY.md`](docs/PROJECT_MEMORY.md).
@@ -52,45 +62,73 @@ generation** and **direct-to-Earth communication**. Most items in the challenge
 are optional ("you may consider"). Judging criteria to keep in mind: Impact,
 Creativity, **Validity**, Relevance, Presentation.
 
-**Our focus:** one site done right. A first-person view where what you *see*
-(terrain hiding the Earth) and what the numbers *say* come from the same NASA
-data, and every number is validated.
+**Our focus:** a few sites done right, and fast comparison. A first-person view
+where what you *see* (terrain hiding the Earth) and what the numbers *say* come
+from the same NASA data, with a map to pick and compare sites and dates, and
+every number validated.
 
 ## 2. What the app does
 
-**Left sidebar (white)**
+A bar on the left switches between the **Orbital view**, the **Horizon view**
+and a **Dashboard** placeholder. The app opens on the Orbital view. The project
+name is at the top-left of each view.
 
-- **Site**: name and coordinates (Shackleton rim, -89.7849°, 203.97° E).
-- **Date and time (UTC)**: date field plus a slider over 709 hourly samples.
-- **Sun (power)** and **Earth (direct link)**, each with:
-  - **Status**: ● Visible, ◐ Partly hidden (with % of the disc visible), ○ Hidden.
-  - **Sunset/Earthset in** (or **rise in** when hidden): time left and exact UTC
-    time, interpolated to the minute.
-  - **Elevation**, **Azimuth**, and the **Terrain horizon there** (how high the
-    terrain is in that direction, so the status is easy to understand).
-  - Earth only: **Lit fraction** (Earth phase seen from the site).
-- **Period summary**: % of the period with Sun and with Earth link.
-- **Credits** and the "Planning aid, not flight grade" note.
+**Orbital view (the Moon globe)**
 
-**Main area (3D view)**
+- A smooth 3D Moon sphere (CesiumJS) with NASA Moon Trek imagery. It loads only
+  the map tiles needed for the current zoom, so it needs internet. Click anywhere
+  to read latitude and longitude (degrees east, 0 to 360).
+- **Map layer**, one at a time: Image (LRO photo mosaic), Hillshade, Elevation,
+  Slope and Temperature (night, max, min). Each layer card gives the source, the
+  coverage and its limits. There are no value legends, because Moon Trek gives
+  none for these tiles. Near the south pole, Hillshade and Elevation add the LOLA
+  5 m south pole model.
+- **Site** menu (South pole: Shackleton rim, Connecting Ridge C1, C2. Apollo
+  landing sites: 11, 16, 17) or click a marker: the camera flies there. For the
+  selected site you get the date and time, the **stay length**, the % of the
+  stay with Sun and with Earth link, a **Horizon preview** (the real horizon
+  with the Sun and Earth, which hide behind terrain), a **Topography** snapshot
+  of the zone, and the buttons *Open Horizon view*, *Topography view* and *Back
+  to globe*.
+- **Requirements** (Sun during the stay, Earth link during the stay, slope at
+  the site). Each can be switched off. They mark the 6 sites (green ✓ meets,
+  gray ✕ excluded) and, with **Show on map**, color **2,500 zone cells** of 1 km
+  around the south pole (green meets, faint gray does not). Everything is
+  recalculated when you change the arrival date, the stay length or a threshold.
+  Click a cell for its values. Wording: *screening only, not "safe"*.
 
-- First-person camera, 2 m above the ground (lander height). The camera never
-  moves; you only look around.
-- **Drag** to look around, **scroll / pinch** or **− / +** to zoom
-  (field of view 60° down to 2°), **Look at Sun / Look at Earth** buttons.
-- Real terrain from LOLA out to 200 km, with **real cast shadows**.
-- The Sun disc and the Earth disc at their **real angular size** from Horizons.
-  The Earth shows its **real phase** and the side of the Earth that really
-  faces the Moon (NASA Blue Marble image).
-- Compass (heading in degrees), labels "Sun"/"Earth" with "(partial)" or
-  "(hidden)", a thin gray line on the computed horizon.
+**Horizon view (first person, from the site)**
 
-**Example (pitch story):** at Shackleton rim the Sun is visible 100% of this
-period. The Earth is visible about 50% of it; on 2026-11-17 00:00 UTC it is
-half hidden behind a ridge (52% of the disc visible), and the next loss of
-direct link is on 2026-12-01 02:34 UTC. On 2026-11-17 12:00 the Earth is visible
-even at -0.40° elevation, because from the high rim the terrain drops to about
--1.35° in that direction; a flat-horizon tool would call it hidden.
+- **Left sidebar**: site name and coordinates, date and time (slider over 2,161
+  hourly samples), **Sun (power)** and **Earth (direct link)** (status ●/◐/○,
+  set or rise time to the minute, elevation, azimuth, terrain horizon there,
+  Earth lit fraction), the **Stay** panel (% of the stay with Sun and Earth),
+  the **period summary** and the credits.
+- **Main area**: first-person camera 2 m above the ground (lander height), you
+  only look around. Drag to look, scroll / pinch or **− / +** to zoom (field of
+  view 60° down to 2°), **Look at Sun / Look at Earth**. Real LOLA terrain with
+  **real cast shadows**, the Sun and Earth discs at their **real angular size**
+  (the Earth with its real phase and the side that faces the Moon), a compass
+  and a thin gray line on the computed horizon. **← Back to Orbital view** keeps
+  the date.
+
+**Shared by both views:** the date and time and the stay length. The address
+bar keeps the screen (`?view=orbital|horizon&site=<id>&t=<UTC>&stay=<days>`), so
+a link reopens the same screen.
+
+**Examples (pitch story)**
+
+- Shackleton rim, 2026-11-17 00:00 UTC: the Earth is half hidden behind a ridge
+  (52% of the disc visible) and the next loss of direct link is on 2026-12-01
+  02:34 UTC. At 11-17 12:00 it is visible even at -0.40° elevation, because from
+  the high rim the terrain drops to about -1.35° there; a flat-horizon tool would
+  call it hidden. Over the 90 days: Sun 99%, Earth link 55%.
+- Small changes in place matter: 16 km from Shackleton, Connecting Ridge C2 loses
+  the Sun on 2026-11-14 at 09:10 UTC behind terrain at 0.76°.
+- Arrival 2026-11-28, 6.5 day stay: the three south pole sites keep the Sun 100%
+  of the stay, while Apollo 11, 16 and 17 get only 28%, 40% and 17% (lunar
+  night), but have the Earth 100% of the time.
+- Same date and default requirements: 53 of the 2,500 south pole cells meet them.
 
 ## 3. Run it
 
@@ -101,19 +139,29 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. All data is already in `public/data`, so the app
-works **offline**. The first load reads about 19 MB of terrain data.
+Open the address Vite prints (http://localhost:5173). All site data is already
+in `public/data`. The **Horizon view works offline**; the **Orbital view needs
+internet** for the NASA Moon Trek map tiles. The app opens on the Orbital view
+(about 4 MB of CesiumJS, loaded only for that view). The terrain of a site
+(about 19 MB for a south pole site, about 1.3 MB for an Apollo site) is loaded
+only when its Horizon view opens; the previews on the globe use only about 1 MB.
 
 Other commands:
 
 ```bash
-npm run build    # type check (no `any` allowed) + production build in dist/
+npm run build    # strict type check (no `any` allowed) + production build in dist/
 npm run lint     # oxlint
 npm run preview  # serve the production build
 ```
 
 The Python scripts are only needed to **regenerate** data
 (see [section 12](#12-regenerate-the-data)).
+
+**Deploy.** It is a static site (Vite): Vercel detects `npm run build` and the
+output folder `dist`. Deploy only the `concorde` project (not the `scripts`
+folder). `package.json` asks for Node 22 or newer. The canonical address and the
+social preview (title, description, image) are in `index.html` for
+`https://concordemoon.com`.
 
 ## 4. How it works
 
@@ -239,9 +287,80 @@ data ends, the app says "> X (end of data)".
 | **Vite** (not Next.js) | Client-side 3D app reading static files: no server rendering or API routes needed. Next.js would only add client-only boundaries and hydration issues. Static deploy (Vercel/Netlify). |
 | **React 19 + TypeScript** | Typed data contract, no `any` (enforced by `tsc`). |
 | **Tailwind CSS 4** | Fast, consistent layout. |
-| **three.js + react-three-fiber + drei** | Full control of the camera, custom shaders and offline data. |
+| **three.js + react-three-fiber + drei** | Full control of the camera, custom shaders and offline data (Horizon view). |
+| **CesiumJS** | The Orbital view: Moon globe, tiled imagery loaded by zoom, picking. Loaded only for that view. |
 | **Python** for data | numpy, rasterio (reads remote COGs by parts, includes GDAL), pyproj (well-tested map projection math). The Horizons script uses only the standard library. |
-| **Static files, no database, no live API** | Works offline; all math is done before the demo. |
+| **Static files, no database, no live API** | All site math is done before the demo (the Horizon view works offline; the Orbital view needs internet for its map tiles). |
+
+### 4.8 Orbital view
+
+- **CesiumJS** (loaded lazily, its own chunk of about 4 MB) with the Moon
+  ellipsoid (radius 1737.4 km) and no terrain, so the globe is smooth. Relief is
+  shown only through the map layers. Why Cesium: tile loading by zoom, WMTS and
+  picking latitude / longitude without writing it by hand.
+- **Imagery**: NASA Moon Trek tiles (equirectangular, 256 px, 2 × 1 tiles at level
+  0). The LRO WAC photo mosaic is the base; one layer is drawn over it. The layer
+  list is a registry (`src/data/layers.ts`) with, for every product, the real
+  highest tile level and its coverage box, checked against its
+  `WMTSCapabilities.xml` and with tile requests (the next level returns 404), so
+  no tiles are requested outside the data.
+- **Performance**: render on demand, one 3D view mounted at a time (the globe is
+  removed when the Horizon view opens, and the other way round), only the open
+  site's files in memory, previews from small files.
+- The Topography preview is a snapshot of the globe over the zone, taken when the
+  camera arrives and the tiles are loaded.
+
+### 4.9 Sites and their data
+
+- Sites are listed in `scripts/sites.py` (data) and `src/data/sites.ts` (app),
+  with the source of each coordinate. Every site has a folder
+  `public/data/<site>/` with `sky.json`, `horizon.json` and the terrain grids.
+- **South pole sites** (Shackleton rim, Connecting Ridge C1, C2): LOLA 20 m
+  polar DEM, horizon to **200 km**, three grids (20 m, 320 m, 640 m).
+- **Other sites** (Apollo 11, 16, 17): the LOLA 118 m global DEM (USGS), read in
+  chunks of rows, horizon to **50 km**, grids of 118 m, 474 m and 948 m. At Apollo
+  11 a 50 km horizon equals the 200 km one (0 of 1440 bins differ). Near the pole
+  200 km is needed (PROJECT_MEMORY problem #14), so the polar path keeps it.
+- Sun and Earth: one Horizons request per site (`fetch_horizons.py --site <id>`),
+  hourly for 90 days.
+- A new site needs both scripts (`--site <id>`) and an entry in the two site
+  lists.
+
+### 4.10 Stay and arrival date
+
+The arrival is the selected date and time; the stay has a length in days
+(default 6.5, from NASA lunar site selection 2023; range 0.5 to 29.5). The app
+counts the hourly samples in the range [arrival, arrival + stay) with the same
+rule as everywhere (some part of the disc above the terrain). If the stay runs
+past the end of the data it says how many days are really counted.
+
+### 4.11 Requirements and the zone map
+
+- **Sites**: Sun % and Earth link % of the stay, and the slope at the site (plane
+  fit to the terrain nodes around it, `scripts/site_slopes.py`: 100 m baseline for
+  polar sites, about 355 m for Apollo; the baseline is always shown). Defaults:
+  Sun ≥ 100%, Earth ≥ 25% (the NASA origin of this value is not verified), slope
+  ≤ 10° (NASA Artemis lander requirement, about 100 m scale).
+- **Zone grid** (`scripts/build_zones.py`): a 50 × 50 km box centered on the south
+  pole in **1 km cells** (2,500). Per cell it stores the slope share (% of the
+  cell area with slope ≤ 1…30°, 100 m baseline, LOLA 20 m) and the horizon of its
+  **4 highest 20 m spots** (at least 200 m apart; rims and ridges get the most
+  light, Gläser et al. 2018), 360 azimuth bins, terrain 20 m to 2 km, 80 m to 20
+  km, 160 m to 60 km and 320 m to 200 km. About 27 minutes, 7.6 MB.
+- **In the browser** (`src/scene/zones.ts`): Sun and Earth for any point come
+  from `public/data/ephemeris.json` (sub-solar and sub-Earth points and
+  distances from Horizons, hourly), which includes the Earth's parallax (up to
+  0.26°). A cell meets Sun and Earth if **any** of its spots does. It meets the
+  slope requirement if at least **20% of its area** is under the limit (a value
+  chosen by the team, not an official one).
+- A cell is much wider than the best spots (20 to 40 m, Gläser et al. 2018), so
+  this is screening, not site selection.
+
+### 4.12 App state and robustness
+
+The selected time and the stay length live in `App` and are shared by both views;
+the address bar mirrors them. TypeScript is `strict`. An error boundary shows a
+message instead of a blank page if a view fails (for example no WebGL).
 
 ## 5. Data and sources
 
@@ -258,6 +377,17 @@ data ends, the app says "> X (end of data)".
 Observer height **2 m** (lander solar panel height, as in Gläser et al. 2018).
 Horizons site altitude **0 km** above the sphere (assumption: a few km change the
 Sun/Earth direction by a negligible amount).
+
+**Added after the first version (2026-11-14)**
+
+| Data | Source | Notes |
+|---|---|---|
+| Connecting Ridge C1 and C2 | Gläser et al. 2018, Table 2 (2 m above ground): C1 -89.4398°, 222.83° E; C2 -89.3130°, 245.98° E | Table 3 lists clusters C1-0, C1-1, C2-0, C2-1 without coordinates, so they are not used. Values read from the PDF text; confirm in the PDF. |
+| Apollo 11, 16, 17 | NSSDC *Apollo Landing Site Coordinates* (Lunar Module), Wagner et al. 2017, Icarus 283, 92-103 | Planetocentric, Mean Earth/Polar Axis, DE421. |
+| Terrain away from the pole | LOLA global DEM 118 m (USGS Astrogeology, `Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014`) | Read in chunks of rows, no full download. |
+| Orbital view maps | NASA Moon Trek WMTS tiles: LRO WAC mosaic, LOLA hillshade and colour hillshade, LOLA/Kaguya slope, LOLA 5 m south pole shade, Diviner temperature | Terms of use for Moon Trek not found; shown with a credit. |
+| Sun/Earth for any point | Horizons table of the Moon seen from Earth (`ephemeris.json`) | Sub-Earth and sub-solar points and distances. |
+| Slope at the sites | Computed from our terrain files (`site_slopes.json`) | Baseline shown with each value. |
 
 ## 6. Validation
 
@@ -277,6 +407,18 @@ All checks are scripts you can rerun.
 The Gläser values (81.0%, 85.5%) were read from the PDF text; check them against
 Table 1 on page 4 of the paper.
 
+**Added after the first version (2026-11-14)**
+
+| Check | Result | Script / file |
+|---|---|---|
+| Connecting Ridge, 20 years vs **Gläser Table 2** (2 m) | C1: illumination **87.56%** vs 88.0%, solar visibility **91.8%** vs 92.1%. C2: **77.87%** vs 78.1%, **81.82%** vs 82.0% | `check_illumination.py --site <id>`, `data/validation/` |
+| Sun/Earth for **any point** vs Horizons' own per-site tables | Within **0.006°** at Shackleton, C1, C2, Apollo 11 and 17 | `fetch_ephemeris.py` |
+| Stay percentages vs an independent count (Shackleton, 6.5 days) | Arrival Nov 14: 62.8%; Nov 28: 48.1%; Nov 30: 17.3%; Dec 2: 0% (Sun 100%) | checked with a separate Python count |
+| Zone horizons vs the validated 20 m site horizons | Max **0.23°**, 95th percentile 0.10° (3 south pole sites) | `build_zones.py --check` |
+| Zone cells vs the sites they contain | Shackleton rim cell Sun 100% / Earth 48.7% (site 100% / 48%); C1 and C2 cells same as the sites | checked in the browser |
+| 50 km horizon vs 200 km away from the pole | 0 of 1,440 bins differ at Apollo 11 (a flat mare site; not tested in highlands) | measurement |
+| 90-day data vs the first month | The first 709 samples are identical (0.0°) | checked when extended |
+
 ## 7. Real data vs visual aids
 
 **There is no dummy data in the app.** Dummy sky data and a fake terrain were
@@ -295,12 +437,35 @@ They are listed in the app credits too:
 | Soft glow around the Sun | The disc itself has the real size. |
 | Zoom | Only changes the field of view (like binoculars); the indicator shows FOV and magnification. Bodies are never enlarged. |
 
+**Added after the first version (2026-11-14)**
+
+| Visual aid | Why |
+|---|---|
+| Globe maps are photos and colour maps, not measurements | Their lighting is part of the picture and does not follow the date. Hillshade has a fixed light direction. |
+| Zone cells drawn green / gray | A summary of the requirements for screening, not a safety map. |
+| Horizon preview draws the Sun and Earth as small dots | It is a quick look, not to scale (the Sun is 0.5° wide, the Earth 1.8°). |
+| Map layer colours have no value scale | Moon Trek gives none for these tiles, so none is invented. |
+
 ## 8. Known limits
 
-- **One site and one lunar day** (2026-11-14 to 2026-12-13). No custom
-  coordinates yet.
-- **Data period is short.** In this period the Sun never sets at this site (it
-  is southern summer); the 20-year check shows about 16% of the time with no Sun.
+- **Sites and period.** Six curated sites and 90 days (2026-11-14 to
+  2027-02-12). No custom coordinates yet: a new site needs the Python scripts,
+  because browsers cannot read LOLA or Horizons directly (no CORS).
+- **Zone map.** Only the south pole, in a 50 × 50 km box, 1 km cells, judged at
+  the 4 highest spots of each cell. Slope uses a 100 m baseline from LOLA 20 m.
+  The 20% area rule and the 25% Earth threshold are team values, not official.
+  Away from the pole there is no zone map.
+- **Apollo sites** use 118 m terrain and a 50 km radius, tested against 200 km
+  at Apollo 11 only. Their horizons are not compared with an independent source
+  yet (Quickmap).
+- **Orbital view** needs internet for the map tiles and its terms of use could
+  not be found (credit shown). The photo layer looks poor at the south pole
+  (equirectangular tiles stretch there); Hillshade and Elevation use the 5 m
+  polar model instead. There are no value legends, and the night temperature map
+  has a coarse look and a seam.
+- **Slope** depends on the scale of measurement; values with different baselines
+  are not comparable.
+
 - **Near ground looks smooth.** LOLA's effective resolution near the site is
   about 16 m: it cannot show rocks or small craters. This is a data limit.
 - **Terrain beyond 200 km is ignored** (horizon and shadows).
@@ -328,7 +493,7 @@ They are listed in the app credits too:
 |---|---|
 | **Cesium Moon 3D Tiles** | Looks great, but uses a different terrain (a reported ~2.5 km offset vs LOLA, unverified) so the view could contradict our validated numbers; imagery has baked-in shadows that do not move with the date; needs internet and a Cesium ion token at demo time; would mean rewriting the 3D view. Could become a separate globe view later. |
 | **Next.js** | No server features needed (see 4.7). |
-| **Live API calls from the browser** | Demo must work offline; Horizons CORS not documented. |
+| **Live API calls from the browser** | Not possible: Horizons and LOLA send no CORS header (checked 2026-11-14). The demo also needs to be reliable. |
 | **Downloading the 5 m mosaic (3.3 GB)** | Not needed: the 20 m COG is read by parts. A 5 m patch near the camera is possible later (that file is also tiled). |
 | **240 m data only (old "Plan B")** | Coarse terrain overestimates sunlight (Gläser et al. 2018) and good spots are only 20–40 m wide. |
 | **three.js shadow maps** | Unreliable with the Sun 1–2° above the horizon; our shader uses the horizon method instead. |
@@ -340,26 +505,41 @@ They are listed in the app credits too:
 | **drei `Html` labels** | Lost labels with React 19 in development; replaced by our own projected labels. |
 | Some links in a teammate's research doc | Mirrors instead of originals (e.g. an `lhorizon` link on a redirect domain, a Mintlify copy of USGS, copies of astronomy-engine docs). Use the official sources. |
 
+**Added later (2026-11-14)**
+
+| Option | Status |
+|---|---|
+| Browser calls to Horizons / LOLA for custom coordinates | Not possible without CORS. A small server would be needed (postponed until after the pitch). |
+| SPICE kernels for the ephemeris | Not needed: one Horizons table plus geometry matches Horizons within 0.006°. |
+| Cesium Moon 3D tiles | Still discarded. The globe uses the CesiumJS library with Moon Trek tiles on a smooth sphere. |
+| CGI Moon Kit images for the globe | Moon Trek tiles were chosen (sharper, whole Moon, same NASA source). |
+
 ## 10. Next steps
 
 Priority for the pitch:
 
-1. Validate the horizon against **Quickmap / Moon Trek** at the same site.
-2. Record a **backup video** of the demo.
-3. Prepare answers: why this data, how accurate, what is missing, why better
-   than Quickmap/Horizons (one view, same data for picture and numbers, validated).
+1. Validate the horizons (including Apollo) against **Quickmap / Moon Trek** at the
+   same sites.
+2. Record a **backup video** of the demo (Orbital view → site → Horizon view → change
+   the date → requirements and zones).
+3. Check the thresholds with their NASA documents (Earth ≥ 25%, slope 10°) and the
+   Moon Trek terms of use.
+4. Prepare answers: why this data, how accurate, what is missing, why better than
+   Quickmap/Horizons (one place, same data for picture and numbers, validated).
 
-After the MVP (from the challenge and the brief):
+After that:
 
-- **Compare mode**: two sites or two dates side by side, same camera direction.
-- **More sites**: Connecting Ridge C1/C2 (Gläser et al. 2018 Table 1), Artemis
-  III candidate regions, CLPS targets; custom coordinates.
-- **Timeline** of a lunar day; longer periods (seasons, the 18.6-year cycle).
-- **2D horizon chart** (terrain profile + Sun/Earth paths) from the same data.
-- **5 m terrain patch** near the camera.
-- Validation against the **PGDA Earth visibility and illumination maps**
-  (product 69, Mazarico et al. 2011).
-- Educator mode; deploy as a static site.
+- **Zones for the whole Moon**: cells of 1° with Sun and Earth from geometry (no
+  terrain shadows, labelled as such). A global slope would need a global DEM
+  (decision pending: skip slope or use a coarse one).
+- **Custom coordinates** with a small server that runs the Python pipeline.
+- **Requirement scores** (nice-to-have with weights, presets for lander types).
+- **Dashboard** with impact numbers (hours or money saved) from the team's research of
+  today's process; no numbers until that research is read.
+- **Assistant / chatbot** (in the sketches, not started).
+- **Compare mode** (two sites or dates side by side), a timeline of the lunar day,
+  a 2D horizon chart, finer zone cells (500 m, about 4 times slower).
+- The full plan by phases and its results are in [`docs/PLAN.md`](docs/PLAN.md).
 
 ## 11. Project structure
 
@@ -368,42 +548,48 @@ concorde/
 ├── README.md                 this file (reference)
 ├── README.es.md              Spanish version of this file
 ├── docs/PROJECT_MEMORY.md    full project history and decisions
+├── docs/PLAN.md              build plan by phases, with each phase's result
 ├── reference-image.jpeg      reference image from the idea (external paper, not used as data)
-├── index.html, vite.config.ts, tsconfig*.json, package.json
+├── index.html                page head: title, description, social preview, structured data
+├── vite.config.ts, tsconfig*.json, package.json
 ├── public/
-│   ├── data/shackleton-rim/  sky.json, horizon.json, terrain.json, terrain_*.f32
-│   └── textures/             earth_bmng_topo_bathy_200412_2048.jpg
+│   ├── data/<site>/          sky.json, horizon.json, terrain.json, terrain_*.f32 (6 sites)
+│   ├── data/zones/           south-pole-1km*.{json,bin}: zone cells, horizons, slope
+│   ├── data/ephemeris.json   Sun/Earth for any point, hourly
+│   ├── data/site_slopes.json slope at each site
+│   ├── textures/             earth_bmng_topo_bathy_200412_2048.jpg
+│   └── og-image.jpg, favicon.svg, apple-touch-icon.png, robots.txt, sitemap.xml
 ├── data/
 │   ├── raw/                  raw Horizons replies (evidence)
-│   └── validation/           Horizons web export, 20-year illumination check
+│   └── validation/           Horizons web export, 20-year illumination checks
 ├── scripts/                  Python: data generation and validation
+│   ├── sites.py              curated sites (use --site <id>)
 │   ├── fetch_horizons.py     Sun/Earth from Horizons -> sky.json
 │   ├── build_terrain.py      LOLA -> horizon.json + terrain grids
-│   ├── compare_horizons_web.py
-│   ├── check_illumination.py
-│   ├── check_shadow_method.py
+│   ├── build_zones.py        zone cells around the south pole
+│   ├── fetch_ephemeris.py    Sun/Earth for any point -> ephemeris.json
+│   ├── site_slopes.py        slope at each site -> site_slopes.json
+│   ├── compare_horizons_web.py, check_illumination.py, check_shadow_method.py
 │   └── requirements.txt
 └── src/
-    ├── App.tsx               loads data, shows loading/error, renders SiteView
+    ├── App.tsx               views, shared time and stay, address bar state, lazy loading
+    ├── appName.ts            project name shown at the top-left
     ├── types.ts              data contract (all typed, no `any`)
-    ├── data/loadSiteData.ts  thin data layer: fetch + validate static files
-    ├── scene/                pure logic: geometry, visibility, timing, shaders
-    │   ├── constants.ts      observer height, axes
-    │   ├── skyMath.ts        az/el -> direction, disc size
-    │   ├── visibility.ts     horizon lookup, disc fraction, state
-    │   ├── windows.ts        rise/set times, % visible
-    │   ├── timing.ts         timing metrics type
-    │   ├── formatTime.ts     UTC and duration formatting
-    │   ├── terrainGrid.ts    geometry + height textures from grids
-    │   ├── terrainShader.ts  shadows + lunar-Lambert shading (GLSL)
-    │   ├── earthOrientation.ts  Earth pole / sub-observer frame (TRIAD)
-    │   └── viewLimits.ts     zoom limits
+    ├── data/                 loadSiteData.ts (static files), sites.ts, layers.ts (map layers)
+    ├── state/urlState.ts     read/write ?view=&site=&t=&stay=
+    ├── scene/                pure logic
+    │   ├── visibility.ts, windows.ts, timing.ts   horizon lookup, rise/set, %
+    │   ├── stay.ts           stay percentages
+    │   ├── requirements.ts   site requirements
+    │   ├── zones.ts          zone cells: Sun/Earth for any point, requirements
+    │   ├── timeSelection.ts, terrainInfo.ts, formatTime.ts, skyMath.ts, constants.ts, viewLimits.ts
+    │   └── terrainGrid.ts, terrainShader.ts, earthOrientation.ts   Horizon view 3D
     └── components/           React components (one job each)
-        ├── SiteView.tsx      shared time selection, sidebar + 3D view
-        ├── Sidebar.tsx, DateTimeControl.tsx, MetricsPanel.tsx,
-        │   StatusBadge.tsx, PeriodSummary.tsx, Credits.tsx
-        └── MainView.tsx      Canvas: Terrain, HorizonSilhouette, SunDisc,
-            EarthDisc, ScreenLabels, LookControls, CompassOverlay, ViewControls
+        ├── NavRail, ErrorBoundary, Placeholder
+        ├── Orbital view: MoonGlobe, LayerSelector, SitePanel, HorizonPreview,
+        │   StayPanel, RequirementsPanel, zoneLayer
+        └── Horizon view: SiteView, Sidebar, MetricsPanel, DateTimeControl, StatusBadge,
+            PeriodSummary, Credits, MainView (Terrain, SunDisc, EarthDisc, ...)
 ```
 
 Git: work happens on `stage`; `main` gets `stage` when it is ready.
@@ -415,12 +601,29 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r scripts/requirements.txt
 ```
 
+For a site (default `shackleton-rim`; ids are in `scripts/sites.py`, e.g.
+`connecting-ridge-c1`, `apollo-17`):
+
 ```bash
-python3 scripts/fetch_horizons.py
+python3 scripts/fetch_horizons.py --site apollo-17
 ```
 
 ```bash
-.venv/bin/python scripts/build_terrain.py
+.venv/bin/python scripts/build_terrain.py --site apollo-17
+```
+
+Shared data and the zone map:
+
+```bash
+python3 scripts/fetch_ephemeris.py
+```
+
+```bash
+.venv/bin/python scripts/build_zones.py
+```
+
+```bash
+.venv/bin/python scripts/site_slopes.py
 ```
 
 Validation:
@@ -430,15 +633,18 @@ python3 scripts/compare_horizons_web.py
 ```
 
 ```bash
-.venv/bin/python scripts/check_illumination.py
+.venv/bin/python scripts/check_illumination.py --site connecting-ridge-c1
 ```
 
 ```bash
 .venv/bin/python scripts/check_shadow_method.py
 ```
 
-To change the site or period, edit `SITE`, `START_UTC` and `STOP_UTC` in
-`fetch_horizons.py` and the site constants in `build_terrain.py`, then run both.
+To change the period, edit `START_UTC` and `STOP_UTC` in `fetch_horizons.py` and
+`fetch_ephemeris.py`, then run them for every site. To add a site, add it to
+`scripts/sites.py` and `src/data/sites.ts`, then run the two site commands.
+`build_zones.py` takes about 27 minutes (add `--cells 20` to time it,
+`--check` to compare it with the site horizons).
 
 **SSL error on macOS** (`CERTIFICATE_VERIFY_FAILED`, common with the python.org
 installer): export the macOS trusted certificates and point Python/GDAL to them
@@ -463,6 +669,11 @@ terrain scripts retry automatically.
 - Horizon method: Mazarico et al. 2011. Lunar-Lambert: McEwen 1991.
 - Earth image: NASA Earth Observatory, Blue Marble Next Generation.
 - USGS Gazetteer of Planetary Nomenclature.
+- Orbital view maps: NASA Moon Trek (LRO WAC mosaic; LOLA hillshade, colour
+  hillshade and slope with Kaguya; LOLA 5 m south pole model; Diviner
+  temperature). CesiumJS (Apache 2.0).
+- LOLA global DEM 118 m: USGS Astrogeology. Apollo coordinates: NASA NSSDC, Wagner
+  et al. 2017.
 - Reference image of the idea: an external paper Vanessa provided, used only as
   visual inspiration (not data, not part of this challenge).
 
