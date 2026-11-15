@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type TabId = 'orbital' | 'horizon' | 'dashboard' | 'compare'
+export type TabId = 'orbital' | 'horizon' | 'dashboard' | 'compare' | 'games' | 'references'
 
 type Tab = { id: TabId; label: string; icon: ReactNode }
 
@@ -58,60 +58,84 @@ const tabs: Tab[] = [
       </svg>
     ),
   },
+  {
+    id: 'games',
+    label: 'Games',
+    icon: (
+      <svg {...iconProps}>
+        <rect x="2.5" y="7" width="19" height="11" rx="5" />
+        <path d="M7.5 10.5v4M5.5 12.5h4" />
+        <circle cx="15.5" cy="11.5" r="1" />
+        <circle cx="18" cy="14" r="1" />
+      </svg>
+    ),
+  },
+]
+
+// Sits just above Profile, at the bottom of the bar.
+const bottomTabs: Tab[] = [
+  {
+    id: 'references',
+    label: 'References',
+    icon: (
+      <svg {...iconProps}>
+        <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z" />
+        <path d="M4 21V5M8 7h7M8 11h5" />
+      </svg>
+    ),
+  },
 ]
 
 type NavRailProps = {
   active: TabId
   onChange: (tab: TabId) => void
-  assistantOpen: boolean
-  onToggleAssistant: () => void
 }
 
 // Slim icon bar on the far left. Each icon switches the main tab.
-export function NavRail({ active, onChange, assistantOpen, onToggleAssistant }: NavRailProps) {
+export function NavRail({ active, onChange }: NavRailProps) {
+  const renderTab = (tab: Tab) => {
+    const isActive = tab.id === active
+    return (
+      <button
+        key={tab.id}
+        type="button"
+        aria-label={tab.label}
+        aria-current={isActive ? 'page' : undefined}
+        onClick={() => onChange(tab.id)}
+        className={
+          'group relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ' +
+          (isActive
+            ? 'bg-[var(--nasa-blue)] text-white'
+            : 'text-gray-400 hover:bg-[#333] hover:text-white')
+        }
+      >
+        {isActive && <span aria-hidden className="absolute -left-2 top-2 h-6 w-[3px] rounded-r bg-[var(--nasa-red)]" />}
+        {tab.icon}
+        <span role="tooltip" className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">{tab.label}</span>
+      </button>
+    )
+  }
+
   return (
     <nav
       aria-label="Main navigation"
       className="flex w-14 shrink-0 flex-col items-center gap-2 border-r border-[#444] bg-[#262626] py-3"
     >
-      {tabs.map((tab) => {
-        const isActive = tab.id === active
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            title={tab.label}
-            aria-label={tab.label}
-            aria-current={isActive ? 'page' : undefined}
-            onClick={() => onChange(tab.id)}
-            className={
-              'relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ' +
-              (isActive
-                ? 'bg-[var(--nasa-blue)] text-white'
-                : 'text-gray-400 hover:bg-[#333] hover:text-white')
-            }
-          >
-            {isActive && <span aria-hidden className="absolute -left-2 top-2 h-6 w-[3px] rounded-r bg-[var(--nasa-red)]" />}
-            {tab.icon}
-          </button>
-        )
-      })}
+      {tabs.map(renderTab)}
+      <div className="mt-auto flex flex-col items-center gap-2">
+        {bottomTabs.map(renderTab)}
       <button
         type="button"
-        title="Assistant"
-        aria-label="Assistant"
-        aria-pressed={assistantOpen}
-        onClick={onToggleAssistant}
-        className={
-          'mt-auto flex h-10 w-10 items-center justify-center rounded-lg transition-colors ' +
-          (assistantOpen ? 'bg-[#3d3d3d] text-white' : 'text-gray-400 hover:bg-[#333] hover:text-white')
-        }
+        aria-label="Profile"
+        className="group relative flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#333] hover:text-white"
       >
         <svg {...iconProps}>
-          <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
-          <path d="M8.5 11h.01M12 11h.01M15.5 11h.01" />
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21a8 8 0 0 1 16 0" />
         </svg>
+        <span role="tooltip" className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Profile</span>
       </button>
+      </div>
     </nav>
   )
 }

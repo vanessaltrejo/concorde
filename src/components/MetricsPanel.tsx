@@ -10,8 +10,6 @@ type MetricsPanelProps = {
   earthVisibility: BodyVisibility
   sunNext: NextTransition
   earthNext: NextTransition
-  // "LOLA 20 m terrain up to 200 km", from the site's own data.
-  terrainNote: string
 }
 
 type MetricRowProps = {
@@ -72,7 +70,6 @@ export function MetricsPanel({
   earthVisibility,
   sunNext,
   earthNext,
-  terrainNote,
 }: MetricsPanelProps) {
   const { sun, earth } = sample
 
@@ -99,11 +96,6 @@ export function MetricsPanel({
           <MetricRow label="Lit fraction" value={`${sample.earthIlluminatedPct.toFixed(0)}%`} />
         </dl>
       </div>
-      <p className="text-xs text-gray-300">
-        Sun and Earth: JPL Horizons. Horizon: {terrainNote}. A body is partly
-        hidden when terrain covers part of its disc. Set and rise times use the same rule (set =
-        no part visible), interpolated between hourly samples.
-      </p>
     </section>
   )
 }

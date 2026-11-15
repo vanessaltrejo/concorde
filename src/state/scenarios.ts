@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { SITES } from '../data/sites'
+import { SITES, subscribeSites } from '../data/sites'
 
 // A scenario is one site at one arrival date. Flagged scenarios are compared on
 // the Compare tab. The same site can appear twice with different dates (that is
@@ -47,6 +47,12 @@ function set(next: Scenario[]) {
   scenarios = next
   listeners.forEach((l) => l())
 }
+
+// A removed saved point leaves no scenario behind.
+subscribeSites(() => {
+  const kept = scenarios.filter((s) => SITES.some((site) => site.id === s.siteId))
+  if (kept.length !== scenarios.length) set(kept)
+})
 
 export function useScenarios(): Scenario[] {
   return useSyncExternalStore(

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SITES, getSite } from '../data/sites'
+import { SitePicker } from './SitePicker'
 import { IMPACT_KPIS } from '../data/kpis'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
 import { GOALS, computeMetrics, scoreFor, type GoalId } from '../scene/compare'
@@ -38,7 +39,7 @@ const EARTH = '#5b9bff'
 const RED = '#fc3d21'
 
 export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayDays, onOpenHorizon, onOpenCompare }: Props) {
-  const withData = useMemo(() => SITES.filter((s) => s.hasSkyData), [])
+  const withData = useMemo(() => SITES.filter((s) => s.hasSkyData && !s.saved), [])
   const activeId = siteId && withData.some((s) => s.id === siteId) ? siteId : withData[0].id
   const [state, setState] = useState<State>({ lights: {}, slopes: {}, status: 'loading' })
   const [detailed, setDetailed] = useState(false)
@@ -121,16 +122,15 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={activeId}
-                onChange={(e) => onSelectSite(e.target.value)}
-                aria-label="Site"
-                className="rounded-lg border border-white/20 bg-[#262626] px-3 py-1.5 text-sm font-medium text-gray-100 [color-scheme:dark]"
-              >
-                {withData.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+              <div className="w-56">
+                <SitePicker
+                  value={activeId}
+                  options={withData}
+                  onChange={onSelectSite}
+                  ariaLabel="Site"
+                  triggerClassName="flex w-full items-center gap-2 rounded-lg border border-white/20 bg-[#262626] px-3 py-1.5 text-left text-sm font-medium text-gray-100 hover:border-white/40"
+                />
+              </div>
               <Chip>Arrival {formatUtc(stay.arrivalMs)}</Chip>
               <Chip>Stay {stayDays} d</Chip>
             </div>
@@ -241,9 +241,6 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
         </Panel>
       </div>
 
-      <p className="pb-1 text-center text-[11px] text-gray-500">
-        Sun and Earth: NASA/JPL Horizons · Terrain: LOLA · Moon image: NASA LRO / Moon Trek · Planning aid, not flight grade.
-      </p>
     </Shell>
   )
 }

@@ -14,7 +14,7 @@ import type { SkySample } from '../types'
 import { THRESHOLDS } from './thresholds'
 import { coverage, pointName, type AnywherePoint } from '../terrain/anywhere'
 
-export type AppView = 'orbital' | 'horizon' | 'dashboard' | 'compare'
+export type AppView = 'orbital' | 'horizon' | 'dashboard' | 'compare' | 'games' | 'references'
 
 export type AppSnapshot = {
   view: AppView
@@ -175,8 +175,20 @@ function describeView(state: AppSnapshot) {
       panels: [
         'Moon globe with NASA Moon Trek imagery and site markers.',
         'Left: map layer selector and the Requirements panel (green = meets the requirements, screening only).',
-        'Right: site panel with site menu, date and time, stay length, stay summary, horizon preview, Open Horizon view, Topography view, Back to globe.',
+        'Right: site panel with site menu, date and time, stay length, stay summary, horizon preview, Open Horizon view, Topography image of the zone, Back to globe.',
       ],
+    }
+  }
+  if (state.view === 'games') {
+    return {
+      view: 'Games',
+      panels: ['Page for mini games that teach kids about the Moon. The games are not built yet; each card says "Coming soon".'],
+    }
+  }
+  if (state.view === 'references') {
+    return {
+      view: 'References',
+      panels: ['One page listing every data source, method and check used in the app and what each is used for. The other views do not repeat them.'],
     }
   }
   if (state.view === 'compare') {
@@ -268,7 +280,7 @@ const tools: Record<string, (args: Args, bridge: AppBridge) => Promise<ToolOutco
 
   async evaluateRequirements(_args, bridge) {
     const s = bridge.getState()
-    const withData = SITES.filter((site) => site.hasSkyData)
+    const withData = SITES.filter((site) => site.hasSkyData && !site.saved)
     const [lights, slopes] = await Promise.all([Promise.all(withData.map((site) => loadSiteLight(site.id))), loadSiteSlopes()])
     const sites = withData.map((site, i) => {
       const r = evaluateSite(site.id, lights[i], slopes[site.id] ?? null, s.criteria, s.timeMs, s.stayDays)

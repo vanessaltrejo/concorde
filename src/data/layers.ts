@@ -68,7 +68,7 @@ export const LAYERS: LayerDef[] = [
   },
   {
     id: 'hillshade',
-    label: 'Hillshade',
+    label: 'Topography',
     sources: [
       {
         product: 'LRO_LOLA_Shade_Global_256ppd_v06',
@@ -208,7 +208,7 @@ type SelectorEntry = { id: string; label: string; options?: string[] }
 
 export const SELECTOR: SelectorEntry[] = [
   { id: 'image', label: 'Image' },
-  { id: 'hillshade', label: 'Hillshade' },
+  { id: 'hillshade', label: 'Topography' },
   { id: 'elevation', label: 'Elevation' },
   { id: 'slope', label: 'Slope' },
   {

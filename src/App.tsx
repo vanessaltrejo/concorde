@@ -1,6 +1,8 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ActionBanner, type BannerItem } from './assistant/ActionBanner'
 import { AssistantPanel } from './assistant/AssistantPanel'
+import { GamesTab } from './components/GamesTab'
+import { ReferencesTab } from './components/ReferencesTab'
 import type { AppBridge, AppSnapshot } from './assistant/tools'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { NavRail, type TabId } from './components/NavRail'
@@ -10,7 +12,7 @@ import { DEFAULT_CRITERIA, type Criteria } from './scene/requirements'
 import { DEFAULT_STAY_DAYS } from './scene/stay'
 import { indexForTime, timeOfIndex } from './scene/timeSelection'
 import { readUrlState, writeUrlState } from './state/urlState'
-import { encodeScenarios, useScenarios } from './state/scenarios'
+import { useSitesVersion } from './state/useSites'
 import { DashboardTab } from './components/DashboardTab'
 import { CompareTab } from './components/CompareTab'
 import type { SiteData } from './types'
@@ -30,9 +32,9 @@ type Loaded =
 const centered = 'flex h-full flex-1 items-center justify-center bg-black text-sm text-gray-400'
 
 export default function App() {
-  // Start from the address bar (?view=&site=&t=) when it has a valid state.
+  // Start from the address bar (/orbital-view?site=&t=) when it has a valid state; the home is the Dashboard.
   const [initial] = useState(() => readUrlState(SITES.map((s) => s.id)))
-  const [tab, setTab] = useState<TabId>(initial.view ?? 'orbital')
+  const [tab, setTab] = useState<TabId>(initial.view ?? 'dashboard')
   // Site picked on the Orbital view (highlighted there).
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(initial.siteId ?? DEFAULT_SITE_ID)
   // Site shown in the Horizon view.
@@ -45,10 +47,9 @@ export default function App() {
   // Stay length in days, from the selected time on. Shared by both views.
   const [stayDays, setStayDays] = useState(initial.stayDays ?? DEFAULT_STAY_DAYS)
   const [loaded, setLoaded] = useState<Loaded | null>(null)
-  const scenarios = useScenarios()
   // Orbital view layer and requirements. Kept here so the assistant can use them.
   const [layerId, setLayerId] = useState('image')
-  const [requirementsOn, setRequirementsOn] = useState(false)
+  const [requirementsOn, setRequirementsOn] = useState(true)
   const [criteria, setCriteria] = useState<Criteria>(DEFAULT_CRITERIA)
   const [flyRequest, setFlyRequest] = useState<{ siteId: string } | null>(null)
   const [assistantOpen, setAssistantOpen] = useState(false)
@@ -102,17 +103,18 @@ export default function App() {
     }
   }, [tab, skySiteId, horizonPoint, horizonKey, loaded])
 
-  // Keep the address bar in step with the screen, so a link reopens it.
+  // A removed saved point cannot stay selected or open in the Horizon view.
+  const sitesVersion = useSitesVersion()
   useEffect(() => {
-    const siteId = tab === 'horizon' ? skySiteId : selectedSiteId
-    // The home (Orbital view, default site, stay and date) keeps a clean address: just "/".
-    const isHome = tab === 'orbital' && siteId === DEFAULT_SITE_ID && stayDays === DEFAULT_STAY_DAYS && timeMs === null
-    const point = tab === 'horizon' ? horizonPoint : null
-    writeUrlState(
-      isHome ? null : { view: tab, siteId: point ? null : siteId, timeMs, stayDays, point },
-      encodeScenarios(scenarios),
-    )
-  }, [tab, skySiteId, selectedSiteId, horizonPoint, timeMs, stayDays, scenarios])
+    const exists = (id: string | null) => id === null || SITES.some((s) => s.id === id)
+    if (!exists(selectedSiteId)) setSelectedSiteId(DEFAULT_SITE_ID)
+    if (!exists(skySiteId)) setSkySiteId(DEFAULT_SITE_ID)
+  }, [sitesVersion, selectedSiteId, skySiteId])
+
+  // The address bar names only the screen, never the site or the date.
+  useEffect(() => {
+    writeUrlState({ view: tab })
+  }, [tab])
 
   function openSkyView(siteId: string) {
     setSkySiteId(siteId)
@@ -207,8 +209,8 @@ export default function App() {
   const current = loaded && loaded.siteId === horizonKey ? loaded : null
 
   return (
-    <div className="relative flex h-full">
-      <NavRail active={tab} onChange={setTab} assistantOpen={assistantOpen} onToggleAssistant={() => setAssistantOpen((o) => !o)} />
+    <div className="relative flex h-full overflow-hidden" style={{ '--assistant-w': assistantOpen ? '24rem' : '0px' } as CSSProperties}>
+      <NavRail active={tab} onChange={setTab} />
       <ErrorBoundary key={tab}>
       {tab === 'horizon' && (
         <HorizonTab
@@ -257,12 +259,27 @@ export default function App() {
       {tab === 'compare' && (
         <CompareTab stayDays={stayDays} fallbackTimeMs={timeMs} />
       )}
+      {tab === 'games' && <GamesTab />}
+      {tab === 'references' && <ReferencesTab />}
       </ErrorBoundary>
       {/* Outside the error boundary: a view crash does not close the assistant. */}
       <ActionBanner items={banners} onDismiss={(id) => setBanners((prev) => prev.filter((b) => b.id !== id))} />
-      {assistantOpen && (
-        <AssistantPanel bridge={bridge} onAnnounce={announce} onClose={() => setAssistantOpen(false)} />
+      {(
+        <button
+          type="button"
+          aria-label={assistantOpen ? 'Minimize assistant' : 'Open assistant'}
+          onClick={() => setAssistantOpen((o) => !o)}
+          style={{ right: assistantOpen ? 'calc(var(--assistant-w) + 0.75rem)' : '1rem' }}
+          className="group absolute bottom-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--nasa-blue)] text-white shadow-lg transition-[right,filter] duration-300 hover:brightness-125"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
+            <path d="M9.5 12h.01M13 12h.01M16.5 12h.01" />
+          </svg>
+          <span role="tooltip" className="pointer-events-none absolute bottom-full right-0 z-50 mb-2 whitespace-nowrap rounded bg-black px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">{assistantOpen ? 'Minimize assistant' : 'Assistant'}</span>
+        </button>
       )}
+      <AssistantPanel bridge={bridge} onAnnounce={announce} open={assistantOpen} onToggle={() => setAssistantOpen((o) => !o)} />
     </div>
   )
 }

@@ -1,14 +1,19 @@
 import { FlagButton } from './FlagButton'
-import { ClpsWithoutSiteNote, MissionList } from './MissionList'
-import { useEffect, useState } from 'react'
+import { SitePicker } from './SitePicker'
+import { PanelHandle } from './PanelHandle'
+import { MissionList } from './MissionList'
+import { useEffect, useState, type ReactNode } from 'react'
+import { useSitesVersion } from '../state/useSites'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
-import { SITES, type SiteEntry } from '../data/sites'
+import { DEFAULT_SITE_ID, removeSavedPoint, SITES, type SiteEntry } from '../data/sites'
 import { indexForTime, timeOfIndex } from '../scene/timeSelection'
 import { DateTimeControl } from './DateTimeControl'
 import { HorizonPreview } from './HorizonPreview'
 import { StayPanel } from './StayPanel'
 
 type SitePanelProps = {
+  // Panel for a point picked on the globe; it replaces the site content.
+  topSlot?: ReactNode
   selected: SiteEntry | null
   timeMs: number | null
   onTimeChange: (timeMs: number) => void
@@ -16,11 +21,8 @@ type SitePanelProps = {
   onStayDaysChange: (days: number) => void
   // Snapshot of the zone taken from the globe, or null while it is being made.
   zoneImageUrl: string | null
-  zonePending: boolean
   onSelect: (siteId: string) => void
   onOpenSkyView: (siteId: string) => void
-  onOpenTopography: (siteId: string) => void
-  onZoomOut: () => void
 }
 
 type LightState =
@@ -30,18 +32,18 @@ type LightState =
 // Right-hand column on the Orbital view: the curated site list, then for the
 // selected site the date, a Horizon preview and a Topography preview.
 export function SitePanel({
+  topSlot,
   selected,
   timeMs,
   onTimeChange,
   stayDays,
   onStayDaysChange,
   zoneImageUrl,
-  zonePending,
   onSelect,
   onOpenSkyView,
-  onOpenTopography,
-  onZoomOut,
 }: SitePanelProps) {
+  useSitesVersion()
+  const [collapsed, setCollapsed] = useState(false)
   const [lightState, setLightState] = useState<LightState | null>(null)
   const selectedId = selected?.id ?? null
   const hasSkyData = selected?.hasSkyData ?? false
@@ -70,38 +72,42 @@ export function SitePanel({
   const current = lightState && lightState.siteId === selectedId ? lightState : null
 
   return (
-    <div className="absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-3 overflow-y-auto rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg">
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Site</span>
-        <select
-          value={selected?.id ?? ''}
-          onChange={(e) => onSelect(e.target.value)}
-          className="rounded border border-[#555] bg-[#262626] px-2 py-1.5 text-sm text-gray-100 [color-scheme:dark]"
-        >
-          {!selected && <option value="">Choose a site…</option>}
-          {[...new Set(SITES.map((s) => s.group))].map((group) => (
-            <optgroup key={group} label={group}>
-              {SITES.filter((s) => s.group === group).map((site) => (
-                <option key={site.id} value={site.id}>
-                  {site.name}
-                  {site.hasSkyData ? '' : ' (no Horizon view data yet)'}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      </label>
+    <div
+      className="pointer-events-none absolute bottom-24 top-4 z-10 w-72 transition-[right,transform] duration-300 ease-out"
+      style={{ right: 'calc(1rem + var(--assistant-w, 0px))', transform: collapsed ? 'translateX(calc(100% + 1rem))' : 'none' }}
+    >
+    <PanelHandle open={!collapsed} onClick={() => setCollapsed((c) => !c)} label="site panel" className="absolute -left-7 top-3" />
+    <div className={'flex max-h-full w-72 flex-col gap-3 overflow-y-auto rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg transition-opacity duration-300 ' + (collapsed ? 'pointer-events-none opacity-0' : 'pointer-events-auto')}>
+      {topSlot ?? (
+      <>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Registered landing sites</span>
+        <SitePicker value={selected?.id ?? null} options={SITES} onChange={onSelect} ariaLabel="Registered landing sites" flagMissingData />
+      </div>
+      {selected?.hasSkyData && <FlagButton siteId={selected.id} timeMs={timeMs} wide />}
 
       {selected && (
         <>
           <section className="flex flex-col gap-1 border-t border-[#444] pt-2">
-            <p className="flex items-baseline justify-between gap-2">
-              <span className="text-sm font-medium">{selected.name}</span>
-              <FlagButton siteId={selected.id} timeMs={timeMs} />
-              <span className="text-xs text-gray-300">
-                {selected.latitudeDeg.toFixed(4)}°, {selected.longitudeDeg.toFixed(2)}° E
-              </span>
+            <p className="text-xs text-gray-400">
+              {selected.latitudeDeg.toFixed(4)}°, {selected.longitudeDeg.toFixed(2)}° E
             </p>
+            {selected.saved && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!window.confirm(`Remove ${selected.name}? It disappears from the map, the menu and Compare.`)) return
+                  removeSavedPoint(selected.id)
+                  onSelect(DEFAULT_SITE_ID)
+                }}
+                className="mt-1 flex items-center gap-1.5 self-start rounded border border-[#E69F00]/60 px-2 py-1 text-xs text-[#f5b94d] hover:bg-[#E69F00]/15"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+                </svg>
+                Remove this point
+              </button>
+            )}
           </section>
 
           <MissionList site={selected} />
@@ -136,7 +142,7 @@ export function SitePanel({
                 <button
                   type="button"
                   onClick={() => onOpenSkyView(selected.id)}
-                  className="mt-1 rounded bg-[var(--nasa-blue)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#164fb0]"
+                  className="mt-1 rounded bg-[#FFD400] px-3 py-2 text-sm font-semibold text-black hover:brightness-110"
                 >
                   Open Horizon view
                 </button>
@@ -149,35 +155,18 @@ export function SitePanel({
             {zoneImageUrl ? (
               <img
                 src={zoneImageUrl}
-                alt={`Map of the zone around ${selected.name}, as currently shown on the globe`}
-                className="w-full rounded bg-black"
+                alt={`Shaded relief of the zone around ${selected.name}`}
+                className="aspect-[16/7] w-full rounded bg-black object-cover"
               />
             ) : (
-              <p className="text-xs text-gray-300">
-                {zonePending ? 'Preparing zone image…' : 'No zone image yet. Topography view flies there and takes one.'}
-              </p>
+              <p className="text-xs text-gray-300">No topography picture for this point yet.</p>
             )}
-            <p className="text-[10px] text-gray-300">Snapshot of the globe over this zone, with the active map layer.</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => onOpenTopography(selected.id)}
-                className="flex-1 rounded border border-[#555] px-2 py-1 text-xs hover:bg-[var(--nasa-blue)] hover:text-white"
-              >
-                Topography view
-              </button>
-              <button
-                type="button"
-                onClick={onZoomOut}
-                className="flex-1 rounded border border-[#555] px-2 py-1 text-xs hover:bg-[var(--nasa-blue)] hover:text-white"
-              >
-                Back to globe
-              </button>
-            </div>
           </section>
         </>
       )}
-      <ClpsWithoutSiteNote />
+      </>
+      )}
+    </div>
     </div>
   )
 }

@@ -1,4 +1,3 @@
-import { summarizeTerrain } from '../scene/terrainInfo'
 import { Canvas } from '@react-three/fiber'
 import { StarSky } from './StarSky'
 import { Suspense, useCallback, useRef, useState } from 'react'
@@ -98,11 +97,6 @@ export function MainView({
         onLookAtSun={() => lookAt(sample.sun.azimuthDeg, sample.sun.elevationDeg)}
         onLookAtEarth={() => lookAt(sample.earth.azimuthDeg, sample.earth.elevationDeg)}
       />
-      <p className="pointer-events-none absolute bottom-3 left-[20rem] max-w-[40%] text-xs text-gray-500">
-        Terrain: LOLA {summarizeTerrain(terrain).levels}. Shadows computed from the
-        same terrain. Earthshine is boosted to be visible (visual aid). Drag to look around,
-        scroll to zoom. Observer height {observerHeightM} m.
-      </p>
     </main>
   )
 }

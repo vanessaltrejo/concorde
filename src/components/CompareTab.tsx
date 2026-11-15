@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { SITES, getSite } from '../data/sites'
+import { useSitesVersion } from '../state/useSites'
+import { SitePicker } from './SitePicker'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
 import { loadSiteSlopes, type SiteSlope } from '../scene/requirements'
 import { AXES, GOALS, computeMetrics, scoreFor, whyWinner, type GoalId, type Metrics } from '../scene/compare'
@@ -277,28 +279,12 @@ function axisText(key: string, m: Metrics): string {
 }
 
 function AddSlot() {
+  useSitesVersion()
   const options = SITES.filter((s) => s.hasSkyData)
   return (
     <div className="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#3a4560] p-4 text-center text-sm text-gray-300">
       <p>Add a scenario</p>
-      <select
-        defaultValue=""
-        onChange={(e) => {
-          if (e.target.value) addScenario(e.target.value, null)
-          e.target.value = ''
-        }}
-        className="rounded border border-[#555] bg-[#262626] px-2 py-1 text-sm text-gray-100 [color-scheme:dark]"
-        aria-label="Add a site to compare"
-      >
-        <option value="">Choose a site…</option>
-        {[...new Set(options.map((s) => s.group))].map((g) => (
-          <optgroup key={g} label={g}>
-            {options.filter((s) => s.group === g).map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
+      <SitePicker value={null} options={options} onChange={(id) => addScenario(id, null)} ariaLabel="Add a site to compare" />
       <p className="text-[11px] text-gray-400">Or press “Compare” on any site in the other tabs.</p>
     </div>
   )

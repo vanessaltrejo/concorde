@@ -37,12 +37,13 @@ type AssistantPanelProps = {
   bridge: AppBridge
   // Shows a banner on screen for every change the assistant makes (AI-2).
   onAnnounce: (text: string) => void
-  onClose: () => void
+  open: boolean
+  onToggle: () => void
 }
 
 // Side panel over either view (AI-12). Answers come only from the app's tools;
 // the server drops any answer with a number no tool gave (AI-13).
-export function AssistantPanel({ bridge, onAnnounce, onClose }: AssistantPanelProps) {
+export function AssistantPanel({ bridge, onAnnounce, open, onToggle }: AssistantPanelProps) {
   const [items, setItems] = useState<ChatItem[]>([])
   const [history, setHistory] = useState<WireMessage[]>([])
   const [input, setInput] = useState('')
@@ -102,14 +103,18 @@ export function AssistantPanel({ bridge, onAnnounce, onClose }: AssistantPanelPr
   return (
     <aside
       aria-label="Assistant"
-      className="absolute inset-y-0 right-0 z-20 flex w-[24rem] max-w-full flex-col border-l border-[#444] bg-[#262626]/97 text-gray-100 shadow-2xl"
+      className={
+        'absolute inset-y-0 right-0 z-20 flex w-[24rem] max-w-full flex-col border-l border-[#444] bg-[#262626]/97 text-gray-100 shadow-2xl transition-transform duration-300 ease-out ' +
+        (open ? '' : 'translate-x-full')
+      }
     >
+      <div inert={!open} className="flex min-h-0 flex-1 flex-col">
       <header className="flex items-start justify-between gap-2 border-b border-[#444] px-4 py-3">
         <div>
           <h2 className="text-sm font-semibold">Assistant</h2>
           <p className="text-[11px] text-gray-400">Reads and changes the app for you. Planning aid, not flight grade.</p>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close assistant" className="rounded px-2 text-gray-400 hover:bg-[#333] hover:text-white">
+        <button type="button" onClick={onToggle} aria-label="Close assistant" className="rounded px-2 text-gray-400 hover:bg-[#333] hover:text-white">
           ✕
         </button>
       </header>
@@ -212,6 +217,7 @@ export function AssistantPanel({ bridge, onAnnounce, onClose }: AssistantPanelPr
           {speechSupported && ' Voice: the browser sends audio to its speech service (Google in Chrome, Apple in Safari).'}
         </p>
       </form>
+      </div>
     </aside>
   )
 }

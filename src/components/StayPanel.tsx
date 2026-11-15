@@ -52,8 +52,7 @@ export function StayPanel({ samples, horizon, timeMs, stayDays, onStayDaysChange
       />
       <ul className="list-disc pl-4 text-xs text-gray-300">
         <li>
-          Longer stays make green less likely: the Sun must stay up for the whole stay, and the sunlit half of the
-          Moon moves about 12° west per day.
+          Longer stays make green less likely: the Sun must stay up the whole time.
         </li>
       </ul>
       <p className="truncate text-xs text-gray-300">

@@ -1,10 +1,10 @@
 import { useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
-import { Color, ShaderMaterial, Vector2, Vector3, Vector4 } from 'three'
+import { Color, HalfFloatType, LinearFilter, Mesh, OrthographicCamera, PlaneGeometry, RGBAFormat, Scene, ShaderMaterial, Vector2, Vector3, Vector4, WebGLRenderTarget } from 'three'
 import type { SkySample, TerrainData, TerrainGrid } from '../types'
 import { directionFromSky } from '../scene/skyMath'
 import { buildGridGeometry, buildHeightTexture, inverseAffine } from '../scene/terrainGrid'
-import { terrainFragmentShader, terrainVertexShader } from '../scene/terrainShader'
+import { bakeFragmentShader, bakeVertexShader, terrainFragmentShader, terrainVertexShader } from '../scene/terrainShader'
 
 type TerrainProps = {
   terrain: TerrainData
@@ -55,8 +55,9 @@ function applySample(uniforms: LightUniforms, sample: SkySample): void {
 // Near (20 m), mid (320 m) and far (640 m) LOLA terrain with real cast shadows.
 export function Terrain({ terrain, sample }: TerrainProps) {
   const invalidate = useThree((state) => state.invalidate)
+  const gl = useThree((state) => state.gl)
 
-  const { geometries, materials, shared } = useMemo(() => {
+  const { geometries, materials, shared, bake } = useMemo(() => {
     const near = gridUniforms(terrain.near)
     const mid = gridUniforms(terrain.mid)
     const far = gridUniforms(terrain.far)
@@ -81,35 +82,105 @@ export function Terrain({ terrain, sample }: TerrainProps) {
       earthIntensity: { value: 0 },
       ambientIntensity: { value: ambientIntensity },
       albedo: { value: regolithAlbedo },
+      useBaked: { value: 0 },
     }
-    const makeMaterial = (gridLevel: number, shadowStart: number, shadowBias: number) =>
+    // Shadows are baked into one half-float texture per grid when the GPU can
+    // render to it; otherwise the shader marches per pixel exactly as before.
+    const canBake = gl.extensions.has('EXT_color_buffer_float') || gl.extensions.has('EXT_color_buffer_half_float')
+    sharedUniforms.useBaked.value = canBake ? 1 : 0
+    const levels = [
+      { grid: terrain.near, u: near, start: terrain.near.spacingM, bias: 0.5 },
+      { grid: terrain.mid, u: mid, start: terrain.mid.spacingM, bias: 20 },
+      { grid: terrain.far, u: far, start: terrain.far.spacingM, bias: 40 },
+    ]
+    const targets = canBake
+      ? levels.map(
+          ({ grid }) =>
+            new WebGLRenderTarget(grid.size, grid.size, {
+              type: HalfFloatType,
+              format: RGBAFormat,
+              minFilter: LinearFilter,
+              magFilter: LinearFilter,
+              depthBuffer: false,
+              generateMipmaps: false,
+            }),
+        )
+      : []
+    const makeMaterial = (level: number) =>
       new ShaderMaterial({
         vertexShader: terrainVertexShader,
         fragmentShader: terrainFragmentShader,
         uniforms: {
           ...sharedUniforms,
-          gridLevel: { value: gridLevel },
-          shadowStart: { value: shadowStart },
-          shadowBias: { value: shadowBias },
+          gridLevel: { value: level },
+          shadowStart: { value: levels[level].start },
+          shadowBias: { value: levels[level].bias },
+          shadowMap: { value: targets[level]?.texture ?? null },
+          ownInverse: levels[level].u.inverse,
+          ownOrigin: levels[level].u.origin,
+          ownSize: levels[level].u.size,
         },
       })
+    const bakeUniforms = {
+      ...sharedUniforms,
+      shadowStart: { value: 0 },
+      shadowBias: { value: 0 },
+      bakeAffine: { value: new Vector4() },
+      bakeOrigin: { value: new Vector2() },
+      bakeHeightSize: { value: new Vector2() },
+      bakeHeights: { value: near.heights.value },
+    }
+    const bakeMaterial = new ShaderMaterial({
+      vertexShader: bakeVertexShader,
+      fragmentShader: bakeFragmentShader,
+      uniforms: bakeUniforms,
+      depthTest: false,
+      depthWrite: false,
+    })
+    const bakeScene = new Scene()
+    const bakeQuad = new Mesh(new PlaneGeometry(2, 2), bakeMaterial)
+    bakeQuad.frustumCulled = false
+    bakeScene.add(bakeQuad)
+    const bakeCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1)
     return {
       geometries: [buildGridGeometry(terrain.near), buildGridGeometry(terrain.mid), buildGridGeometry(terrain.far)],
       // Start the shadow march about one cell away, with a height bias, so a
       // surface does not shadow itself (larger on coarser grids).
-      materials: [
-        makeMaterial(0, terrain.near.spacingM, 0.5),
-        makeMaterial(1, terrain.mid.spacingM, 20),
-        makeMaterial(2, terrain.far.spacingM, 40),
-      ],
+      materials: [makeMaterial(0), makeMaterial(1), makeMaterial(2)],
       shared: sharedUniforms,
+      bake: {
+        enabled: canBake,
+        run: () => {
+          const previous = gl.getRenderTarget()
+          levels.forEach(({ grid, u, start, bias }, i) => {
+            const [a, b, c, d, e, f] = grid.affine
+            bakeUniforms.bakeAffine.value.set(a, b, d, e)
+            bakeUniforms.bakeOrigin.value.set(c, f)
+            bakeUniforms.bakeHeightSize.value.set(grid.size, grid.size)
+            bakeUniforms.bakeHeights.value = u.heights.value
+            bakeUniforms.shadowStart.value = start
+            bakeUniforms.shadowBias.value = bias
+            gl.setRenderTarget(targets[i])
+            gl.render(bakeScene, bakeCamera)
+          })
+          gl.setRenderTarget(previous)
+        },
+        dispose: () => {
+          targets.forEach((t) => t.dispose())
+          bakeMaterial.dispose()
+          bakeQuad.geometry.dispose()
+        },
+      },
     }
   }, [terrain])
 
+  useEffect(() => () => bake.dispose(), [bake])
+
   useEffect(() => {
     applySample(shared, sample)
+    if (bake.enabled) bake.run()
     invalidate()
-  }, [sample, shared, invalidate])
+  }, [sample, shared, bake, invalidate])
 
   return (
     <>

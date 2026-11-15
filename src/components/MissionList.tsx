@@ -1,4 +1,3 @@
-import { CLPS_WITHOUT_SITE } from '../data/sites'
 import type { SiteEntry } from '../data/sites'
 
 // CLPS missions that land at a site. Completed = filled NASA-blue dot,
@@ -24,19 +23,5 @@ export function MissionList({ site }: { site: SiteEntry }) {
         ))}
       </ul>
     </section>
-  )
-}
-
-export function ClpsWithoutSiteNote() {
-  return (
-    <details className="text-xs text-gray-300">
-      <summary className="cursor-pointer font-medium text-gray-100">CLPS missions without a site</summary>
-      <ul className="mt-1 list-disc pl-4">
-        {CLPS_WITHOUT_SITE.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-      <p className="mt-1">No landing point on the Moon, so no map marker and no Horizon view.</p>
-    </details>
   )
 }

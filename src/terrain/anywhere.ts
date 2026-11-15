@@ -139,3 +139,18 @@ export async function loadAnywhereSite(p: AnywherePoint, onProgress: (text: stri
     },
   }
 }
+
+// Sky and horizon of a point, for the 2D preview and Compare. Cached by
+// position, so a picked point that is then saved is not computed twice.
+const lightCache = new Map<string, Promise<{ sky: SkyData; horizon: HorizonProfile }>>()
+
+export function loadPointLight(p: AnywherePoint): Promise<{ sky: SkyData; horizon: HorizonProfile }> {
+  const key = pointId(p)
+  let cached = lightCache.get(key)
+  if (!cached) {
+    cached = loadAnywhereSite(p, () => {}).then(({ sky, horizon }) => ({ sky, horizon }))
+    cached.catch(() => lightCache.delete(key))
+    lightCache.set(key, cached)
+  }
+  return cached
+}

@@ -1,10 +1,11 @@
 // Small part of the app state kept in the address bar so a link reopens the
-// same screen: ?view=orbital|horizon|dashboard&site=<id>&t=2026-11-17T00:00Z&stay=6.5
+// screen: /dashboard, /orbital-view, /horizon-view, /compare, /games or /references.
+// Old links with ?view=&site=&t= still open on that state, then the address is cleaned.
 // A Horizon view of a point picked on the map adds &pt=<lat>,<lon east>.
 
-import { DEFAULT_STAY_DAYS, MAX_STAY_DAYS, MIN_STAY_DAYS } from '../scene/stay'
+import { MAX_STAY_DAYS, MIN_STAY_DAYS } from '../scene/stay'
 
-export type View = 'orbital' | 'horizon' | 'dashboard' | 'compare'
+export type View = 'orbital' | 'horizon' | 'dashboard' | 'compare' | 'games' | 'references'
 
 type UrlState = {
   view: View | null
@@ -14,12 +15,22 @@ type UrlState = {
   point: { latDeg: number; lonDeg: number } | null
 }
 
-const VIEWS: View[] = ['orbital', 'horizon', 'dashboard', 'compare']
+const VIEWS: View[] = ['orbital', 'horizon', 'dashboard', 'compare', 'games', 'references']
+
+const PATHS: Record<View, string> = {
+  dashboard: '/dashboard',
+  orbital: '/orbital-view',
+  horizon: '/horizon-view',
+  compare: '/compare',
+  games: '/games',
+  references: '/references',
+}
 
 export function readUrlState(knownSiteIds: string[]): UrlState {
   try {
     const params = new URLSearchParams(window.location.search)
-    const view = params.get('view')
+    const fromPath = VIEWS.find((v) => PATHS[v] === window.location.pathname.replace(/\/+$/, ''))
+    const view = fromPath ?? params.get('view')
     const site = params.get('site')
     const t = params.get('t')
     const stay = Number(params.get('stay'))
@@ -41,31 +52,12 @@ export function readUrlState(knownSiteIds: string[]): UrlState {
   }
 }
 
-export function writeUrlState(
-  state: {
-    view: View
-    siteId: string | null
-    timeMs: number | null
-    stayDays: number
-    point?: { latDeg: number; lonDeg: number } | null
-  } | null,
-  compare: string | null = null,
-): void {
+// The address bar shows only the screen (/dashboard, /orbital-view, ...). Site,
+// date, stay and comparison are never written to it. Old links that carry them
+// are still read once on load (readUrlState) and then cleaned.
+export function writeUrlState(state: { view: View } | null): void {
   try {
-    if (state === null && compare === null) {
-      window.history.replaceState(null, '', window.location.pathname)
-      return
-    }
-    if (state === null) return writeUrlState({ view: 'orbital', siteId: null, timeMs: null, stayDays: DEFAULT_STAY_DAYS }, compare)
-    const params = new URLSearchParams()
-    params.set('view', state.view)
-    if (state.siteId) params.set('site', state.siteId)
-    // Minute precision, UTC ("2026-11-17T00:00Z").
-    if (state.timeMs !== null) params.set('t', `${new Date(state.timeMs).toISOString().slice(0, 16)}Z`)
-    if (state.stayDays !== DEFAULT_STAY_DAYS) params.set('stay', String(state.stayDays))
-    if (state.point) params.set('pt', `${state.point.latDeg.toFixed(4)},${state.point.lonDeg.toFixed(4)}`)
-    if (compare) params.set('cmp', compare)
-    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
+    window.history.replaceState(null, '', PATHS[state?.view ?? 'dashboard'])
   } catch {
     // The address bar is a convenience; the app works without it.
   }

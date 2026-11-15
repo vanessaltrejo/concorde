@@ -99,9 +99,8 @@ white.
   missions** that land there (completed or scheduled, with year), a **Compare**
   flag button, the % of the
   stay with Sun and with Earth link, a **Horizon preview** (the real horizon
-  with the Sun and Earth, which hide behind terrain), a **Topography** snapshot
-  of the zone, and the buttons *Open Horizon view*, *Topography view* and *Back
-  to globe*.
+  with the Sun and Earth, which hide behind terrain), a **Topography** picture
+  of the zone, and the buttons *Open Horizon view* and *Back to globe*.
 - **Requirements** (Sun during the stay, Earth link during the stay, slope at
   the site). Each can be switched off. They mark the 9 sites (green ✓ meets,
   gray ✕ excluded) and, with **Show on map**, color **2,500 zone cells** of 1 km
@@ -164,9 +163,10 @@ white.
 
 **Shared by all views:** the date and time and the stay length. The address
 bar keeps the screen
-(`?view=orbital|horizon|dashboard|compare&site=<id>&t=<UTC>&stay=<days>&cmp=<site>@<UTC>,...`),
-so a link reopens the same screen and the same comparison. The clean address `/`
-is used only for the untouched home.
+(`/dashboard`, `/orbital-view`, `/horizon-view`, `/compare` or `/references`). The
+address shows only the screen, never the site, date or comparison, so it stays short.
+The app opens on the Dashboard. Old links with `?view=&site=&t=` still open on that
+state once, and the address is then cleaned.
 
 **Examples (pitch story)**
 
@@ -370,8 +370,9 @@ data ends, the app says "> X (end of data)".
 - **Performance**: render on demand, one 3D view mounted at a time (the globe is
   removed when the Horizon view opens, and the other way round), only the open
   site's files in memory, previews from small files.
-- The Topography preview is a snapshot of the globe over the zone, taken when the
-  camera arrives and the tiles are loaded.
+- The Topography picture of each curated site is a stored file
+  (`public/topography/<id>.jpg`, 40 km wide, LOLA shaded relief from Moon Trek,
+  north up), so it appears at once. Points saved by the user have none yet.
 
 ### 4.9 Sites and their data
 

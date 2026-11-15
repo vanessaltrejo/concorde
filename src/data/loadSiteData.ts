@@ -1,3 +1,4 @@
+import { SITES } from './sites'
 import type {
   HorizonProfile,
   SiteData,
@@ -131,7 +132,19 @@ async function loadTerrain(siteId: string): Promise<TerrainData> {
   return { source, near, mid, far }
 }
 
+// A saved point has no files: its terrain and sky are computed in the browser
+// (the same code as a picked point). The light version is cached by position.
+function savedPoint(siteId: string) {
+  const site = SITES.find((s) => s.id === siteId && s.saved)
+  if (!site) throw new Error(`Unknown saved point: ${siteId}`)
+  return { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg }
+}
+
 export async function loadSiteData(siteId: string): Promise<SiteData> {
+  if (siteId.startsWith('saved-')) {
+    const { loadAnywhereSite } = await import('../terrain/anywhere')
+    return loadAnywhereSite(savedPoint(siteId), () => {})
+  }
   const [sky, horizon, terrain] = await Promise.all([
     loadSky(siteId),
     loadHorizon(siteId),
@@ -150,7 +163,9 @@ const lightCache = new Map<string, Promise<SiteLight>>()
 export function loadSiteLight(siteId: string): Promise<SiteLight> {
   let cached = lightCache.get(siteId)
   if (!cached) {
-    cached = Promise.all([loadSky(siteId), loadHorizon(siteId)]).then(([sky, horizon]) => ({ sky, horizon }))
+    cached = siteId.startsWith('saved-')
+      ? import('../terrain/anywhere').then((m) => m.loadPointLight(savedPoint(siteId)))
+      : Promise.all([loadSky(siteId), loadHorizon(siteId)]).then(([sky, horizon]) => ({ sky, horizon }))
     // A failed load must not stay cached, so a later click can try again.
     cached.catch(() => lightCache.delete(siteId))
     lightCache.set(siteId, cached)

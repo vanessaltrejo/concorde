@@ -1,0 +1,54 @@
+{
+ "siteId": "gruithuisen-domes",
+ "grids": {
+  "near": {
+   "size": 169,
+   "spacingM": 118.4505876,
+   "affine": [
+    95.36986016217051,
+    0.009653285055937872,
+    -8058.412499781767,
+    0.016473986794299858,
+    118.32727290277407,
+    -10027.683049375148
+   ],
+   "maxResidualM": 37.37055489641194,
+   "file": "terrain_near.f32"
+  },
+  "mid": {
+   "size": 262,
+   "spacingM": 473.8023504,
+   "affine": [
+    381.27063433489536,
+    0.01209468769956992,
+    -49758.291575951356,
+    0.015359345627633138,
+    473.17020575277337,
+    -61951.18104636174
+   ],
+   "maxResidualM": 1364.835550643205,
+   "file": "terrain_mid.f32"
+  },
+  "far": {
+   "size": 131,
+   "spacingM": 947.6047008,
+   "affine": [
+    762.5412914036958,
+    0.02418968379867225,
+    -49567.65164898077,
+    0.030719026618211753,
+    946.3404263138563,
+    -61714.58151249055
+   ],
+   "maxResidualM": 1354.1418390561282,
+   "file": "terrain_far.f32"
+  }
+ },
+ "layout": "float32 x,y,z per grid node, row-major (row = map row). Scene axes: x = east, y = up, z = -north (meters); site ground at (0,0,0), observer eye at (0, observerHeightM, 0). Affine (col,row) -> scene x,z is approximate (see maxResidualM) and only used for shadow height lookups.",
+ "observerHeightM": 2.0,
+ "provenance": {
+  "source": "LOLA global DEM 118 m (LDEM_256), USGS Astrogeology Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014",
+  "url": "https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif",
+  "generatedUtc": "2026-11-15T05:33:40.906375Z"
+ }
+}

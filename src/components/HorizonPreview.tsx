@@ -7,7 +7,7 @@ import { StatusBadge } from './StatusBadge'
 type HorizonPreviewProps = SiteLight & { timeMs: number | null }
 
 const WIDTH = 360 // one unit per degree of azimuth
-const HEIGHT = 100
+const HEIGHT = 150
 const MARKER_RADIUS = 5
 
 type Range = { min: number; max: number }

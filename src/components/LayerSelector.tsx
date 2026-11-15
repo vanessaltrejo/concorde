@@ -1,20 +1,31 @@
-import { SELECTOR, getLayer, tileLimitLabel } from '../data/layers'
+import { SELECTOR, getLayer } from '../data/layers'
 
 type LayerSelectorProps = {
   activeId: string
   onChange: (id: string) => void
+  onResetGlobe: () => void
 }
 
-// One map layer at a time (radio buttons), with an info card for the active one.
-export function LayerSelector({ activeId, onChange }: LayerSelectorProps) {
-  const active = getLayer(activeId)
-
+// One map layer at a time (radio buttons). Sources are listed in References.
+export function LayerSelector({ activeId, onChange, onResetGlobe }: LayerSelectorProps) {
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg">
-      <h1 className="flex items-center gap-2 text-lg font-semibold">
-        <span aria-hidden className="h-4 w-1 rounded-sm bg-[var(--nasa-red)]" />
-        Orbital view
-      </h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="flex items-center gap-2 text-lg font-semibold">
+          <span aria-hidden className="h-4 w-1 rounded-sm bg-[var(--nasa-red)]" />
+          Orbital view
+        </h1>
+        <button
+          type="button"
+          onClick={onResetGlobe}
+          className="flex items-center gap-1.5 rounded bg-[#FFD400] px-2.5 py-1 text-xs font-semibold text-black hover:brightness-110"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />
+          </svg>
+          Reset globe
+        </button>
+      </div>
       <fieldset className="flex flex-col gap-1">
         <legend className="mb-1 text-sm font-medium">Map layer</legend>
         {/* Two columns, filled top to bottom: 3 on the left, 2 on the right. */}
@@ -53,18 +64,6 @@ export function LayerSelector({ activeId, onChange }: LayerSelectorProps) {
         </div>
       </fieldset>
 
-      <section className="flex flex-col gap-1 border-t border-[#444] pt-2 text-xs text-gray-300">
-        <p className="font-medium text-gray-100">{active.label}</p>
-        <p>{active.sourceNote}</p>
-        <p>
-          <span className="text-gray-300">Coverage:</span> {active.coverageLabel}
-        </p>
-        <p>
-          <span className="text-gray-300">Tiles:</span> {tileLimitLabel(active)}
-        </p>
-        <p>{active.limitsNote}</p>
-        <p>Does not depend on the date.</p>
-      </section>
     </div>
   )
 }

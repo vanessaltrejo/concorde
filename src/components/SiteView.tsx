@@ -3,7 +3,6 @@ import type { TimingMetrics } from '../scene/timing'
 import type { SiteData } from '../types'
 import { bodyVisibility } from '../scene/visibility'
 import { buildTimeline, nextTransition, visiblePercent } from '../scene/windows'
-import { summarizeTerrain } from '../scene/terrainInfo'
 import { MainView } from './MainView'
 import { Sidebar } from './Sidebar'
 
@@ -46,7 +45,6 @@ export function SiteView({ data, sampleIndex, onSampleIndexChange, stayDays, onS
         sunVisibility={sunVisibility}
         earthVisibility={earthVisibility}
         timing={timing}
-        terrainSummary={summarizeTerrain(terrain)}
         anywhere={data.anywhere ?? null}
         horizon={horizon}
         timeMs={Date.parse(sample.timeUtc)}

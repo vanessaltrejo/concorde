@@ -29,7 +29,7 @@ void main() {
 }
 `
 
-export const terrainFragmentShader = /* glsl */ `
+const terrainCommon = /* glsl */ `
 #include <common>
 #include <logdepthbuf_pars_fragment>
 
@@ -96,13 +96,15 @@ bool heightAt(vec2 xz, out float height) {
 }
 
 // Highest terrain angle (as a tangent) seen from p toward a horizontal direction.
-float horizonTangent(vec3 p, vec2 direction) {
+float horizonTangent(vec3 p, vec2 direction, float stopTangent) {
   float best = -1e6;
   float t = shadowStart;
   for (int i = 0; i < 220; i++) {
     float height;
     if (!heightAt(p.xz + direction * t, height)) break;
     best = max(best, (height - p.y - shadowBias) / t);
+    // Terrain already covers the whole disc: more steps cannot change the result.
+    if (best > stopTangent) break;
     t *= 1.05;
   }
   return best;
@@ -119,9 +121,21 @@ float lightVisibility(vec3 p, vec3 lightDirection, float radius) {
   if (horizontal < 1e-5) return 1.0;
   float elevation = asin(clamp(lightDirection.y, -1.0, 1.0));
   if (elevation < -0.2) return 0.0;
-  float horizon = atan(horizonTangent(p, lightDirection.xz / horizontal));
+  float top = elevation + radius;
+  float stopTangent = top < 1.5 ? tan(top) : 1e6;
+  float horizon = atan(horizonTangent(p, lightDirection.xz / horizontal, stopTangent));
   return discFraction(elevation, horizon, radius);
 }
+
+`
+
+export const terrainFragmentShader = /* glsl */ `
+${terrainCommon}
+uniform sampler2D shadowMap;
+uniform float useBaked;
+uniform vec4 ownInverse;
+uniform vec2 ownOrigin;
+uniform float ownSize;
 
 // Lunar-Lambert reflectance with weight L = 0.5 between the two terms.
 float lunarLambert(vec3 n, vec3 l, vec3 v) {
@@ -140,18 +154,51 @@ void main() {
   vec3 n = normalize(vNormal);
   vec3 v = normalize(cameraPosition - vWorld);
 
+  // Shadow visibility baked once per Sun/Earth position (r = Sun, g = Earth).
+  vec2 baked = texture2D(shadowMap, gridUv(vWorld.xz, ownInverse, ownOrigin, ownSize)).rg;
+  bool useBake = useBaked > 0.5;
+
   float sunLight = 0.0;
   if (sunIntensity > 0.0 && dot(n, sunDirection) > 0.0) {
-    sunLight = sunIntensity * lunarLambert(n, sunDirection, v) * lightVisibility(vWorld, sunDirection, sunRadius);
+    float vis = useBake ? baked.r : lightVisibility(vWorld, sunDirection, sunRadius);
+    sunLight = sunIntensity * lunarLambert(n, sunDirection, v) * vis;
   }
   float earthLight = 0.0;
   if (earthIntensity > 0.0 && dot(n, earthDirection) > 0.0) {
-    earthLight = earthIntensity * lunarLambert(n, earthDirection, v) * lightVisibility(vWorld, earthDirection, earthRadius);
+    float vis = useBake ? baked.g : lightVisibility(vWorld, earthDirection, earthRadius);
+    earthLight = earthIntensity * lunarLambert(n, earthDirection, v) * vis;
   }
 
   vec3 color = albedo * (sunLight + earthLight + ambientIntensity);
   gl_FragColor = vec4(color, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
+}
+`
+
+// Bake pass: one texel per height-grid cell. Stores how much of the Sun disc
+// (r) and of the Earth disc (g) the terrain leaves visible from that cell. The
+// camera does not change this, so it runs only when the Sun or Earth moves.
+export const bakeVertexShader = /* glsl */ `
+void main() {
+  gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+`
+
+export const bakeFragmentShader = /* glsl */ `
+${terrainCommon.replace('#include <logdepthbuf_pars_fragment>', '')}
+uniform vec4 bakeAffine; // a, b, d, e: scene xz = [[a, b], [d, e]] * (col, row) + origin
+uniform vec2 bakeOrigin;
+uniform vec2 bakeHeightSize;
+uniform sampler2D bakeHeights;
+
+void main() {
+  vec2 colRow = floor(gl_FragCoord.xy);
+  vec2 xz = vec2(bakeAffine.x * colRow.x + bakeAffine.y * colRow.y, bakeAffine.z * colRow.x + bakeAffine.w * colRow.y) + bakeOrigin;
+  float height = texture2D(bakeHeights, (colRow + 0.5) / bakeHeightSize).r;
+  vec3 p = vec3(xz.x, height, xz.y);
+  float sunVis = sunIntensity > 0.0 ? lightVisibility(p, sunDirection, sunRadius) : 0.0;
+  float earthVis = earthIntensity > 0.0 ? lightVisibility(p, earthDirection, earthRadius) : 0.0;
+  gl_FragColor = vec4(sunVis, earthVis, 0.0, 1.0);
 }
 `

@@ -24,7 +24,7 @@ import {
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 import { getLayer, photoBase, tileUrl, type TileSource } from '../data/layers'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
-import { getSite, SITES } from '../data/sites'
+import { addSavedPoint, getSite, SITES, type SiteEntry } from '../data/sites'
 import {
   evaluateSite,
   loadSiteSlopes,
@@ -50,7 +50,9 @@ import {
 import { addGlobalLayer, raiseGlobalLayer, removeGlobalLayer } from './globalLayer'
 import { LayerSelector } from './LayerSelector'
 import { SitePanel } from './SitePanel'
-import { coverage } from '../terrain/anywhere'
+import { PickedPointCard } from './PickedPointCard'
+import { useSitesVersion } from '../state/useSites'
+import { GROUP_COLOR } from '../data/siteGroups'
 
 type Picked = { latitudeDeg: number; longitudeDeg: number; cell: number | null }
 
@@ -67,7 +69,13 @@ function makeProvider(source: TileSource) {
   })
 }
 
-const SITE_COLOR = Color.fromCssColorString('#56B4E9') // Okabe-Ito sky blue
+// The blinking marker of the point picked on the globe (before it is saved).
+const PICKED_ID = 'picked-point'
+
+// Marker colour by site group (same colours as the site menus).
+function groupColor(site: SiteEntry): Color {
+  return Color.fromCssColorString(GROUP_COLOR[site.group])
+}
 const MEETS_COLOR = Color.fromCssColorString('#009E73') // Okabe-Ito bluish green
 const EXCLUDED_COLOR = Color.fromCssColorString('#8a8a8a')
 const SELECTED_COLOR = Color.WHITE
@@ -77,8 +85,9 @@ const SELECTED_COLOR = Color.WHITE
 // `meets` is null when requirements are off; then every site has the default colour.
 function highlightSite(viewer: Viewer, siteId: string | null, meets: Record<string, boolean> | null) {
   for (const entity of viewer.entities.values) {
+    if (entity.id === PICKED_ID) continue
     const status = meets ? meets[entity.id] : undefined
-    const base = status === undefined ? SITE_COLOR : status ? MEETS_COLOR : EXCLUDED_COLOR
+    const base = status === undefined ? groupColor(getSite(entity.id)) : status ? MEETS_COLOR : EXCLUDED_COLOR
     if (entity.point) entity.point.color = new ConstantProperty(entity.id === siteId ? SELECTED_COLOR : base)
     if (entity.label) {
       const name = getSite(entity.id).name
@@ -102,9 +111,30 @@ function showHoverLabel(viewer: Viewer, hoveredId: string | null) {
   viewer.scene.requestRender()
 }
 
+// One site marker. Labels appear only when the camera is close, so sites that
+// are close together (the three south pole sites are about 15 km apart) do not overlap.
+function addSiteMarker(viewer: Viewer, site: SiteEntry, index: number) {
+  viewer.entities.add({
+    id: site.id,
+    position: Cartesian3.fromDegrees(site.longitudeDeg, site.latitudeDeg, 0, Ellipsoid.MOON),
+    point: { pixelSize: 9, color: groupColor(site), outlineColor: Color.BLACK, outlineWidth: 1.5 },
+    label: {
+      text: site.name,
+      font: '13px sans-serif',
+      fillColor: Color.WHITE,
+      outlineColor: Color.BLACK,
+      outlineWidth: 3,
+      style: LabelStyle.FILL_AND_OUTLINE,
+      // Alternate above / below so close sites do not cover each other.
+      verticalOrigin: index % 2 === 0 ? VerticalOrigin.BOTTOM : VerticalOrigin.TOP,
+      pixelOffset: new Cartesian2(0, index % 2 === 0 ? -10 : 10),
+      distanceDisplayCondition: LABEL_NEAR,
+    },
+  })
+}
+
 type RequirementsData ={ lights: Record<string, SiteLight>; slopes: Record<string, SiteSlope> }
 
-const ZONE_ALTITUDE_M = 150_000
 const TOPOGRAPHY_ALTITUDE_M = 40_000
 const GLOBE_ALTITUDE_M = 6_000_000
 
@@ -114,49 +144,9 @@ function flyOver(viewer: Viewer, siteId: string, altitudeM: number, onComplete?:
   viewer.camera.flyTo({
     destination: Cartesian3.fromDegrees(site.longitudeDeg, site.latitudeDeg, altitudeM, Ellipsoid.MOON),
     orientation: { heading: 0, pitch: CesiumMath.toRadians(-90), roll: 0 },
-    duration: 2,
+    duration: 1.2,
     complete: onComplete,
   })
-}
-
-// Calls `done` once the globe has no tiles left to load (or after 10 s).
-// Returns a function that cancels it.
-function whenTilesLoaded(viewer: Viewer, done: () => void): () => void {
-  let finished = false
-  const timers: number[] = []
-  const stop = viewer.scene.globe.tileLoadProgressEvent.addEventListener((queued: number) => {
-    if (queued === 0) finish()
-  })
-  function cleanup() {
-    finished = true
-    stop()
-    timers.forEach((t) => window.clearTimeout(t))
-  }
-  function finish() {
-    if (finished) return
-    cleanup()
-    done()
-  }
-  // The tiles may already be loaded when the flight ends, so no event comes.
-  timers.push(window.setTimeout(() => viewer.scene.globe.tilesLoaded && finish(), 700))
-  timers.push(window.setTimeout(finish, 10_000))
-  return cleanup
-}
-
-// Draws the globe once into a small square image (centre of the view).
-// render() right before drawImage() is needed: a WebGL canvas is cleared after it is shown.
-function snapshotGlobe(viewer: Viewer): string | null {
-  viewer.scene.render()
-  const source = viewer.scene.canvas
-  const size = Math.min(source.width, source.height)
-  if (size === 0) return null
-  const out = document.createElement('canvas')
-  out.width = 320
-  out.height = 320
-  const context = out.getContext('2d')
-  if (!context) return null
-  context.drawImage(source, (source.width - size) / 2, (source.height - size) / 2, size, size, 0, 0, 320, 320)
-  return out.toDataURL('image/jpeg', 0.8)
 }
 
 type ZoneImage = { siteId: string; url: string }
@@ -204,12 +194,11 @@ export default function MoonGlobe({
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<Viewer | null>(null)
   const overlaysRef = useRef<ImageryLayer[]>([])
-  const cancelCaptureRef = useRef<(() => void) | null>(null)
   // Latest "select a site" action for the Cesium click handler (created once).
   const showZoneRef = useRef<(siteId: string) => void>(() => {})
   const [picked, setPicked] = useState<Picked | null>(null)
   const [zoneImage, setZoneImage] = useState<ZoneImage | null>(null)
-  const [zonePending, setZonePending] = useState(false)
+  const capturedSiteRef = useRef<string | null>(null)
   const [requirementsData, setRequirementsData] = useState<RequirementsData | null>(null)
   const [requirementsError, setRequirementsError] = useState<string | null>(null)
   const [zoneData, setZoneData] = useState<{ grid: ZoneGrid; ephemeris: Ephemeris } | null>(null)
@@ -316,7 +305,7 @@ export default function MoonGlobe({
   useEffect(() => {
     if (!requirementsOn || requirementsData) return
     let cancelled = false
-    const withData = SITES.filter((s) => s.hasSkyData)
+    const withData = SITES.filter((s) => s.hasSkyData && !s.saved)
     Promise.all([Promise.all(withData.map((s) => loadSiteLight(s.id))), loadSiteSlopes()])
       .then(([lights, slopes]) => {
         if (cancelled) return
@@ -389,36 +378,18 @@ export default function MoonGlobe({
 
     // Start above the near side, looking straight down at the Moon.
     viewer.camera.setView({
-      destination: Cartesian3.fromDegrees(0, 0, 6_000_000, Ellipsoid.MOON),
+      destination: Cartesian3.fromDegrees(0, 0, GLOBE_ALTITUDE_M, Ellipsoid.MOON),
       orientation: { heading: 0, pitch: CesiumMath.toRadians(-90), roll: 0 },
     })
 
     // Site markers. Labels appear only when the camera is close, so the three
     // south pole sites (about 15 km apart) do not overlap from far away.
-    SITES.forEach((site, index) => {
-      viewer.entities.add({
-        id: site.id,
-        position: Cartesian3.fromDegrees(site.longitudeDeg, site.latitudeDeg, 0, Ellipsoid.MOON),
-        point: { pixelSize: 9, color: SITE_COLOR, outlineColor: Color.BLACK, outlineWidth: 1.5 },
-        label: {
-          text: site.name,
-          font: '13px sans-serif',
-          fillColor: Color.WHITE,
-          outlineColor: Color.BLACK,
-          outlineWidth: 3,
-          style: LabelStyle.FILL_AND_OUTLINE,
-          // Alternate above / below so close sites do not cover each other.
-          verticalOrigin: index % 2 === 0 ? VerticalOrigin.BOTTOM : VerticalOrigin.TOP,
-          pixelOffset: new Cartesian2(0, index % 2 === 0 ? -10 : 10),
-          distanceDisplayCondition: LABEL_NEAR,
-        },
-      })
-    })
+    SITES.forEach((site, index) => addSiteMarker(viewer, site, index))
 
     const handler = new ScreenSpaceEventHandler(viewer.scene.canvas)
     handler.setInputAction((event: ScreenSpaceEventHandler.PositionedEvent) => {
       const hit: unknown = viewer.scene.pick(event.position)
-      if (typeof hit === 'object' && hit !== null && 'id' in hit && hit.id instanceof Entity) {
+      if (typeof hit === 'object' && hit !== null && 'id' in hit && hit.id instanceof Entity && hit.id.id !== PICKED_ID) {
         showZoneRef.current(hit.id.id)
         return
       }
@@ -452,7 +423,6 @@ export default function MoonGlobe({
     }, ScreenSpaceEventType.MOUSE_MOVE)
 
     return () => {
-      cancelCaptureRef.current?.()
       removeTileListener()
       handler.destroy()
       viewer.destroy()
@@ -473,6 +443,42 @@ export default function MoonGlobe({
     viewer.scene.requestRender()
   }, [layerId])
 
+  // Blinking yellow marker on the picked point, until it is saved or closed.
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!viewer || !picked) return
+    const marker = viewer.entities.add({
+      id: PICKED_ID,
+      position: Cartesian3.fromDegrees(picked.longitudeDeg, picked.latitudeDeg, 0, Ellipsoid.MOON),
+      point: { pixelSize: 14, color: Color.fromCssColorString('#FFD400'), outlineColor: Color.BLACK, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+    })
+    let visible = true
+    const timer = window.setInterval(() => {
+      visible = !visible
+      marker.show = visible
+      viewer.scene.requestRender()
+    }, 450)
+    viewer.scene.requestRender()
+    return () => {
+      window.clearInterval(timer)
+      if (!viewer.isDestroyed()) {
+        viewer.entities.remove(marker)
+        viewer.scene.requestRender()
+      }
+    }
+  }, [picked])
+
+  // A removed saved point loses its marker.
+  const sitesVersion = useSitesVersion()
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!viewer) return
+    for (const entity of [...viewer.entities.values]) {
+      if (entity.id !== PICKED_ID && !SITES.some((s) => s.id === entity.id)) viewer.entities.remove(entity)
+    }
+    viewer.scene.requestRender()
+  }, [sitesVersion])
+
   // Highlight the selected site marker.
   useEffect(() => {
     const viewer = viewerRef.current
@@ -480,51 +486,53 @@ export default function MoonGlobe({
     highlightSite(viewer, selectedSiteId, results ? Object.fromEntries(results.map((r) => [r.siteId, r.meets])) : null)
   }, [selectedSiteId, results])
 
-  // Fly to a site, then take a snapshot of the zone for the Topography preview.
+  // Fly to a site and show its Topography picture. The pictures of the curated
+  // sites are stored files (public/topography/<id>.jpg), so they appear at once.
+  // Saved points have none yet.
   function flyAndCapture(siteId: string, altitudeM: number) {
     const viewer = viewerRef.current
     if (!viewer) return
-    cancelCaptureRef.current?.()
-    setZonePending(true)
-    let cancelled = false
-    let stopWaiting = () => {}
-    cancelCaptureRef.current = () => {
-      cancelled = true
-      stopWaiting()
-    }
-    flyOver(viewer, siteId, altitudeM, () => {
-      if (cancelled) return
-      stopWaiting = whenTilesLoaded(viewer, () => {
-        if (cancelled) return
-        const url = snapshotGlobe(viewer)
-        if (url) setZoneImage({ siteId, url })
-        setZonePending(false)
-      })
-    })
+    capturedSiteRef.current = siteId
+    setZoneImage(getSite(siteId).saved ? null : { siteId, url: `/topography/${siteId}.jpg` })
+    flyOver(viewer, siteId, altitudeM)
   }
 
   // Picking a site (list or marker) selects it and flies over it.
   function showZone(siteId: string) {
+    setPicked(null)
     onSelectSite(siteId)
-    flyAndCapture(siteId, ZONE_ALTITUDE_M)
-  }
-
-  // Topography view: closer to the ground, on a layer that shows relief.
-  function openTopography(siteId: string) {
-    if (layerId === 'image') setLayerId('hillshade')
     flyAndCapture(siteId, TOPOGRAPHY_ALTITUDE_M)
   }
 
-  function zoomOut() {
+  // Save the picked point as a new site: a marker on the globe, an entry in the
+  // site menu and a Compare flag.
+  function savePicked(point: Picked) {
     const viewer = viewerRef.current
-    if (!viewer || !selectedSiteId) return
-    cancelCaptureRef.current?.()
-    setZonePending(false)
-    flyOver(viewer, selectedSiteId, GLOBE_ALTITUDE_M)
+    const entry = addSavedPoint(point.latitudeDeg, point.longitudeDeg)
+    if (viewer) addSiteMarker(viewer, entry, SITES.length - 1)
+    showZone(entry.id)
+  }
+
+  // Back to the first view: the whole near side, straight down.
+  function resetGlobe() {
+    const viewer = viewerRef.current
+    if (!viewer) return
+    setPicked(null)
+    viewer.camera.flyTo({
+      destination: Cartesian3.fromDegrees(0, 0, GLOBE_ALTITUDE_M, Ellipsoid.MOON),
+      orientation: { heading: 0, pitch: CesiumMath.toRadians(-90), roll: 0 },
+      duration: 1.5,
+    })
   }
 
   useEffect(() => {
     showZoneRef.current = showZone
+  })
+
+  // A site selected without a click on the globe (link, URL, first load) gets
+  // the same flight and topography image.
+  useEffect(() => {
+    if (selectedSiteId && capturedSiteRef.current !== selectedSiteId) flyAndCapture(selectedSiteId, TOPOGRAPHY_ALTITUDE_M)
   })
 
   // Fly when the assistant selects a site. Runs after the viewer exists.
@@ -532,11 +540,10 @@ export default function MoonGlobe({
     if (flyRequest) showZoneRef.current(flyRequest.siteId)
   }, [flyRequest])
 
-  const active = getLayer(layerId)
   const selectedSite = selectedSiteId ? getSite(selectedSiteId) : null
 
   return (
-    <div className="relative h-full min-w-0 flex-1 bg-black">
+    <div className="relative h-full min-w-0 flex-1 overflow-hidden bg-black">
       <div
         ref={containerRef}
         className="h-full w-full"
@@ -544,7 +551,7 @@ export default function MoonGlobe({
         aria-label="3D Moon globe. Drag to rotate, scroll to zoom, click a site marker to select it."
       />
       <div className="absolute left-4 top-4 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-3 overflow-y-auto">
-        <LayerSelector activeId={layerId} onChange={setLayerId} />
+        <LayerSelector activeId={layerId} onChange={setLayerId} onResetGlobe={resetGlobe} />
         <RequirementsPanel
           enabled={requirementsOn}
           onEnabledChange={setRequirementsOn}
@@ -574,24 +581,19 @@ export default function MoonGlobe({
         />
       </div>
       <SitePanel
-        selected={selectedSite}
-        timeMs={timeMs}
-        onTimeChange={onTimeChange}
-        stayDays={stayDays}
-        onStayDaysChange={onStayDaysChange}
-        zoneImageUrl={zoneImage && zoneImage.siteId === selectedSiteId ? zoneImage.url : null}
-        zonePending={zonePending}
-        onSelect={showZone}
-        onOpenSkyView={onOpenSkyView}
-        onOpenTopography={openTopography}
-        onZoomOut={zoomOut}
-      />
-      {picked && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded bg-[#303030]/90 px-3 py-2 text-sm text-gray-100">
-          <p className="text-xs text-gray-400">Picked point</p>
-          <p>
-            {picked.latitudeDeg.toFixed(4)}°, {picked.longitudeDeg.toFixed(2)}° E
-          </p>
+        topSlot={
+          picked ? (
+            <PickedPointCard
+              latDeg={picked.latitudeDeg}
+              lonDeg={picked.longitudeDeg}
+              timeMs={timeMs}
+              onTimeChange={onTimeChange}
+              stayDays={stayDays}
+              onStayDaysChange={onStayDaysChange}
+              onClose={() => setPicked(null)}
+              onSave={() => savePicked(picked)}
+              onOpenHorizon={() => onOpenPointView({ latDeg: picked.latitudeDeg, lonDeg: picked.longitudeDeg })}
+            >
           {picked.cell !== null && zoneResults?.[picked.cell] && (
             <p className="mt-1 text-xs text-gray-300">
               Zone cell (best of its highest spots): {zoneResults[picked.cell].meets ? '✓ meets' : '✕ excluded'} · Sun{' '}
@@ -620,26 +622,18 @@ export default function MoonGlobe({
                 </p>
               )
             })()}
-          {(() => {
-            const cover = coverage(picked.latitudeDeg)
-            return cover.ok ? (
-              <button
-                type="button"
-                onClick={() => onOpenPointView({ latDeg: picked.latitudeDeg, lonDeg: picked.longitudeDeg })}
-                className="mt-2 w-full rounded bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-950 hover:bg-white"
-                title={`Computed in your browser from NASA ${cover.label}`}
-              >
-                Open Horizon view here
-              </button>
-            ) : (
-              <p className="mt-2 max-w-xs text-[11px] text-gray-400">{cover.reason}</p>
-            )
-          })()}
-        </div>
-      )}
-      <p className="pointer-events-none absolute bottom-1 right-2 text-[10px] text-gray-400">
-        NASA Moon Trek · {active.credit}
-      </p>
+            </PickedPointCard>
+          ) : null
+        }
+        selected={selectedSite}
+        timeMs={timeMs}
+        onTimeChange={onTimeChange}
+        stayDays={stayDays}
+        onStayDaysChange={onStayDaysChange}
+        zoneImageUrl={zoneImage && zoneImage.siteId === selectedSiteId ? zoneImage.url : null}
+        onSelect={showZone}
+        onOpenSkyView={onOpenSkyView}
+      />
     </div>
   )
 }
