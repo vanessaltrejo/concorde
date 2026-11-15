@@ -12,9 +12,11 @@ import { indexForTime } from '../scene/timeSelection'
 import { buildTimeline, nextTransition, type NextTransition } from '../scene/windows'
 import { HorizonPreview } from './HorizonPreview'
 
-// Dashboard: dark "mission control" page. Color has meaning and stays the same
-// everywhere on it: Sun = white, Earth = blue, NASA red only for small accents
-// (title tick, your stay outline). Text is never the only carrier of a color.
+// Dashboard: dark "mission control" page in the Orbital view style: black
+// background, gray raised cards (CARD), yellow main buttons with black text
+// (PRIMARY), outlined secondary buttons (SECONDARY). Color has meaning and stays
+// the same everywhere on it: Sun = white, Earth = blue, NASA red only for small
+// accents (title tick, your stay outline). Text is never the only carrier of a color.
 
 type Props = {
   siteId: string | null
@@ -37,6 +39,12 @@ const SUN_LINE = '#ececec'
 const SUN_INK = '#ececec'
 const EARTH = '#5b9bff'
 const RED = '#fc3d21'
+// Same classes as the Orbital view panels and buttons (SitePanel, RequirementsPanel).
+const CARD = 'rounded-lg border border-[#444] bg-[#303030] text-gray-100 shadow-lg'
+const PRIMARY = 'rounded bg-[#FFD400] px-3.5 py-1.5 text-sm font-semibold text-black hover:brightness-110'
+const SECONDARY = 'rounded border border-[#666] px-3.5 py-1.5 text-sm text-gray-100 hover:bg-[#3a3a3a]'
+// Picked option in a group of choices: the Orbital view's yellow, black text.
+const PICKED = 'bg-[#FFD400] font-semibold text-black'
 
 export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayDays, onOpenHorizon, onOpenCompare }: Props) {
   const withData = useMemo(() => SITES.filter((s) => s.hasSkyData), [])
@@ -107,7 +115,7 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
     <Shell>
       <div className="grid gap-3 xl:grid-cols-12">
         {/* Hero: dark accent with the Moon */}
-        <section className="relative overflow-hidden rounded-xl border border-[#444] p-5 xl:col-span-7">
+        <section className={'relative overflow-hidden p-5 xl:col-span-7 ' + CARD}>
           <img src="/textures/moon-hero.png" alt="" aria-hidden className="pointer-events-none absolute -right-16 -top-10 hidden w-64 select-none opacity-90 md:block [mask-image:radial-gradient(circle_at_40%_60%,black_45%,transparent_72%)]" />
           <div className="relative flex max-w-[34rem] flex-col gap-3">
             <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-gray-400">
@@ -128,23 +136,22 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
                   options={withData}
                   onChange={onSelectSite}
                   ariaLabel="Site"
-                  triggerClassName="flex w-full items-center gap-2 rounded-lg border border-white/20 bg-[#262626] px-3 py-1.5 text-left text-sm font-medium text-gray-100 hover:border-white/40"
                 />
               </div>
               <Chip>Arrival {formatUtc(stay.arrivalMs)}</Chip>
               <Chip>Stay {stayDays} d</Chip>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => onOpenHorizon(activeId)} className="rounded-lg bg-[var(--nasa-blue)] px-3.5 py-1.5 text-sm font-medium text-white hover:bg-[#164fb0]">
+              <button type="button" onClick={() => onOpenHorizon(activeId)} className={PRIMARY}>
                 Open Horizon view
               </button>
-              <button type="button" onClick={onOpenCompare} className="rounded-lg border border-white/25 px-3.5 py-1.5 text-sm text-white hover:bg-white/10">
+              <button type="button" onClick={onOpenCompare} className={SECONDARY}>
                 Compare sites
               </button>
-              <div role="group" aria-label="Detail level" className="flex overflow-hidden rounded-lg border border-white/20 text-xs">
+              <div role="group" aria-label="Detail level" className="flex overflow-hidden rounded border border-[#666] text-xs">
                 {([['Simple', false], ['Detailed', true]] as const).map(([label, value]) => (
                   <button key={label} type="button" aria-pressed={detailed === value} onClick={() => setDetailed(value)}
-                    className={'px-3 py-1.5 ' + (detailed === value ? 'bg-[var(--nasa-blue)] text-white' : 'text-gray-300 hover:bg-white/10')}>
+                    className={'px-3 py-1.5 ' + (detailed === value ? PICKED : 'text-gray-300 hover:bg-[#3a3a3a]')}>
                     {label}
                   </button>
                 ))}
@@ -187,12 +194,12 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
           className="xl:col-span-5"
           title="Best sites for your goal"
           sub={`${meets} of ${table.length} meet the defaults (Sun 100%, Earth ≥ 25%, slope ≤ 10°).`}
-          action={<button type="button" onClick={exportCsv} className="rounded border border-[#555] px-2 py-0.5 text-xs text-gray-100 hover:bg-[var(--nasa-blue)] hover:text-white">Export CSV</button>}
+          action={<button type="button" onClick={exportCsv} className="rounded border border-[#666] px-2 py-0.5 text-xs text-gray-100 hover:bg-[#3a3a3a]">Export CSV</button>}
         >
           <div role="radiogroup" aria-label="Goal" className="mb-2 flex flex-wrap gap-1">
             {GOALS.map((g) => (
               <button key={g.id} type="button" role="radio" aria-checked={g.id === goalId} title={g.blurb} onClick={() => setGoalId(g.id)}
-                className={'rounded-full border px-2.5 py-0.5 text-xs ' + (g.id === goalId ? 'border-[var(--nasa-blue)] bg-[var(--nasa-blue)] text-white' : 'border-[#555] text-gray-200 hover:bg-[#3a3a3a]')}>
+                className={'rounded-full border px-2.5 py-0.5 text-xs ' + (g.id === goalId ? 'border-[#FFD400] ' + PICKED : 'border-[#666] text-gray-200 hover:bg-[#3a3a3a]')}>
                 {g.label}
               </button>
             ))}
@@ -201,7 +208,7 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
             {table.map((r, i) => (
               <li key={r.site.id}>
                 <button type="button" onClick={() => onSelectSite(r.site.id)}
-                  className={'grid w-full grid-cols-[1rem_1fr_auto] items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left hover:bg-[#3a3a3a] ' + (r.site.id === activeId ? 'bg-[#0B3D91]/40' : '')}>
+                  className={'grid w-full grid-cols-[1rem_1fr_auto] items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left hover:bg-[#3a3a3a] ' + (r.site.id === activeId ? 'bg-[#3a3a3a] ring-1 ring-inset ring-[#FFD400]/60' : '')}>
                   <span className="text-xs text-gray-500">{i + 1}</span>
                   <span className="min-w-0">
                     <span className="flex items-center justify-between gap-2 text-sm">
@@ -248,7 +255,7 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
 function Shell({ children }: { children: ReactNode }) {
   return (
     <div
-      className="flex h-full min-w-0 flex-1 flex-col gap-3 overflow-y-auto bg-[#303030] p-3 text-gray-100 md:p-4 [&>*]:shrink-0"
+      className="flex h-full min-w-0 flex-1 flex-col gap-3 overflow-y-auto bg-black p-3 text-gray-100 md:p-4 [&>*]:shrink-0"
     >
       {children}
     </div>
@@ -260,12 +267,12 @@ function Centered({ children }: { children: ReactNode }) {
 }
 
 function Chip({ children }: { children: ReactNode }) {
-  return <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-gray-300">{children}</span>
+  return <span className="rounded-full border border-[#555] bg-[#262626] px-3 py-1.5 text-xs text-gray-300">{children}</span>
 }
 
 function Panel({ title, sub, action, className = '', children }: { title: string; sub?: string; action?: ReactNode; className?: string; children: ReactNode }) {
   return (
-    <section className={'rounded-xl border border-[#444] p-3.5 text-gray-100 ' + className}>
+    <section className={'p-3.5 ' + CARD + ' ' + className}>
       <div className="mb-2 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-gray-100">{title}</h2>
@@ -292,7 +299,7 @@ function Gauge({ label, value, color, ink, delta }: { label: string; value: numb
   const r = 26
   const c = 2 * Math.PI * r
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-[#444] p-3 text-gray-100">
+    <div className={'flex items-center gap-3 p-3 ' + CARD}>
       <svg viewBox="0 0 64 64" className="h-14 w-14 shrink-0 -rotate-90" aria-hidden>
         <circle cx="32" cy="32" r={r} fill="none" stroke="#444" strokeWidth="7" />
         <circle cx="32" cy="32" r={r} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(c * Math.max(0, Math.min(100, value))) / 100} ${c}`} />
@@ -312,7 +319,7 @@ function Gauge({ label, value, color, ink, delta }: { label: string; value: numb
 function Countdown({ body, next, color }: { body: 'Sun' | 'Earth'; next: NextTransition; color: string }) {
   const up = next.kind === 'set'
   return (
-    <div className="flex flex-col justify-between rounded-xl border border-[#444] p-3">
+    <div className={'flex flex-col justify-between p-3 ' + CARD}>
       <p className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-gray-400">
         <span>{body}{up ? 'set' : 'rise'} in</span>
         <span className="flex items-center gap-1.5 normal-case tracking-normal">
