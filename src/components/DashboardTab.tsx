@@ -12,11 +12,9 @@ import { indexForTime } from '../scene/timeSelection'
 import { buildTimeline, nextTransition, type NextTransition } from '../scene/windows'
 import { HorizonPreview } from './HorizonPreview'
 
-// Dashboard: dark "mission control" page in the Orbital view style: black
-// background, gray raised cards (CARD), yellow main buttons with black text
-// (PRIMARY), outlined secondary buttons (SECONDARY). Color has meaning and stays
-// the same everywhere on it: Sun = white, Earth = blue, NASA red only for small
-// accents (title tick, your stay outline). Text is never the only carrier of a color.
+// Dashboard: gray "glass" mission control. Palette (2026-11-15): White, Silver,
+// Medium Gray, Gray, Blue Gray. Color has meaning and stays the same everywhere
+// on it: Sun = white, Earth = Blue Gray. Text is never the only carrier of a color.
 
 type Props = {
   siteId: string | null
@@ -32,19 +30,14 @@ type State = { lights: Record<string, SiteLight>; slopes: Record<string, SiteSlo
 
 const DAY_MS = 86_400_000
 // On dark backgrounds
-const SUN = '#ececec'
-const EARTH_LIGHT = '#5b9bff'
-// On gray cards (readable contrast)
-const SUN_LINE = '#ececec'
-const SUN_INK = '#ececec'
-const EARTH = '#5b9bff'
-const RED = '#fc3d21'
-// Same classes as the Orbital view panels and buttons (SitePanel, RequirementsPanel).
-const CARD = 'rounded-lg border border-[#444] bg-[#303030] text-gray-100 shadow-lg'
-const PRIMARY = 'rounded bg-[#FFD400] px-3.5 py-1.5 text-sm font-semibold text-black hover:brightness-110'
-const SECONDARY = 'rounded border border-[#666] px-3.5 py-1.5 text-sm text-gray-100 hover:bg-[#3a3a3a]'
-// Picked option in a group of choices: the Orbital view's yellow, black text.
-const PICKED = 'bg-[#FFD400] font-semibold text-black'
+const SUN = '#ffffff'
+const EARTH_LIGHT = '#b0bec5'
+// On glass cards (readable contrast)
+const SUN_LINE = '#ffffff'
+const SUN_INK = '#ffffff'
+const EARTH = '#b0bec5'
+const GRID = 'rgba(255,255,255,0.09)'
+const AXIS_TEXT = '#a0a0a0'
 
 export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayDays, onOpenHorizon, onOpenCompare }: Props) {
   const withData = useMemo(() => SITES.filter((s) => s.hasSkyData), [])
@@ -115,16 +108,16 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
     <Shell>
       <div className="grid gap-3 xl:grid-cols-12">
         {/* Hero: dark accent with the Moon */}
-        <section className={'relative overflow-hidden p-5 xl:col-span-7 ' + CARD}>
-          <img src="/textures/moon-hero.png" alt="" aria-hidden className="pointer-events-none absolute -right-16 -top-10 hidden w-64 select-none opacity-90 md:block [mask-image:radial-gradient(circle_at_40%_60%,black_45%,transparent_72%)]" />
+        <section className="glass rise relative overflow-hidden rounded-3xl p-6 xl:col-span-7" style={{ animationDelay: '0ms' }}>
+          <img src="/textures/moon-hero.png" alt="" aria-hidden className="pointer-events-none absolute -right-14 -top-12 hidden w-72 select-none opacity-80 grayscale md:block [mask-image:radial-gradient(circle_at_40%_60%,black_45%,transparent_72%)]" />
           <div className="relative flex max-w-[34rem] flex-col gap-3">
-            <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-gray-400">
-              <span aria-hidden className="h-3 w-1 rounded-sm" style={{ background: RED }} />
+            <p className="font-display flex items-center gap-2 text-[11px] uppercase tracking-[0.28em] text-[#c0c0c0]">
+              <span aria-hidden className="h-3 w-1 rounded-sm bg-gradient-to-b from-white to-[#808080]" />
               Lunar landing site navigator
             </p>
             <div>
-              <h1 className="text-4xl font-semibold tracking-tight text-white">Welcome!</h1>
-              <p className="mt-1 text-sm text-gray-300">
+              <h1 className="font-display bg-gradient-to-b from-white via-[#e6e8e9] to-[#a0a0a0] bg-clip-text text-5xl font-semibold tracking-tight text-transparent">Welcome!</h1>
+              <p className="mt-2 text-sm text-[#d6dadc]">
                 Pick a site and a date. See when the <span style={{ color: SUN }}>Sun</span> powers your lander and when{' '}
                 <span style={{ color: EARTH_LIGHT }}>Earth</span> can hear you, behind the real lunar terrain.
               </p>
@@ -136,22 +129,23 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
                   options={withData}
                   onChange={onSelectSite}
                   ariaLabel="Site"
+                  triggerClassName="btn-glass flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-left text-sm font-medium"
                 />
               </div>
               <Chip>Arrival {formatUtc(stay.arrivalMs)}</Chip>
               <Chip>Stay {stayDays} d</Chip>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => onOpenHorizon(activeId)} className={PRIMARY}>
+              <button type="button" onClick={() => onOpenHorizon(activeId)} className="btn-gloss rounded-xl px-4 py-1.5 text-sm">
                 Open Horizon view
               </button>
-              <button type="button" onClick={onOpenCompare} className={SECONDARY}>
+              <button type="button" onClick={onOpenCompare} className="btn-glass rounded-xl px-4 py-1.5 text-sm">
                 Compare sites
               </button>
-              <div role="group" aria-label="Detail level" className="flex overflow-hidden rounded border border-[#666] text-xs">
+              <div role="group" aria-label="Detail level" className="flex overflow-hidden rounded-xl border border-white/20 bg-white/5 text-xs">
                 {([['Simple', false], ['Detailed', true]] as const).map(([label, value]) => (
                   <button key={label} type="button" aria-pressed={detailed === value} onClick={() => setDetailed(value)}
-                    className={'px-3 py-1.5 ' + (detailed === value ? PICKED : 'text-gray-300 hover:bg-[#3a3a3a]')}>
+                    className={'px-3 py-1.5 ' + (detailed === value ? 'bg-gradient-to-b from-white to-[#c0c0c0] font-semibold text-[#1b1d1f]' : 'text-[#d6dadc] hover:bg-white/10')}>
                     {label}
                   </button>
                 ))}
@@ -161,7 +155,7 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
         </section>
 
         {/* Headline numbers, 2 x 2 next to the hero */}
-        <section className="grid grid-cols-2 gap-3 xl:col-span-5" aria-label="Key numbers">
+        <section className="rise grid grid-cols-2 gap-3 xl:col-span-5" style={{ animationDelay: '80ms' }} aria-label="Key numbers">
           <Gauge label="Time with Sun" value={stay.sunPercent} color={SUN_LINE} ink={SUN_INK} delta={prev ? stay.sunPercent - prev.sunPercent : null} />
           <Gauge label="Time with Earth link" value={stay.earthPercent} color={EARTH} ink={EARTH} delta={prev ? stay.earthPercent - prev.earthPercent : null} />
           <Countdown body="Sun" next={sunNext} color={SUN} />
@@ -169,12 +163,12 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
         </section>
 
         {/* Timeline */}
-        <Panel className="xl:col-span-8" title="Your stay, hour by hour" sub={detailed ? 'Elevation of the disc center. Bars: part of the disc above the real terrain horizon.' : 'Above the dashed line = in the sky. Bars = when you have power and a link.'}>
+        <Panel delay={160} className="xl:col-span-8" title="Your stay, hour by hour" sub={detailed ? 'Elevation of the disc center. Bars: part of the disc above the real terrain horizon.' : 'Above the dashed line = in the sky. Bars = when you have power and a link.'}>
           <StayChart light={light} start={a} length={wanted} />
         </Panel>
 
         {/* Live sky + quick facts */}
-        <Panel className="xl:col-span-4" title={`Sky now at ${site.name}`} sub="Real horizon, 360°.">
+        <Panel delay={220} className="xl:col-span-4" title={`Sky now at ${site.name}`} sub="Real horizon, 360°.">
           <HorizonPreview sky={light.sky} horizon={light.horizon} timeMs={timeMs} />
           <dl className="mt-2 grid grid-cols-2 gap-1.5 text-xs">
             <Fact label="Sun height" value={`${samples[a].sun.elevationDeg.toFixed(1)}°`} />
@@ -185,21 +179,22 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
         </Panel>
 
         {/* Heatmap */}
-        <Panel className="xl:col-span-7" title="90 days of sunlight, every site" sub={detailed ? 'Share of each UTC day with part of the Sun above the terrain horizon. Click a day to set your arrival.' : 'Brighter = more sunlight that day. Click any day to jump there.'}>
+        <Panel delay={280} className="xl:col-span-7" title="90 days of sunlight, every site" sub={detailed ? 'Share of each UTC day with part of the Sun above the terrain horizon. Click a day to set your arrival.' : 'Brighter = more sunlight that day. Click any day to jump there.'}>
           <Heatmap rows={heat} startMs={Date.parse(samples[0].timeUtc)} arrivalMs={stay.arrivalMs} stayDays={stayDays} activeId={activeId} onPick={(id, ms) => { onSelectSite(id); onTimeChange(ms) }} />
         </Panel>
 
         {/* Ranking */}
         <Panel
+          delay={340}
           className="xl:col-span-5"
           title="Best sites for your goal"
           sub={`${meets} of ${table.length} meet the defaults (Sun 100%, Earth ≥ 25%, slope ≤ 10°).`}
-          action={<button type="button" onClick={exportCsv} className="rounded border border-[#666] px-2 py-0.5 text-xs text-gray-100 hover:bg-[#3a3a3a]">Export CSV</button>}
+          action={<button type="button" onClick={exportCsv} className="btn-glass rounded-lg px-2.5 py-0.5 text-xs">Export CSV</button>}
         >
           <div role="radiogroup" aria-label="Goal" className="mb-2 flex flex-wrap gap-1">
             {GOALS.map((g) => (
               <button key={g.id} type="button" role="radio" aria-checked={g.id === goalId} title={g.blurb} onClick={() => setGoalId(g.id)}
-                className={'rounded-full border px-2.5 py-0.5 text-xs ' + (g.id === goalId ? 'border-[#FFD400] ' + PICKED : 'border-[#666] text-gray-200 hover:bg-[#3a3a3a]')}>
+                className={'rounded-full border px-2.5 py-0.5 text-xs ' + (g.id === goalId ? 'border-white/70 bg-gradient-to-b from-white to-[#c0c0c0] font-semibold text-[#1b1d1f]' : 'border-white/20 bg-white/5 text-[#d6dadc] hover:bg-white/10')}>
                 {g.label}
               </button>
             ))}
@@ -208,7 +203,7 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
             {table.map((r, i) => (
               <li key={r.site.id}>
                 <button type="button" onClick={() => onSelectSite(r.site.id)}
-                  className={'grid w-full grid-cols-[1rem_1fr_auto] items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left hover:bg-[#3a3a3a] ' + (r.site.id === activeId ? 'bg-[#3a3a3a] ring-1 ring-inset ring-[#FFD400]/60' : '')}>
+                  className={'grid w-full grid-cols-[1rem_1fr_auto] items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left hover:bg-white/[0.08] ' + (r.site.id === activeId ? 'bg-white/[0.12] ring-1 ring-white/25' : '')}>
                   <span className="text-xs text-gray-500">{i + 1}</span>
                   <span className="min-w-0">
                     <span className="flex items-center justify-between gap-2 text-sm">
@@ -220,11 +215,11 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
                         {detailed && <span className="ml-1 text-gray-400">· {r.m.slopeDeg != null ? `${r.m.slopeDeg.toFixed(1)}°` : 'no slope'}</span>}
                       </span>
                     </span>
-                    <span className="mt-1 block h-1 rounded-full bg-[#444]">
-                      <span className="block h-1 rounded-full bg-[#4d8be8]" style={{ width: `${r.score}%` }} />
+                    <span className="mt-1 block h-1 rounded-full bg-white/10">
+                      <span className="block h-1 rounded-full bg-gradient-to-r from-[#808080] via-[#c0c0c0] to-white" style={{ width: `${r.score}%` }} />
                     </span>
                   </span>
-                  <span className="w-7 text-right text-sm font-semibold tabular-nums text-gray-100">{Math.round(r.score)}</span>
+                  <span className="font-display w-7 text-right text-sm font-semibold tabular-nums text-white">{Math.round(r.score)}</span>
                 </button>
               </li>
             ))}
@@ -233,10 +228,10 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
         </Panel>
 
         {/* Impact: one slim row */}
-        <Panel className="xl:col-span-12" title="Impact" sub="KPIs pending definition: waiting for the team's research on today's process. No values are invented.">
+        <Panel delay={400} className="xl:col-span-12" title="Impact" sub="KPIs pending definition: waiting for the team's research on today's process. No values are invented.">
           <ul className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             {IMPACT_KPIS.map((k) => (
-              <li key={k.id} className="flex items-baseline justify-between gap-2 rounded-lg border border-dashed border-[#555] px-3 py-2">
+              <li key={k.id} className="flex items-baseline justify-between gap-2 rounded-xl border border-dashed border-white/20 bg-white/[0.03] px-3 py-2">
                 <span>
                   <span className="block text-xs text-gray-200">{k.label}</span>
                   <span className="block text-[10px] text-gray-400">{k.unit}</span>
@@ -254,10 +249,17 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
 
 function Shell({ children }: { children: ReactNode }) {
   return (
-    <div
-      className="flex h-full min-w-0 flex-1 flex-col gap-3 overflow-y-auto bg-black p-3 text-gray-100 md:p-4 [&>*]:shrink-0"
-    >
-      {children}
+    <div className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-[#1b1d1f] text-gray-100">
+      {/* Backdrop for the glass: graphite with soft silver and blue-gray light. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(60% 45% at 12% 0%, rgba(192,192,192,0.28), transparent 70%), radial-gradient(45% 40% at 95% 20%, rgba(176,190,197,0.22), transparent 70%), radial-gradient(55% 50% at 60% 110%, rgba(128,128,128,0.28), transparent 70%), linear-gradient(180deg, #2a2d30 0%, #1b1d1f 60%, #151617 100%)',
+        }}
+      />
+      <div className="relative flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 md:p-5 [&>*]:shrink-0">{children}</div>
     </div>
   )
 }
@@ -267,16 +269,16 @@ function Centered({ children }: { children: ReactNode }) {
 }
 
 function Chip({ children }: { children: ReactNode }) {
-  return <span className="rounded-full border border-[#555] bg-[#262626] px-3 py-1.5 text-xs text-gray-300">{children}</span>
+  return <span className="rounded-full border border-white/20 bg-white/[0.07] px-3 py-1.5 text-xs text-[#e3e6e8] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">{children}</span>
 }
 
-function Panel({ title, sub, action, className = '', children }: { title: string; sub?: string; action?: ReactNode; className?: string; children: ReactNode }) {
+function Panel({ title, sub, action, className = '', delay = 0, children }: { title: string; sub?: string; action?: ReactNode; className?: string; delay?: number; children: ReactNode }) {
   return (
-    <section className={'p-3.5 ' + CARD + ' ' + className}>
+    <section className={'glass rise rounded-2xl p-4 text-gray-100 ' + className} style={{ animationDelay: `${delay}ms` }}>
       <div className="mb-2 flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-gray-100">{title}</h2>
-          {sub && <p className="mt-0.5 text-[11px] text-gray-400">{sub}</p>}
+          <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.14em] text-white">{title}</h2>
+          {sub && <p className="mt-0.5 text-[11px] text-[#a0a0a0]">{sub}</p>}
         </div>
         {action}
       </div>
@@ -287,9 +289,9 @@ function Panel({ title, sub, action, className = '', children }: { title: string
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-[#3a3a3a] px-2.5 py-1.5">
-      <dt className="text-gray-400">{label}</dt>
-      <dd className="font-mono text-sm text-gray-100">{value}</dd>
+    <div className="rounded-xl border border-white/10 bg-white/[0.06] px-2.5 py-1.5">
+      <dt className="text-[#a0a0a0]">{label}</dt>
+      <dd className="font-display text-sm text-white">{value}</dd>
     </div>
   )
 }
@@ -299,15 +301,15 @@ function Gauge({ label, value, color, ink, delta }: { label: string; value: numb
   const r = 26
   const c = 2 * Math.PI * r
   return (
-    <div className={'flex items-center gap-3 p-3 ' + CARD}>
-      <svg viewBox="0 0 64 64" className="h-14 w-14 shrink-0 -rotate-90" aria-hidden>
-        <circle cx="32" cy="32" r={r} fill="none" stroke="#444" strokeWidth="7" />
+    <div className="glass flex items-center gap-3 rounded-2xl p-3 text-gray-100">
+      <svg viewBox="0 0 64 64" className="h-14 w-14 shrink-0 -rotate-90 drop-shadow-[0_0_6px_rgba(255,255,255,0.25)]" aria-hidden>
+        <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="7" />
         <circle cx="32" cy="32" r={r} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(c * Math.max(0, Math.min(100, value))) / 100} ${c}`} />
       </svg>
       <div className="min-w-0">
-        <p className="text-xs text-gray-300">{label}</p>
-        <p className="text-2xl font-semibold tabular-nums leading-tight" style={{ color: ink }}>{Math.round(value)}%</p>
-        <p className="text-[11px] text-gray-400">
+        <p className="text-xs text-[#c0c0c0]">{label}</p>
+        <p className="font-display text-3xl font-semibold tabular-nums leading-tight" style={{ color: ink }}>{Math.round(value)}%</p>
+        <p className="text-[11px] text-[#a0a0a0]">
           {delta === null ? 'of your stay' : <>{delta > 0.5 ? '▲' : delta < -0.5 ? '▼' : '='} {Math.abs(delta).toFixed(0)} pts vs previous stay</>}
         </p>
       </div>
@@ -319,16 +321,16 @@ function Gauge({ label, value, color, ink, delta }: { label: string; value: numb
 function Countdown({ body, next, color }: { body: 'Sun' | 'Earth'; next: NextTransition; color: string }) {
   const up = next.kind === 'set'
   return (
-    <div className={'flex flex-col justify-between p-3 ' + CARD}>
-      <p className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-gray-400">
+    <div className="glass flex flex-col justify-between rounded-2xl p-3">
+      <p className="font-display flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-[#a0a0a0]">
         <span>{body}{up ? 'set' : 'rise'} in</span>
         <span className="flex items-center gap-1.5 normal-case tracking-normal">
           <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: up ? color : 'transparent', border: `1.5px solid ${color}` }} />
           {up ? 'up now' : 'below horizon'}
         </span>
       </p>
-      <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-white">{next.found ? formatDuration(next.inMs) : `> ${formatDuration(next.afterMs)}`}</p>
-      <p className="text-[11px] text-gray-500">{next.found ? formatUtc(next.timeMs) : 'beyond the end of the data'}</p>
+      <p className="font-display mt-1 text-2xl font-semibold tabular-nums text-white">{next.found ? formatDuration(next.inMs) : `> ${formatDuration(next.afterMs)}`}</p>
+      <p className="text-[11px] text-[#a0a0a0]">{next.found ? formatUtc(next.timeMs) : 'beyond the end of the data'}</p>
     </div>
   )
 }
@@ -380,13 +382,13 @@ function StayChart({ light, start, length }: { light: SiteLight; start: number; 
         </defs>
         {ticks.map((v) => (
           <g key={v}>
-            <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke={v === 0 ? '#98a2b3' : '#444'} strokeDasharray={v === 0 ? '4 4' : undefined} />
-            <text x={L - 6} y={y(v) + 3} fontSize={10} fill="#9aa3b2" textAnchor="end">{v}°</text>
+            <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke={v === 0 ? '#a0a0a0' : GRID} strokeDasharray={v === 0 ? '4 4' : undefined} />
+            <text x={L - 6} y={y(v) + 3} fontSize={10} fill={AXIS_TEXT} textAnchor="end">{v}°</text>
           </g>
         ))}
-        <text x={W - R} y={y(0) - 4} fontSize={10} fill="#9aa3b2" textAnchor="end">horizon plane</text>
+        <text x={W - R} y={y(0) - 4} fontSize={10} fill={AXIS_TEXT} textAnchor="end">horizon plane</text>
         {Array.from({ length: Math.floor(nDays / dayStep) + 1 }, (_, t) => t * dayStep * 24).filter((k) => k < idx.length).map((k) => (
-          <text key={k} x={x(k)} y={H - 6} fontSize={10} fill="#9aa3b2" textAnchor={k === 0 ? 'start' : 'middle'}>{formatUtcDay(startMs + k * 3_600_000)}</text>
+          <text key={k} x={x(k)} y={H - 6} fontSize={10} fill={AXIS_TEXT} textAnchor={k === 0 ? 'start' : 'middle'}>{formatUtcDay(startMs + k * 3_600_000)}</text>
         ))}
         <path d={area(sun)} fill="url(#sunFill)" />
         <path d={line(earth)} fill="none" stroke={EARTH} strokeWidth={2} strokeDasharray="6 4" />
@@ -407,8 +409,8 @@ function StayChart({ light, start, length }: { light: SiteLight; start: number; 
 function Strip({ label, color, on }: { label: string; color: string; on: boolean[] }) {
   return (
     <div>
-      <p className="mb-0.5 text-[10px] text-gray-400">{label}</p>
-      <div className="flex h-2 overflow-hidden rounded-full bg-[#444]">
+      <p className="mb-0.5 text-[10px] text-[#a0a0a0]">{label}</p>
+      <div className="flex h-2 overflow-hidden rounded-full bg-white/10">
         {on.map((v, i) => <span key={i} className="h-full flex-1" style={{ background: v ? color : 'transparent' }} />)}
       </div>
     </div>
@@ -424,7 +426,7 @@ function Heatmap({ rows, startMs, arrivalMs, stayDays, activeId, onPick }: { row
       <div className="min-w-[32rem]">
         {rows.map(({ site, days }) => (
           <div key={site.id} className="mb-1 flex items-center gap-3">
-            <span className={'w-32 shrink-0 truncate text-xs ' + (site.id === activeId ? 'font-semibold text-[#7fb0ff]' : 'text-gray-300')}>{site.name}</span>
+            <span className={'w-32 shrink-0 truncate text-xs ' + (site.id === activeId ? 'font-semibold text-white' : 'text-[#a0a0a0]')}>{site.name}</span>
             <div className="flex flex-1 gap-px">
               {days.map((pct, d) => {
                 const inStay = site.id === activeId && d + 1 > stayFrom && d < stayTo
@@ -437,8 +439,8 @@ function Heatmap({ rows, startMs, arrivalMs, stayDays, activeId, onPick }: { row
                     onClick={() => onPick(site.id, startMs + d * DAY_MS)}
                     className="h-4 flex-1 rounded-[2px] transition-transform hover:scale-y-125"
                     style={{
-                      background: pct === 0 ? '#444' : `rgba(236,236,236,${0.18 + 0.82 * (pct / 100)})`,
-                      boxShadow: inStay ? `inset 0 0 0 1.5px ${RED}` : undefined,
+                      background: pct === 0 ? 'rgba(255,255,255,0.06)' : `rgba(255,255,255,${0.14 + 0.86 * (pct / 100)})`,
+                      boxShadow: inStay ? 'inset 0 0 0 1.5px #b0bec5, 0 0 6px rgba(176,190,197,0.8)' : undefined,
                     }}
                   />
                 )
@@ -450,7 +452,7 @@ function Heatmap({ rows, startMs, arrivalMs, stayDays, activeId, onPick }: { row
           <span>{formatUtcDay(startMs)}</span>
           <span className="flex items-center gap-2">
             no Sun
-            <span className="h-2 w-24 rounded-full" style={{ background: `linear-gradient(90deg, #444, ${SUN_LINE})` }} />
+            <span className="h-2 w-24 rounded-full" style={{ background: `linear-gradient(90deg, rgba(255,255,255,0.06), ${SUN_LINE})` }} />
             Sun all day
           </span>
           <span>{formatUtcDay(startMs + nDays * DAY_MS)}</span>
