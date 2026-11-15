@@ -14,6 +14,7 @@ import { encodeScenarios, useScenarios } from './state/scenarios'
 import { DashboardTab } from './components/DashboardTab'
 import { CompareTab } from './components/CompareTab'
 import type { SiteData } from './types'
+import { loadAnywhereSite, pointId, pointName, type AnywherePoint } from './terrain/anywhere'
 
 // CesiumJS is large: it loads only when the Orbital view tab opens.
 const MoonGlobe = lazy(() => import('./components/MoonGlobe'))
@@ -36,6 +37,9 @@ export default function App() {
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(initial.siteId ?? DEFAULT_SITE_ID)
   // Site shown in the Horizon view.
   const [skySiteId, setSkySiteId] = useState(initial.siteId ?? DEFAULT_SITE_ID)
+  // A point picked on the map; when set, the Horizon view shows it instead of skySiteId.
+  const [horizonPoint, setHorizonPoint] = useState<AnywherePoint | null>(initial.view === 'horizon' ? initial.point : null)
+  const [pointProgress, setPointProgress] = useState('')
   // Selected date and time, shared by the Orbital view and every Horizon view. null = first sample.
   const [timeMs, setTimeMs] = useState<number | null>(initial.timeMs)
   // Stay length in days, from the selected time on. Shared by both views.
@@ -57,6 +61,7 @@ export default function App() {
     view: tab,
     orbitalSiteId: selectedSiteId,
     horizonSiteId: skySiteId,
+    horizonPoint,
     timeMs,
     stayDays,
     layerId,
@@ -70,17 +75,24 @@ export default function App() {
 
   // Load the Horizon view site's files (about 19 MB) only when that tab is open and
   // the site is not already loaded. A late answer for an older site is ignored.
+  // A picked point is computed in a Web Worker from the terrain tiles instead.
+  const horizonKey = horizonPoint ? pointId(horizonPoint) : skySiteId
   useEffect(() => {
-    if (tab !== 'horizon' || loaded?.siteId === skySiteId) return
+    if (tab !== 'horizon' || loaded?.siteId === horizonKey) return
     let cancelled = false
-    loadSiteData(skySiteId)
+    const load = horizonPoint
+      ? loadAnywhereSite(horizonPoint, (text) => {
+          if (!cancelled) setPointProgress(text)
+        })
+      : loadSiteData(skySiteId)
+    load
       .then((data) => {
-        if (!cancelled) setLoaded({ siteId: skySiteId, status: 'ready', data })
+        if (!cancelled) setLoaded({ siteId: horizonKey, status: 'ready', data })
       })
       .catch((error: unknown) => {
         if (!cancelled)
           setLoaded({
-            siteId: skySiteId,
+            siteId: horizonKey,
             status: 'error',
             message: error instanceof Error ? error.message : String(error),
           })
@@ -88,24 +100,37 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [tab, skySiteId, loaded])
+  }, [tab, skySiteId, horizonPoint, horizonKey, loaded])
 
   // Keep the address bar in step with the screen, so a link reopens it.
   useEffect(() => {
     const siteId = tab === 'horizon' ? skySiteId : selectedSiteId
     // The home (Orbital view, default site, stay and date) keeps a clean address: just "/".
     const isHome = tab === 'orbital' && siteId === DEFAULT_SITE_ID && stayDays === DEFAULT_STAY_DAYS && timeMs === null
-    writeUrlState(isHome ? null : { view: tab, siteId, timeMs, stayDays }, encodeScenarios(scenarios))
-  }, [tab, skySiteId, selectedSiteId, timeMs, stayDays, scenarios])
+    const point = tab === 'horizon' ? horizonPoint : null
+    writeUrlState(
+      isHome ? null : { view: tab, siteId: point ? null : siteId, timeMs, stayDays, point },
+      encodeScenarios(scenarios),
+    )
+  }, [tab, skySiteId, selectedSiteId, horizonPoint, timeMs, stayDays, scenarios])
 
   function openSkyView(siteId: string) {
     setSkySiteId(siteId)
+    setHorizonPoint(null)
+    setTab('horizon')
+    setFlyRequest(null)
+  }
+
+  function openPointView(point: AnywherePoint) {
+    setPointProgress('')
+    setHorizonPoint(point)
     setTab('horizon')
     setFlyRequest(null)
   }
 
   function backToMap() {
-    setSelectedSiteId(skySiteId)
+    // A picked point is not a curated site: keep the site that was selected.
+    if (!horizonPoint) setSelectedSiteId(skySiteId)
     setTab('orbital')
   }
 
@@ -145,15 +170,26 @@ export default function App() {
         }
       },
       openHorizonView: (siteId) => {
-        patch({ horizonSiteId: siteId, view: 'horizon' })
+        patch({ horizonSiteId: siteId, horizonPoint: null, view: 'horizon' })
         setSkySiteId(siteId)
+        setHorizonPoint(null)
+        setTab('horizon')
+        setFlyRequest(null)
+      },
+      openHorizonAtPoint: (point) => {
+        patch({ horizonPoint: point, view: 'horizon' })
+        setHorizonPoint(point)
         setTab('horizon')
         setFlyRequest(null)
       },
       backToOrbitalView: () => {
-        const siteId = stateRef.current.horizonSiteId
-        patch({ orbitalSiteId: siteId, view: 'orbital' })
-        setSelectedSiteId(siteId)
+        if (stateRef.current.horizonPoint) {
+          patch({ view: 'orbital' })
+        } else {
+          const siteId = stateRef.current.horizonSiteId
+          patch({ orbitalSiteId: siteId, view: 'orbital' })
+          setSelectedSiteId(siteId)
+        }
         setTab('orbital')
       },
       setRequirementsOn: (on) => {
@@ -168,7 +204,7 @@ export default function App() {
   })
 
   // Data that belongs to another site is not shown while the new one loads.
-  const current = loaded && loaded.siteId === skySiteId ? loaded : null
+  const current = loaded && loaded.siteId === horizonKey ? loaded : null
 
   return (
     <div className="relative flex h-full">
@@ -177,7 +213,8 @@ export default function App() {
       {tab === 'horizon' && (
         <HorizonTab
           current={current}
-          siteName={getSite(skySiteId).name}
+          siteName={horizonPoint ? pointName(horizonPoint) : getSite(skySiteId).name}
+          progress={horizonPoint ? pointProgress : ''}
           timeMs={timeMs}
           onTimeChange={setTimeMs}
           stayDays={stayDays}
@@ -195,6 +232,7 @@ export default function App() {
             onStayDaysChange={setStayDays}
             onSelectSite={setSelectedSiteId}
             onOpenSkyView={openSkyView}
+            onOpenPointView={openPointView}
             layerId={layerId}
             onLayerChange={setLayerId}
             requirementsOn={requirementsOn}
@@ -232,6 +270,7 @@ export default function App() {
 type HorizonTabProps = {
   current: Loaded | null
   siteName: string
+  progress: string
   timeMs: number | null
   onTimeChange: (timeMs: number) => void
   stayDays: number
@@ -239,7 +278,7 @@ type HorizonTabProps = {
   onBackToMap: () => void
 }
 
-function HorizonTab({ current, siteName, timeMs, onTimeChange, stayDays, onStayDaysChange, onBackToMap }: HorizonTabProps) {
+function HorizonTab({ current, siteName, progress, timeMs, onTimeChange, stayDays, onStayDaysChange, onBackToMap }: HorizonTabProps) {
   if (current?.status === 'ready') {
     const samples = current.data.sky.samples
     return (
@@ -264,6 +303,19 @@ function HorizonTab({ current, siteName, timeMs, onTimeChange, stayDays, onStayD
       </div>
     )
   }
-  if (current?.status === 'error') return <div className={centered}>{current.message}</div>
-  return <div className={centered}>Loading {siteName}…</div>
+  if (current?.status === 'error')
+    return (
+      <div className={`${centered} flex-col gap-3 px-6 text-center`}>
+        <p className="max-w-md">{current.message}</p>
+        <button type="button" onClick={onBackToMap} className="rounded border border-[#555] px-3 py-1.5 text-xs text-gray-100 hover:bg-[#3a3a3a]">
+          ← Back to Orbital view
+        </button>
+      </div>
+    )
+  return (
+    <div className={`${centered} flex-col gap-1`}>
+      <p>Loading {siteName}…</p>
+      {progress && <p className="text-xs text-gray-500">{progress}</p>}
+    </div>
+  )
 }

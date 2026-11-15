@@ -76,6 +76,15 @@ export const TOOL_DEFS: ToolDef[] = [
   }, ['layerId']),
   tool('selectSite', 'Select a site (Orbital view flies to it; Horizon view switches to it).', { siteId: { ...siteIdParam, description: 'Site id from listSites' } }, ['siteId']),
   tool('openHorizonView', 'Open the first-person Horizon view for a site.', { siteId: siteIdParam }),
+  tool(
+    'openHorizonViewAtPoint',
+    'Open the Horizon view at any point on the Moon given by the user (latitude, east longitude). Use only coordinates the user gave or a site listed by listSites.',
+    {
+      latitudeDeg: { type: 'number', description: 'Latitude in degrees, negative = south' },
+      longitudeDeg: { type: 'number', description: 'East longitude in degrees (0 to 360)' },
+    },
+    ['latitudeDeg', 'longitudeDeg'],
+  ),
   tool('backToOrbitalView', 'Go back to the Orbital view (globe).'),
   tool(
     'setRequirements',

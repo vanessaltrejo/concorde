@@ -2,16 +2,18 @@
 type CreditsProps = {
   siteSource: string
   terrainSource: string
+  // Replaces the default Sun and Earth line (points picked on the map).
+  skySource?: string
 }
 
-export function Credits({ siteSource, terrainSource }: CreditsProps) {
+export function Credits({ siteSource, terrainSource, skySource }: CreditsProps) {
   return (
     <section className="flex flex-col gap-2 border-t border-[#444] pt-4 text-xs text-gray-300">
       <p className="font-medium text-gray-100">Planning aid, not flight grade.</p>
       <details>
         <summary className="cursor-pointer text-gray-100">Data sources and methods</summary>
         <ul className="mt-2 flex list-disc flex-col gap-1 pl-4">
-          <li>Sun and Earth positions: NASA/JPL Horizons API (observer on the Moon, airless).</li>
+          <li>{skySource ?? 'Sun and Earth positions: NASA/JPL Horizons API (observer on the Moon, airless).'}</li>
           <li>
             Terrain: {terrainSource}.
           </li>

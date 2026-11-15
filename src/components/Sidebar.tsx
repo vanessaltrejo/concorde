@@ -1,7 +1,7 @@
 import { SITES } from '../data/sites'
 import { FlagButton } from './FlagButton'
 import { MissionList } from './MissionList'
-import type { HorizonProfile, LandingSite, SkySample } from '../types'
+import type { HorizonProfile, LandingSite, SiteData, SkySample } from '../types'
 import type { TimingMetrics } from '../scene/timing'
 import type { BodyVisibility } from '../scene/visibility'
 import { Credits } from './Credits'
@@ -20,6 +20,8 @@ type SidebarProps = {
   earthVisibility: BodyVisibility
   timing: TimingMetrics
   terrainSummary: TerrainSummary
+  // Set for a point picked on the map (not a curated site).
+  anywhere: NonNullable<SiteData['anywhere']> | null
   horizon: HorizonProfile
   timeMs: number
   stayDays: number
@@ -35,6 +37,7 @@ export function Sidebar({
   earthVisibility,
   timing,
   terrainSummary,
+  anywhere,
   horizon,
   timeMs,
   stayDays,
@@ -51,7 +54,7 @@ export function Sidebar({
         <h2 className="text-sm font-medium">Site</h2>
         <p className="flex items-baseline justify-between gap-2">
           <span className="text-sm">{site.name}</span>
-          <FlagButton siteId={site.id} timeMs={timeMs} />
+          {!anywhere && <FlagButton siteId={site.id} timeMs={timeMs} />}
           <span className="text-xs text-gray-300">
             {site.latitudeDeg.toFixed(4)}°, {site.longitudeDeg.toFixed(2)}° E
           </span>
@@ -60,6 +63,19 @@ export function Sidebar({
           const entry = SITES.find((s) => s.id === site.id)
           return entry ? <MissionList site={entry} /> : null
         })()}
+        {anywhere && (
+          <div className="mt-1 rounded border border-[#56B4E9]/50 bg-[#56B4E9]/10 p-2 text-[11px] leading-snug text-gray-200">
+            <p className="font-medium text-[#9fd3f2]">Point picked on the map</p>
+            <p>
+              {anywhere.terrain}, computed in your browser from NASA tiles ({anywhere.tilesLoaded} tiles,{' '}
+              {anywhere.seconds.toFixed(1)} s). Same method as the curated sites, checked against all six of them.
+            </p>
+            <p className="mt-1 text-gray-400">
+              Sun and Earth: geometry from one JPL Horizons table for the whole Moon. Not a curated site: no published
+              coordinates or site study behind this point.
+            </p>
+          </div>
+        )}
       </section>
 
       <DateTimeControl samples={samples} index={index} onIndexChange={onIndexChange} />
@@ -79,7 +95,15 @@ export function Sidebar({
         onStayDaysChange={onStayDaysChange}
       />
       <PeriodSummary timing={timing} />
-      <Credits siteSource={site.source} terrainSource={terrainSummary.source} />
+      <Credits
+        siteSource={site.source}
+        terrainSource={terrainSummary.source}
+        skySource={
+          anywhere
+            ? "Sun and Earth positions: computed for this point from one NASA/JPL Horizons table of the Sun and Earth seen from the Moon (checked against the per-site Horizons tables within 0.006°). Earth's picture orientation from Shackleton rim's table (parallax up to about 0.3°, visual only)."
+            : undefined
+        }
+      />
     </aside>
   )
 }

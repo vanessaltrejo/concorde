@@ -24,6 +24,7 @@ const WRITE_TOOLS = new Set([
   'setLayer',
   'selectSite',
   'openHorizonView',
+  'openHorizonViewAtPoint',
   'backToOrbitalView',
   'setRequirements',
 ])

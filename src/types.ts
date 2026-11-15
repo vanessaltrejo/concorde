@@ -81,4 +81,8 @@ export type SiteData = {
   sky: SkyData
   horizon: HorizonProfile
   terrain: TerrainData
+  // Set for a point picked on the map ("Horizon view anywhere", src/terrain):
+  // where its data comes from, shown in the Horizon view so it is never
+  // mistaken for a curated, per-site validated folder.
+  anywhere?: { terrain: string; terrainSource: string; tilesLoaded: number; seconds: number }
 }

@@ -12,6 +12,7 @@ import { bodyVisibility } from '../scene/visibility'
 import { buildTimeline, nextTransition, type NextTransition, type SkyBodyKey } from '../scene/windows'
 import type { SkySample } from '../types'
 import { THRESHOLDS } from './thresholds'
+import { coverage, pointName, type AnywherePoint } from '../terrain/anywhere'
 
 export type AppView = 'orbital' | 'horizon' | 'dashboard' | 'compare'
 
@@ -19,6 +20,8 @@ export type AppSnapshot = {
   view: AppView
   orbitalSiteId: string | null
   horizonSiteId: string
+  // A point picked on the map, shown in the Horizon view instead of horizonSiteId.
+  horizonPoint: AnywherePoint | null
   timeMs: number | null
   stayDays: number
   layerId: string
@@ -35,6 +38,7 @@ export type AppBridge = {
   setLayerId: (id: string) => void
   selectSite: (siteId: string) => void
   openHorizonView: (siteId: string) => void
+  openHorizonAtPoint: (point: AnywherePoint) => void
   backToOrbitalView: () => void
   setRequirementsOn: (on: boolean) => void
   setCriteria: (criteria: Criteria) => void
@@ -148,7 +152,13 @@ function describeView(state: AppSnapshot) {
   if (state.view === 'horizon') {
     return {
       view: 'Horizon view',
-      site: getSite(state.horizonSiteId).name,
+      site: state.horizonPoint ? pointName(state.horizonPoint) : getSite(state.horizonSiteId).name,
+      ...(state.horizonPoint
+        ? {
+            pointData:
+              'A point picked on the map: terrain computed in the browser from NASA LOLA tiles with the same method as the curated sites; Sun and Earth from geometry on one Horizons table. Site metrics tools do not cover it yet; read the values on the sidebar.',
+          }
+        : {}),
       panels: [
         '3D first-person view from 2 m above the ground, with the real terrain, the Sun and the Earth discs, labels and a compass.',
         'Left sidebar: date slider, Sun and Earth status, set/rise times, elevation, azimuth, terrain horizon, Earth lit fraction, stay summary, period summary, credits.',
@@ -215,8 +225,9 @@ const tools: Record<string, (args: Args, bridge: AppBridge) => Promise<ToolOutco
     return {
       result: {
         view: s.view,
-        siteOnScreen: getSite(currentSiteId(s)).name,
-        siteId: currentSiteId(s),
+        siteOnScreen: s.view === 'horizon' && s.horizonPoint ? pointName(s.horizonPoint) : getSite(currentSiteId(s)).name,
+        siteId: s.view === 'horizon' && s.horizonPoint ? null : currentSiteId(s),
+        pickedPoint: s.view === 'horizon' ? s.horizonPoint : null,
         selectedTimeUtc: s.timeMs === null ? 'first sample of the data' : utcMinute(s.timeMs),
         stayDays: s.stayDays,
         layer: { id: s.layerId, label: getLayer(s.layerId).label },
@@ -358,6 +369,29 @@ const tools: Record<string, (args: Args, bridge: AppBridge) => Promise<ToolOutco
       result: { changed: true, view: 'Horizon view', site: getSite(id).name, note: 'The terrain takes a few seconds to load.' },
       sources: [],
       action: `Opened the Horizon view: ${getSite(id).name}`,
+    }
+  },
+
+  openHorizonViewAtPoint(args, bridge) {
+    const lat = Number(args.latitudeDeg)
+    const lonRaw = Number(args.longitudeDeg)
+    if (!Number.isFinite(lat) || !Number.isFinite(lonRaw) || Math.abs(lat) > 90) {
+      throw new ToolInputError('latitudeDeg (-90 to 90) and longitudeDeg (degrees east) must be numbers.')
+    }
+    const point: AnywherePoint = { latDeg: lat, lonDeg: ((lonRaw % 360) + 360) % 360 }
+    const cover = coverage(lat)
+    if (!cover.ok) return { result: { changed: false, reason: cover.reason }, sources: [] }
+    bridge.openHorizonAtPoint(point)
+    return {
+      result: {
+        changed: true,
+        view: 'Horizon view',
+        site: pointName(point),
+        terrain: cover.label,
+        note: 'Computed in the browser from the terrain tiles; takes a few seconds (longer near the south pole).',
+      },
+      sources: ['LOLA terrain'],
+      action: `Opened the Horizon view: ${pointName(point)}`,
     }
   },
 

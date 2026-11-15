@@ -47,6 +47,7 @@ export function SiteView({ data, sampleIndex, onSampleIndexChange, stayDays, onS
         earthVisibility={earthVisibility}
         timing={timing}
         terrainSummary={summarizeTerrain(terrain)}
+        anywhere={data.anywhere ?? null}
         horizon={horizon}
         timeMs={Date.parse(sample.timeUtc)}
         stayDays={stayDays}

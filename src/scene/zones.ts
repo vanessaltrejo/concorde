@@ -64,6 +64,40 @@ function bodies(row: number[]): { earth: Vec3; sun: Vec3 } {
   return { earth: [e[0] * earthKm, e[1] * earthKm, e[2] * earthKm], sun: [s[0] * sunKm, s[1] * sunKm, s[2] * sunKm] }
 }
 
+// Sun and Earth seen from any point at one ephemeris row: azimuth, elevation,
+// apparent diameter, and the lit fraction of Earth's disc (phase angle at
+// Earth between the Sun and the observer). Used by "Horizon view anywhere";
+// checked against the Horizons per-site tables in src/terrain/validate.test.ts.
+export type PointSkyBody = { azimuthDeg: number; elevationDeg: number; angularDiameterDeg: number }
+
+export function skyAtPoint(
+  ephemeris: Ephemeris,
+  rowIndex: number,
+  lonDeg: number,
+  latDeg: number,
+): { sun: PointSkyBody; earth: PointSkyBody; earthIlluminatedPct: number } {
+  const frame = localFrame(lonDeg, latDeg)
+  const { earth, sun } = bodies(ephemeris.rows[rowIndex])
+  const observer: Vec3 = [MOON_RADIUS_KM * frame.up[0], MOON_RADIUS_KM * frame.up[1], MOON_RADIUS_KM * frame.up[2]]
+  // Same geometry as computeZoneShares: d = body - R * up.
+  const lookAt = (body: Vec3, radiusKm: number) => {
+    const d: Vec3 = [body[0] - observer[0], body[1] - observer[1], body[2] - observer[2]]
+    const length = Math.hypot(...d)
+    const azimuthDeg = (((Math.atan2(dot(d, frame.east), dot(d, frame.north)) / RAD) % 360) + 360) % 360
+    return { azimuthDeg, elevationDeg: Math.asin(dot(d, frame.up) / length) / RAD, radiusDeg: Math.asin(radiusKm / length) / RAD }
+  }
+  const s = lookAt(sun, SUN_RADIUS_KM)
+  const e = lookAt(earth, EARTH_RADIUS_KM)
+  const toSun: Vec3 = [sun[0] - earth[0], sun[1] - earth[1], sun[2] - earth[2]]
+  const toObserver: Vec3 = [observer[0] - earth[0], observer[1] - earth[1], observer[2] - earth[2]]
+  const cosPhase = dot(toSun, toObserver) / (Math.hypot(...toSun) * Math.hypot(...toObserver))
+  return {
+    sun: { azimuthDeg: s.azimuthDeg, elevationDeg: s.elevationDeg, angularDiameterDeg: 2 * s.radiusDeg },
+    earth: { azimuthDeg: e.azimuthDeg, elevationDeg: e.elevationDeg, angularDiameterDeg: 2 * e.radiusDeg },
+    earthIlluminatedPct: (100 * (1 + cosPhase)) / 2,
+  }
+}
+
 function horizonAt(horizons: Int16Array, row: number, azimuthDeg: number): number {
   const x = azimuthDeg % BINS
   const k = Math.floor(x)

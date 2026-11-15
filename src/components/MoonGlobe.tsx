@@ -50,6 +50,7 @@ import {
 import { addGlobalLayer, raiseGlobalLayer, removeGlobalLayer } from './globalLayer'
 import { LayerSelector } from './LayerSelector'
 import { SitePanel } from './SitePanel'
+import { coverage } from '../terrain/anywhere'
 
 type Picked = { latitudeDeg: number; longitudeDeg: number; cell: number | null }
 
@@ -168,6 +169,8 @@ type MoonGlobeProps = {
   onStayDaysChange: (days: number) => void
   onSelectSite: (siteId: string) => void
   onOpenSkyView: (siteId: string) => void
+  // "Horizon view anywhere": open the Horizon view at a picked point (lon east 0..360).
+  onOpenPointView: (point: { latDeg: number; lonDeg: number }) => void
   // Layer and requirements live in the app, so the assistant can read and set them.
   layerId: string
   onLayerChange: (id: string) => void
@@ -189,6 +192,7 @@ export default function MoonGlobe({
   onStayDaysChange,
   onSelectSite,
   onOpenSkyView,
+  onOpenPointView,
   layerId,
   onLayerChange: setLayerId,
   requirementsOn,
@@ -616,6 +620,21 @@ export default function MoonGlobe({
                 </p>
               )
             })()}
+          {(() => {
+            const cover = coverage(picked.latitudeDeg)
+            return cover.ok ? (
+              <button
+                type="button"
+                onClick={() => onOpenPointView({ latDeg: picked.latitudeDeg, lonDeg: picked.longitudeDeg })}
+                className="mt-2 w-full rounded bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-950 hover:bg-white"
+                title={`Computed in your browser from NASA ${cover.label}`}
+              >
+                Open Horizon view here
+              </button>
+            ) : (
+              <p className="mt-2 max-w-xs text-[11px] text-gray-400">{cover.reason}</p>
+            )
+          })()}
         </div>
       )}
       <p className="pointer-events-none absolute bottom-1 right-2 text-[10px] text-gray-400">

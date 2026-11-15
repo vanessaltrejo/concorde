@@ -1,0 +1,13 @@
+{
+  // Gatekeeper Worker for the terrain tiles. Deploy: npx wrangler deploy
+  // Stay on the Workers FREE plan (100,000 requests/day hard limit).
+  "name": "concorde-terrain",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "r2_buckets": [{ "binding": "TILES", "bucket_name": "concorde-terrain" }],
+  "vars": {
+    // Sites allowed to read tiles (comma separated, no trailing slash).
+    "ALLOWED_ORIGINS": "https://concordemoon.com,https://www.concordemoon.com,http://localhost:5173"
+  }
+}
