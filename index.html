@@ -8,6 +8,10 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Where CesiumJS finds its workers and assets (copied by vite.config.ts).
+      window.CESIUM_BASE_URL = '/cesium/'
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { NavRail, type TabId } from './components/NavRail'
 import { Placeholder } from './components/Placeholder'
 import { SiteView } from './components/SiteView'
 import { loadSiteData } from './data/loadSiteData'
 import type { SiteData } from './types'
+
+// CesiumJS is large: it loads only when the Moon map tab opens.
+const MoonGlobe = lazy(() => import('./components/MoonGlobe'))
 
 const siteId = 'shackleton-rim'
 
@@ -33,12 +36,13 @@ export default function App() {
       <NavRail active={tab} onChange={setTab} />
       {tab === 'sky' && <SkyTab loadState={loadState} />}
       {tab === 'moon' && (
-        <Placeholder title="Moon map" description="3D Moon globe. Pick a zone (like Shackleton) to open its Sky view." />
+        <Suspense fallback={<div className={centered}>Loading Moon map…</div>}>
+          <MoonGlobe />
+        </Suspense>
       )}
       {tab === 'dashboard' && (
         <Placeholder title="Dashboard" description="Summary metrics for the selected site." />
       )}
-      {tab === 'earth' && <Placeholder title="Earth" description="3D Earth view." />}
     </div>
   )
 }
