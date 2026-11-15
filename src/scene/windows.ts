@@ -14,11 +14,20 @@ export type BodyTimeline = {
   marginsDeg: number[]
 }
 
+// Timelines are read-only and cost thousands of horizon lookups, and the
+// Dashboard, Compare and the assistant ask for the same ones again and again.
+// Cached per samples array and horizon; they live as long as the loaded data.
+const timelineCache = new WeakMap<SkySample[], WeakMap<HorizonProfile, Partial<Record<SkyBodyKey, BodyTimeline>>>>()
+
 export function buildTimeline(samples: SkySample[], profile: HorizonProfile, key: SkyBodyKey): BodyTimeline {
-  return {
+  let byProfile = timelineCache.get(samples)
+  if (!byProfile) timelineCache.set(samples, (byProfile = new WeakMap()))
+  let byKey = byProfile.get(profile)
+  if (!byKey) byProfile.set(profile, (byKey = {}))
+  return (byKey[key] ??= {
     timesMs: samples.map((s) => Date.parse(s.timeUtc)),
     marginsDeg: samples.map((s) => topEdgeMarginDeg(s[key], profile)),
-  }
+  })
 }
 
 export type NextTransition =

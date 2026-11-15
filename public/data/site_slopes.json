@@ -36,6 +36,24 @@
    "baselineM": 355,
    "nodes": 7,
    "dataSpacingM": 118.4505876
+  },
+  "mons-mouton": {
+   "slopeDeg": 9.27,
+   "baselineM": 355,
+   "nodes": 80,
+   "dataSpacingM": 118.4505876
+  },
+  "malapert-a": {
+   "slopeDeg": 1.58,
+   "baselineM": 355,
+   "nodes": 72,
+   "dataSpacingM": 118.4505876
+  },
+  "schrodinger-basin": {
+   "slopeDeg": 0.47,
+   "baselineM": 355,
+   "nodes": 24,
+   "dataSpacingM": 118.4505876
   }
  }
 }

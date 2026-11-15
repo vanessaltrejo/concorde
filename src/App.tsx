@@ -4,7 +4,6 @@ import { AssistantPanel } from './assistant/AssistantPanel'
 import type { AppBridge, AppSnapshot } from './assistant/tools'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { NavRail, type TabId } from './components/NavRail'
-import { SiteView } from './components/SiteView'
 import { loadSiteData } from './data/loadSiteData'
 import { DEFAULT_SITE_ID, getSite, SITES } from './data/sites'
 import { DEFAULT_CRITERIA, type Criteria } from './scene/requirements'
@@ -18,6 +17,8 @@ import type { SiteData } from './types'
 
 // CesiumJS is large: it loads only when the Orbital view tab opens.
 const MoonGlobe = lazy(() => import('./components/MoonGlobe'))
+// The 3D Horizon code (three.js) loads only when that tab is opened.
+const SiteView = lazy(() => import('./components/SiteView').then((m) => ({ default: m.SiteView })))
 
 // Data for one site. Only the open site is kept in memory ("one zone at a
 // time"): opening another site replaces it.
@@ -92,8 +93,8 @@ export default function App() {
   // Keep the address bar in step with the screen, so a link reopens it.
   useEffect(() => {
     const siteId = tab === 'horizon' ? skySiteId : selectedSiteId
-    // The home (Orbital view, default site and stay) keeps a clean address: just "/".
-    const isHome = tab === 'orbital' && siteId === DEFAULT_SITE_ID && stayDays === DEFAULT_STAY_DAYS
+    // The home (Orbital view, default site, stay and date) keeps a clean address: just "/".
+    const isHome = tab === 'orbital' && siteId === DEFAULT_SITE_ID && stayDays === DEFAULT_STAY_DAYS && timeMs === null
     writeUrlState(isHome ? null : { view: tab, siteId, timeMs, stayDays }, encodeScenarios(scenarios))
   }, [tab, skySiteId, selectedSiteId, timeMs, stayDays, scenarios])
 
@@ -243,14 +244,16 @@ function HorizonTab({ current, siteName, timeMs, onTimeChange, stayDays, onStayD
     const samples = current.data.sky.samples
     return (
       <div className="relative flex h-full min-w-0 flex-1">
-        <SiteView
-          key={current.siteId}
-          data={current.data}
-          sampleIndex={indexForTime(samples, timeMs)}
-          onSampleIndexChange={(index) => onTimeChange(timeOfIndex(samples, index))}
-          stayDays={stayDays}
-          onStayDaysChange={onStayDaysChange}
-        />
+        <Suspense fallback={<div className={centered}>Loading Horizon view…</div>}>
+          <SiteView
+            key={current.siteId}
+            data={current.data}
+            sampleIndex={indexForTime(samples, timeMs)}
+            onSampleIndexChange={(index) => onTimeChange(timeOfIndex(samples, index))}
+            stayDays={stayDays}
+            onStayDaysChange={onStayDaysChange}
+          />
+        </Suspense>
         <button
           type="button"
           onClick={onBackToMap}

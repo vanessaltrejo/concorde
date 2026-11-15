@@ -12,21 +12,26 @@ cualquier hora, y si el **terreno real** los tapa. Dirección web:
 
 Hecho para el **NASA Space Apps Challenge 2026**, reto *"Lunar Landing Site
 Simulator"*. Sitios actuales: **borde de Shackleton, Connecting Ridge C1 y C2**
-(polo sur) y **Apollo 11, 16 y 17**. Periodo actual: **90 días, del 2026-11-14 al
-2027-02-12 UTC**, cada hora.
+(polo sur), **Mons Mouton, Malapert A y la cuenca Schrödinger** (sitios de
+alunizaje del programa CLPS de la NASA) y **Apollo 11, 16 y 17**. Periodo actual:
+**90 días, del 2026-11-14 al 2027-02-12 UTC**, cada hora.
 
 > **Herramienta de apoyo para planear, no de grado de vuelo** ("Planning aid,
 > not flight grade"). Cada número sale de datos públicos de la NASA y está
 > comparado con una fuente independiente (ver [Validación](#6-validación)), pero
 > es una herramienta de hackathon, no software de misión.
 
-**Estado (2026-11-14).** Funciona: Orbital view con 5 capas de mapa, 6 sitios,
-fecha de llegada y duración de la estancia, requisitos con mapa de zonas en el
-polo sur, y Horizon view con sombras reales. Todavía no está: zonas para toda la
-Luna, coordenadas personalizadas y el Dashboard con números de impacto (ver
-[Siguientes pasos](#10-siguientes-pasos)). El asistente de IA está construido pero
-aún no se probó con un modelo real (necesita una llave del modelo, ver
-[`docs/AI_ASSISTANT_PLAN.md`](docs/AI_ASSISTANT_PLAN.md)).
+**Estado (2026-11-15).** Funciona: el **Dashboard**, la **Orbital view** con 5
+capas de mapa, la **Horizon view** con sombras reales y cielo de estrellas real,
+**Compare sites** (hasta 3 escenarios de sitio y fecha con un puntaje por
+objetivo), 9 sitios, fecha de llegada y duración de la estancia, requisitos con
+mapa de zonas en el polo sur, y las misiones CLPS de cada sitio. El asistente de
+IA está construido (necesita una llave del modelo, ver
+[`docs/AI_ASSISTANT_PLAN.md`](docs/AI_ASSISTANT_PLAN.md)) y conoce las cuatro
+pestañas. Todavía no está: zonas para toda la Luna, coordenadas personalizadas,
+los KPIs de impacto del Dashboard (solo marcadores, sin números inventados) y los
+datos de tres sitios CLPS más (Mare Crisium, Reiner Gamma, Gruithuisen Domes). Ver
+[Siguientes pasos](#10-siguientes-pasos).
 
 La historia completa del proyecto (cada decisión, problema, solución, idea
 descartada y corrección) está en [`docs/PROJECT_MEMORY.md`](docs/PROJECT_MEMORY.md)
@@ -74,9 +79,12 @@ comparar sitios y fechas, y cada número validado.
 
 ## 2. Qué hace la app
 
-Una barra a la izquierda cambia entre la **Orbital view**, la **Horizon view** y
-un **Dashboard** de relleno. La app abre en la Orbital view. El nombre del
-proyecto va arriba a la izquierda en cada vista.
+Una barra a la izquierda cambia entre el **Dashboard**, la **Orbital view**, la
+**Horizon view** y **Compare sites**; un botón de chat abajo abre el asistente de
+IA. La app abre en la Orbital view, con la dirección limpia (`/`). Los paneles son
+tarjetas gris oscuro sobre las vistas, con azul NASA para botones y elementos
+seleccionados y un poco de rojo NASA solo en detalles pequeños. Los interruptores
+y deslizadores son blancos.
 
 **Orbital view (el globo de la Luna)**
 
@@ -89,15 +97,18 @@ proyecto va arriba a la izquierda en cada vista.
   da la fuente, la cobertura y sus límites. No hay leyendas con valores porque
   Moon Trek no las da para estos tiles. Cerca del polo sur, Hillshade y Elevation
   agregan el modelo del polo sur de LOLA a 5 m.
-- Menú **Site** (South pole: Shackleton rim, Connecting Ridge C1, C2. Apollo
-  landing sites: 11, 16, 17) o clic en un marcador: la cámara vuela ahí. Del sitio
-  elegido ves la fecha y hora, la **duración de la estancia**, el % de la estancia
+- Menú **Site** (South pole: Shackleton rim, Connecting Ridge C1, C2. Misiones
+  CLPS: Mons Mouton, Malapert A, Schrödinger Basin. Apollo landing sites: 11, 16,
+  17) o clic en un marcador: la cámara vuela ahí. Del sitio
+  elegido ves la fecha y hora, la **duración de la estancia**, las **misiones
+  CLPS** que aterrizan ahí (completadas o programadas, con año), un botón de
+  bandera **Compare**, el % de la estancia
   con Sol y con enlace a la Tierra, un **Horizon preview** (el horizonte real con
   el Sol y la Tierra, que se esconden detrás del terreno), una foto de la zona
   (**Topography**) y los botones *Open Horizon view*, *Topography view* y *Back to
   globe*.
 - **Requirements** (Sol durante la estancia, enlace con la Tierra durante la
-  estancia, pendiente en el sitio). Cada uno se puede apagar. Marcan los 6 sitios
+  estancia, pendiente en el sitio). Cada uno se puede apagar. Marcan los 9 sitios
   (✓ verde cumple, ✕ gris excluido) y, con **Show on map**, colorean **2,500
   celdas de zona** de 1 km alrededor del polo sur (verde cumple, gris tenue no).
   Todo se recalcula al cambiar la fecha de llegada, la duración o un umbral. Haz
@@ -117,12 +128,55 @@ proyecto va arriba a la izquierda en cada vista.
   Terreno real de LOLA con **sombras proyectadas reales**, los discos del Sol y la
   Tierra a su **tamaño angular real** (la Tierra con su fase real y el lado que
   mira a la Luna), una brújula y una línea gris delgada en el horizonte
-  calculado. **← Back to Orbital view** conserva la fecha.
+  calculado. **← Back to Orbital view** conserva la fecha. El cielo es un mapa de
+  estrellas real (Tycho-2) más estrellas puntuales. La barra lateral flota sobre la
+  vista como una tarjeta y también muestra las misiones CLPS del sitio y un botón
+  de bandera **Compare**.
 
-**Compartido por las dos vistas:** la fecha y hora y la duración de la estancia.
+**Dashboard (primera pestaña)**
+
+- Una portada **Welcome** con el menú de sitios, la fecha de llegada, la duración
+  de la estancia, los botones *Open Horizon view* y *Compare sites*, y un
+  interruptor **Simple / Detailed** (Simple oculta columnas técnicas).
+- **Números clave**: medidores circulares del % de la estancia con Sol y con
+  enlace a la Tierra (con el cambio frente a la estancia anterior de la misma
+  duración), y dos cuentas regresivas estilo centro de control: *Sunset in /
+  Sunrise in* y *Earthset in / Earthrise in*.
+- **Your stay, hour by hour**: elevación del Sol y la Tierra durante la estancia,
+  con dos barras: *Power* (Sol sobre el horizonte real del terreno) y *Link*
+  (Tierra sobre él).
+- **Sky now**: el horizonte real de 360° con el Sol y la Tierra, más la altura del
+  Sol y de la Tierra, el hueco más largo sin Sol y la pendiente.
+- **90 días de luz solar** de cada sitio (parte de cada día UTC con Sol). Un clic
+  en un día fija la fecha de llegada; el contorno es tu estancia.
+- **Best sites for your goal**: todos los sitios ordenados por objetivo (Power,
+  Communications, Safe landing, Balanced), con *Export CSV*.
+- **Impact**: KPIs como horas de planeación ahorradas. Son **marcadores** (`—`)
+  hasta que la investigación del equipo los defina; no se inventan números
+  (`src/data/kpis.ts`).
+
+**Compare sites**
+
+- Hasta **3 escenarios**, cada uno un **sitio más una fecha de llegada**. Se
+  agregan con el botón de bandera *Compare* de cualquier sitio, o desde el espacio
+  vacío. *Same site, 7 days later* copia una tarjeta una semana después (qué pasa
+  si el lanzamiento se retrasa).
+- Las tarjetas se **arrastran**: la posición es tu propio orden (**1st, 2nd,
+  3rd**). *Order by model suggestion* las ordena por puntaje.
+- Cada tarjeta: fecha de llegada, un **puntaje de objetivo** de 0 a 100, la vista
+  previa del horizonte, cinco barras (tiempo con Sol, continuidad del Sol = el hueco
+  más corto sin luz, altura media del Sol, tiempo con la Tierra, planicie), una
+  estrella en la mejor tarjeta de cada barra, si cumple los requisitos por defecto
+  y las misiones CLPS. Un radar superpone las tarjetas.
+- El puntaje más alto recibe una etiqueta aparte, **Model suggestion**. No cambia
+  tu orden 1st/2nd/3rd. El puntaje es un promedio ponderado transparente (ver
+  [4.13](#413-puntaje-del-dashboard-y-compare)), no una IA.
+
+**Compartido por todas las vistas:** la fecha y hora y la duración de la estancia.
 La barra de direcciones guarda la pantalla
-(`?view=orbital|horizon&site=<id>&t=<UTC>&stay=<días>`), así que un enlace reabre
-la misma pantalla.
+(`?view=orbital|horizon|dashboard|compare&site=<id>&t=<UTC>&stay=<días>&cmp=<sitio>@<UTC>,...`),
+así que un enlace reabre la misma pantalla y la misma comparación. La dirección
+limpia `/` se usa solo en la portada sin tocar.
 
 **Ejemplos (historia para el pitch)**
 
@@ -152,10 +206,13 @@ npm run dev
 Abre la dirección que imprime Vite (http://localhost:5173). Todos los datos de los
 sitios ya están en `public/data`. La **Horizon view funciona sin internet**; la
 **Orbital view necesita internet** para los tiles de mapa de NASA Moon Trek. La app
-abre en la Orbital view (unos 4 MB de CesiumJS, que se cargan solo para esa vista).
-El terreno de un sitio (unos 19 MB en un sitio del polo sur, unos 1.3 MB en un sitio
-Apollo) se carga solo cuando se abre su Horizon view; las vistas previas del globo
-usan solo cerca de 1 MB.
+abre en la Orbital view. La carga es bajo demanda: la primera descarga es pequeña
+(unos 0.3 MB de código de la app); CesiumJS (unos 4 MB) se carga solo para la
+Orbital view y el código 3D de la Horizon view (cerca de 1 MB) solo cuando se abre
+esa pestaña. El terreno de un sitio (unos 19 MB en un sitio del polo sur, 30 MB en
+los dos sitios CLPS cercanos al polo, unos 1.3 MB en un sitio Apollo) se carga solo
+cuando se abre su Horizon view; las vistas previas y el Dashboard usan solo cerca de
+1 MB por sitio.
 
 Otros comandos:
 
@@ -349,6 +406,15 @@ obtener el minuto. Si nada cambia antes de que se acaben los datos, la app dice
   Apollo 11 un horizonte de 50 km es igual al de 200 km (0 de 1440 bins difieren).
   Cerca del polo hacen falta 200 km (problema #14 de PROJECT_MEMORY), así que el
   camino polar los conserva.
+- **Sitios CLPS** (Mons Mouton, Malapert A, Schrödinger Basin; vendrán más): el
+  mismo camino global de 118 m que Apollo, radio de 50 km. Mons Mouton (-84.6°) y
+  Malapert A (-84.1°) no caen dentro del archivo polar de 20 m (cubre latitudes
+  -86° y al sur), así que usan el modelo global, estirado en dirección este-oeste,
+  y por eso sus archivos son más grandes (unos 30 MB). Las coordenadas salen de las
+  páginas CLPS de la NASA con un decimal (unos 3 km), por eso están marcadas *por
+  confirmar*. Cerca del polo el terreno a más de 50 km puede importar (problema #14
+  de PROJECT_MEMORY): sus porcentajes de Sol pueden ser algo optimistas hasta
+  compararlos con un horizonte de 200 km.
 - Sol y Tierra: una consulta a Horizons por sitio
   (`fetch_horizons.py --site <id>`), cada hora durante 90 días.
 - Un sitio nuevo necesita los dos scripts (`--site <id>`) y una entrada en las dos
@@ -391,6 +457,28 @@ El tiempo elegido y la duración de la estancia viven en `App` y se comparten en
 dos vistas; la barra de direcciones los refleja. TypeScript está en modo `strict`. Un
 "error boundary" muestra un mensaje en vez de una página en blanco si una vista falla
 (por ejemplo, sin WebGL).
+
+### 4.13 Puntaje del Dashboard y Compare
+
+Los dos usan los mismos números (`src/scene/compare.ts`), para la llegada y la
+estancia elegidas, con la misma regla de horizonte del resto de la app. Cinco ejes,
+cada uno de 0 a 100:
+
+| Eje | Cómo |
+|---|---|
+| Tiempo con Sol | % de la estancia con parte del Sol sobre el terreno |
+| Continuidad del Sol | 100 menos el hueco más largo sin Sol, como parte de la estancia |
+| Altura del Sol | elevación media del Sol mientras es visible; 30° cuenta como 100 |
+| Tiempo con la Tierra | % de la estancia con parte de la Tierra sobre el terreno |
+| Planicie | 100 a 0°, 0 a 10° (el límite de pendiente de HLS); se omite si el sitio no tiene pendiente |
+
+Un objetivo es un conjunto de pesos (Power: Sol .45, continuidad .35, altura .1,
+planicie .1; Communications: Tierra .8; Safe landing: planicie .5; Balanced: todos
+los ejes). El puntaje es el promedio ponderado de los ejes que tienen dato. **Los
+pesos y el tope de 30° son una primera propuesta, no números de misión validados.**
+Las líneas de tiempo se guardan en caché por sitio cargado y la hora de llegada se
+halla por índice (los datos son cada hora), así el Dashboard se recalcula rápido. Los
+puntajes son solo tamizaje.
 
 ## 5. Datos y fuentes
 
@@ -479,7 +567,11 @@ También están en los créditos de la app:
 
 ## 8. Limitaciones conocidas
 
-- **Sitios y periodo.** Seis sitios elegidos y 90 días (2026-11-14 a 2027-02-12).
+- **Sitios y periodo.** Nueve sitios elegidos y 90 días (2026-11-14 a 2027-02-12).
+  Las misiones sin punto de alunizaje (Peregrine, que no aterrizó; Blue Moon
+  Pathfinder, "región polar sur"; Blue Ghost 2, cara oculta y órbita) van en una
+  nota, no en el mapa. Mare Crisium, Reiner Gamma y Gruithuisen Domes tienen
+  coordenadas pero sus datos aún no están generados.
   Todavía no hay coordenadas personalizadas: un sitio nuevo necesita los scripts de
   Python, porque los navegadores no pueden leer LOLA ni Horizons directamente (sin
   CORS).
@@ -572,15 +664,19 @@ Después:
 - **Coordenadas personalizadas** con un servidor pequeño que corra el pipeline de
   Python.
 - **Puntajes de requisitos** (deseables con pesos, presets por tipo de módulo).
-- **Dashboard** con números de impacto (horas o dinero ahorrados) a partir de la
-  investigación del equipo del proceso de hoy; sin números hasta leer esa
-  investigación.
+- **KPIs de impacto** del Dashboard (horas o dinero ahorrados) a partir de la
+  investigación del equipo del proceso de hoy; el Dashboard ya está construido, las
+  tarjetas de KPI siguen en `—` hasta entonces.
 - **Asistente de IA**: construido (herramientas sobre los datos de la app,
   revisión estricta de números, entrada por voz), aún sin probar con un modelo
   real; correr el set de pruebas cuando exista la llave.
-- **Modo comparar** (dos sitios o fechas lado a lado), una línea de tiempo del día
-  lunar, una gráfica 2D del horizonte, celdas de zona más finas (500 m, unas 4 veces
-  más lento).
+- **Compare**: revisar con el equipo los pesos por objetivo y el tope de 30° de
+  altura del Sol; comparar los horizontes de los nuevos sitios CLPS (50 km) contra
+  uno de 200 km; confirmar las coordenadas CLPS en las páginas de NASA; generar Mare
+  Crisium, Reiner Gamma y Gruithuisen Domes; un formato de terreno más pequeño
+  (guardar solo alturas, unas 3 a 6 veces menos).
+- Una línea de tiempo del día lunar, una gráfica 2D del horizonte, celdas de zona
+  más finas (500 m, unas 4 veces más lento).
 - El plan completo por fases y sus resultados están en [`docs/PLAN.md`](docs/PLAN.md).
 
 ## 11. Estructura del proyecto
@@ -593,13 +689,14 @@ concorde/
 ├── docs/PLAN.md              plan de construcción por fases, con el resultado de cada una
 ├── reference-image.jpeg      imagen de referencia de la idea (paper externo, no se usa como dato)
 ├── index.html                cabecera de la página: título, descripción, vista previa para redes, datos estructurados
+├── api/                      función serverless del asistente de IA (chat.ts, _lib/)
 ├── vite.config.ts, tsconfig*.json, package.json
 ├── public/
-│   ├── data/<sitio>/         sky.json, horizon.json, terrain.json, terrain_*.f32 (6 sitios)
+│   ├── data/<sitio>/         sky.json, horizon.json, terrain.json, terrain_*.f32 (9 sitios)
 │   ├── data/zones/           south-pole-1km*.{json,bin}: celdas, horizontes, pendiente
 │   ├── data/ephemeris.json   Sol/Tierra para cualquier punto, cada hora
 │   ├── data/site_slopes.json pendiente en cada sitio
-│   ├── textures/             earth_bmng_topo_bathy_200412_2048.jpg
+│   ├── textures/             mapa de la Tierra, stars/ y stars-h/ (mapa de estrellas Tycho-2), moon-hero.png
 │   └── og-image.jpg, favicon.svg, apple-touch-icon.png, robots.txt, sitemap.xml
 ├── data/
 │   ├── raw/                  respuestas crudas de Horizons (evidencia)
@@ -615,19 +712,21 @@ concorde/
 │   └── requirements.txt
 └── src/
     ├── App.tsx               vistas, tiempo y estancia compartidos, estado en la barra de direcciones, carga perezosa
-    ├── appName.ts            nombre del proyecto arriba a la izquierda
     ├── types.ts              contrato de datos (todo tipado, sin `any`)
-    ├── data/                 loadSiteData.ts (archivos estáticos), sites.ts, layers.ts (capas del mapa)
-    ├── state/urlState.ts     lee/escribe ?view=&site=&t=&stay=
+    ├── data/                 loadSiteData.ts (archivos estáticos), sites.ts (sitios y misiones CLPS), kpis.ts (marcadores de KPIs de impacto), layers.ts (capas del mapa)
+    ├── state/                urlState.ts (?view=&site=&t=&stay=&cmp=), scenarios.ts (escenarios de Compare)
+    ├── assistant/            panel del asistente de IA, herramientas, revisión de números (ver docs/AI_ASSISTANT_PLAN.md)
     ├── scene/                lógica pura
     │   ├── visibility.ts, windows.ts, timing.ts   horizonte, salida/puesta, %
     │   ├── stay.ts           porcentajes de la estancia
+    │   ├── compare.ts, dashboard.ts   cinco ejes y puntaje por objetivo; Sol diario para el mapa de calor
     │   ├── requirements.ts   requisitos por sitio
     │   ├── zones.ts          celdas de zona: Sol/Tierra para cualquier punto, requisitos
     │   ├── timeSelection.ts, terrainInfo.ts, formatTime.ts, skyMath.ts, constants.ts, viewLimits.ts
     │   └── terrainGrid.ts, terrainShader.ts, earthOrientation.ts   3D de la Horizon view
     └── components/           componentes de React (cada uno con un trabajo)
-        ├── NavRail, ErrorBoundary, Placeholder
+        ├── NavRail, ErrorBoundary, FlagButton, MissionList
+        ├── Dashboard: DashboardTab. Compare: CompareTab (tarjetas, radar)
         ├── Orbital view: MoonGlobe, LayerSelector, SitePanel, HorizonPreview,
         │   StayPanel, RequirementsPanel, zoneLayer
         └── Horizon view: SiteView, Sidebar, MetricsPanel, DateTimeControl, StatusBadge,

@@ -1,0 +1,54 @@
+{
+ "siteId": "mons-mouton",
+ "grids": {
+  "near": {
+   "size": 169,
+   "spacingM": 118.4505876,
+   "affine": [
+    11.181386918087297,
+    0.003918625582989358,
+    -945.1506653929798,
+    -0.0015961079023800295,
+    118.81044805381259,
+    -9991.075133748629
+   ],
+   "maxResidualM": 56.977392820833145,
+   "file": "terrain_near.f32"
+  },
+  "mid": {
+   "size": 1467,
+   "spacingM": 473.8023504,
+   "affine": [
+    92.70038676288787,
+    48.55180374596969,
+    -139542.73591517558,
+    -9.784195896325746,
+    463.8693205151059,
+    -511051.7532799192
+   ],
+   "maxResidualM": 68522.30224246567,
+   "file": "terrain_mid.f32"
+  },
+  "far": {
+   "size": 733,
+   "spacingM": 947.6047008,
+   "affine": [
+    185.5255148981129,
+    97.22697765175023,
+    -139563.41852499172,
+    -19.607007627853832,
+    927.7248666565657,
+    -510809.7015707181
+   ],
+   "maxResidualM": 68334.99858177733,
+   "file": "terrain_far.f32"
+  }
+ },
+ "layout": "float32 x,y,z per grid node, row-major (row = map row). Scene axes: x = east, y = up, z = -north (meters); site ground at (0,0,0), observer eye at (0, observerHeightM, 0). Affine (col,row) -> scene x,z is approximate (see maxResidualM) and only used for shadow height lookups.",
+ "observerHeightM": 2.0,
+ "provenance": {
+  "source": "LOLA global DEM 118 m (LDEM_256), USGS Astrogeology Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014",
+  "url": "https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif",
+  "generatedUtc": "2026-11-15T04:52:23.935414Z"
+ }
+}

@@ -60,6 +60,7 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
   const table = useMemo(() => {
     if (state.status !== 'ready') return []
     return withData
+      .filter((s) => state.lights[s.id])
       .map((s) => {
         const m = computeMetrics(s.id, state.lights[s.id], state.slopes[s.id] ?? null, timeMs, stayDays)
         return { site: s, m, score: scoreFor(m, goal.weights) }
@@ -67,7 +68,7 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
       .sort((a, b) => b.score - a.score)
   }, [state, withData, timeMs, stayDays, goal])
   const heat = useMemo(
-    () => (state.status === 'ready' ? withData.map((s) => ({ site: s, days: dailySunPercent(state.lights[s.id]) })) : []),
+    () => (state.status === 'ready' ? withData.filter((s) => state.lights[s.id]).map((s) => ({ site: s, days: dailySunPercent(state.lights[s.id]) })) : []),
     [state, withData],
   )
 

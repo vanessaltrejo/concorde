@@ -12,20 +12,24 @@ hour, and whether the **real terrain** hides them. Web address:
 
 Built for **NASA Space Apps Challenge 2026**, challenge *"Lunar Landing Site
 Simulator"*. Current sites: **Shackleton rim, Connecting Ridge C1 and C2** (south
-pole) and **Apollo 11, 16 and 17**. Current period: **90 days, 2026-11-14 to
+pole), **Mons Mouton, Malapert A and Schrödinger Basin** (NASA CLPS landing
+sites) and **Apollo 11, 16 and 17**. Current period: **90 days, 2026-11-14 to
 2027-02-12 UTC**, hourly.
 
 > **Planning aid, not flight grade.** Every number comes from public NASA data
 > and is checked against an independent source (see [Validation](#6-validation)),
 > but this is a hackathon tool, not mission software.
 
-**Status (2026-11-14).** Working: Orbital view with 5 map layers, 6 sites,
-arrival date and stay length, requirements with a zone map around the south
-pole, Horizon view with real shadows. Built but not tested with a live model yet:
-the AI assistant (it needs a model key, see
-[`docs/AI_ASSISTANT_PLAN.md`](docs/AI_ASSISTANT_PLAN.md)). Not built yet: zones
-for the whole Moon, custom coordinates, the Dashboard with impact numbers (see
-[Next steps](#10-next-steps)).
+**Status (2026-11-15).** Working: **Dashboard**, **Orbital view** with 5 map
+layers, **Horizon view** with real shadows and a real star sky, **Compare sites**
+(up to 3 site-and-date scenarios with a goal score), 9 sites, arrival date and
+stay length, requirements with a zone map around the south pole, and the CLPS
+missions of each site. The AI assistant is built (it needs a model key, see
+[`docs/AI_ASSISTANT_PLAN.md`](docs/AI_ASSISTANT_PLAN.md)) and knows all four
+tabs. Not built yet: zones for the whole Moon, custom coordinates, the impact
+KPIs of the Dashboard (placeholders only, no invented numbers), and the data of
+three more CLPS sites (Mare Crisium, Reiner Gamma, Gruithuisen Domes). See
+[Next steps](#10-next-steps).
 
 The full history of the project (every decision, problem, fix, discarded idea
 and correction) is in [`docs/PROJECT_MEMORY.md`](docs/PROJECT_MEMORY.md).
@@ -71,9 +75,12 @@ every number validated.
 
 ## 2. What the app does
 
-A bar on the left switches between the **Orbital view**, the **Horizon view**
-and a **Dashboard** placeholder. The app opens on the Orbital view. The project
-name is at the top-left of each view.
+A bar on the left switches between the **Dashboard**, the **Orbital view**, the
+**Horizon view** and **Compare sites**; a chat button at the bottom opens the AI
+assistant. The app opens on the Orbital view, with a clean address (`/`). Panels
+are dark gray cards over the views, with NASA blue for buttons and selected
+items and a little NASA red only for small accents. Toggles and sliders are
+white.
 
 **Orbital view (the Moon globe)**
 
@@ -85,15 +92,18 @@ name is at the top-left of each view.
   coverage and its limits. There are no value legends, because Moon Trek gives
   none for these tiles. Near the south pole, Hillshade and Elevation add the LOLA
   5 m south pole model.
-- **Site** menu (South pole: Shackleton rim, Connecting Ridge C1, C2. Apollo
-  landing sites: 11, 16, 17) or click a marker: the camera flies there. For the
-  selected site you get the date and time, the **stay length**, the % of the
+- **Site** menu (South pole: Shackleton rim, Connecting Ridge C1, C2. CLPS
+  missions: Mons Mouton, Malapert A, Schrödinger Basin. Apollo landing sites: 11,
+  16, 17) or click a marker: the camera flies there. For the
+  selected site you get the date and time, the **stay length**, the **CLPS
+  missions** that land there (completed or scheduled, with year), a **Compare**
+  flag button, the % of the
   stay with Sun and with Earth link, a **Horizon preview** (the real horizon
   with the Sun and Earth, which hide behind terrain), a **Topography** snapshot
   of the zone, and the buttons *Open Horizon view*, *Topography view* and *Back
   to globe*.
 - **Requirements** (Sun during the stay, Earth link during the stay, slope at
-  the site). Each can be switched off. They mark the 6 sites (green ✓ meets,
+  the site). Each can be switched off. They mark the 9 sites (green ✓ meets,
   gray ✕ excluded) and, with **Show on map**, color **2,500 zone cells** of 1 km
   around the south pole (green meets, faint gray does not). Everything is
   recalculated when you change the arrival date, the stay length or a threshold.
@@ -112,11 +122,51 @@ name is at the top-left of each view.
   **real cast shadows**, the Sun and Earth discs at their **real angular size**
   (the Earth with its real phase and the side that faces the Moon), a compass
   and a thin gray line on the computed horizon. **← Back to Orbital view** keeps
-  the date.
+  the date. The sky is a real star map (Tycho-2) plus point stars. The sidebar
+  floats over the view as a card and also shows the site's CLPS missions and a
+  **Compare** flag button.
 
-**Shared by both views:** the date and time and the stay length. The address
-bar keeps the screen (`?view=orbital|horizon&site=<id>&t=<UTC>&stay=<days>`), so
-a link reopens the same screen.
+**Dashboard (first tab)**
+
+- A **Welcome** hero with the site menu, the arrival date, the stay length, the
+  buttons *Open Horizon view* and *Compare sites*, and a **Simple / Detailed**
+  switch (Simple hides technical columns).
+- **Key numbers**: ring gauges for the % of the stay with Sun and with Earth
+  link (with the change against the previous stay of the same length), and two
+  mission-control countdowns: *Sunset in / Sunrise in* and *Earthset in /
+  Earthrise in*.
+- **Your stay, hour by hour**: Sun and Earth elevation over the stay, with two
+  bars: *Power* (Sun above the real terrain horizon) and *Link* (Earth above it).
+- **Sky now**: the real 360° horizon with the Sun and the Earth, plus Sun and Earth
+  height, the longest dark gap and the slope.
+- **90 days of sunlight** for every site (share of each UTC day with Sun). Click a
+  day to set the arrival date; the outline is your stay.
+- **Best sites for your goal**: all sites ranked by goal (Power, Communications,
+  Safe landing, Balanced), with *Export CSV*.
+- **Impact**: KPIs such as planning hours saved. They are **placeholders** (`—`)
+  until the team's research defines them; no numbers are invented
+  (`src/data/kpis.ts`).
+
+**Compare sites**
+
+- Up to **3 scenarios**, each one a **site plus an arrival date**. Add them with
+  the *Compare* flag button on any site, or from the empty slot. *Same site, 7
+  days later* copies a card one week on (what if the launch slips).
+- Cards are **draggable**: the position is your own order (**1st, 2nd, 3rd**).
+  *Order by model suggestion* sorts them by score.
+- Each card: arrival date, a 0 to 100 **goal score**, the horizon preview, five
+  bars (time with Sun, Sun continuity = shortest dark gap, mean Sun height, time
+  with Earth, flatness), a star on the best card for each bar, whether it meets
+  the default requirements, and the CLPS missions. A radar overlays the cards.
+- The highest score gets a separate **Model suggestion** tag. It does not change
+  your 1st/2nd/3rd order. The score is a transparent weighted mean (see
+  [4.13](#413-dashboard-and-compare-scoring)), not an AI.
+
+**Shared by all views:** the date and time and the stay length. The address
+bar keeps the screen
+(`?view=orbital|horizon|dashboard|compare&site=<id>&t=<UTC>&stay=<days>&cmp=<site>@<UTC>,...`),
+so a link reopens the same screen and the same comparison. The clean address `/`
+is used only for the untouched home.
 
 **Examples (pitch story)**
 
@@ -143,10 +193,13 @@ npm run dev
 
 Open the address Vite prints (http://localhost:5173). All site data is already
 in `public/data`. The **Horizon view works offline**; the **Orbital view needs
-internet** for the NASA Moon Trek map tiles. The app opens on the Orbital view
-(about 4 MB of CesiumJS, loaded only for that view). The terrain of a site
-(about 19 MB for a south pole site, about 1.3 MB for an Apollo site) is loaded
-only when its Horizon view opens; the previews on the globe use only about 1 MB.
+internet** for the NASA Moon Trek map tiles. Loading is on demand: the first
+download is small (about 0.3 MB of app code); CesiumJS (about 4 MB) loads only
+for the Orbital view and the 3D Horizon code (about 1 MB) only when that tab
+opens. The terrain of a site (about 19 MB for a south pole site, 30 MB for the
+two CLPS sites near the pole, about 1.3 MB for an Apollo site) is loaded only
+when its Horizon view opens; the previews and the Dashboard use only about 1 MB
+per site.
 
 Other commands:
 
@@ -331,6 +384,14 @@ data ends, the app says "> X (end of data)".
   chunks of rows, horizon to **50 km**, grids of 118 m, 474 m and 948 m. At Apollo
   11 a 50 km horizon equals the 200 km one (0 of 1440 bins differ). Near the pole
   200 km is needed (PROJECT_MEMORY problem #14), so the polar path keeps it.
+- **CLPS sites** (Mons Mouton, Malapert A, Schrödinger Basin; more to come): same
+  global 118 m path as Apollo, 50 km radius. Mons Mouton (-84.6°) and Malapert A
+  (-84.1°) are not inside the 20 m polar file (it covers latitudes -86° and
+  south), so they use the global model, stretched in the east-west direction,
+  which makes their files larger (about 30 MB). Coordinates come from NASA's CLPS
+  pages with one decimal (about 3 km), so they are marked *to confirm*. Near the
+  pole terrain beyond 50 km can matter (PROJECT_MEMORY problem #14): their Sun
+  percentages may be slightly optimistic until compared against a 200 km horizon.
 - Sun and Earth: one Horizons request per site (`fetch_horizons.py --site <id>`),
   hourly for 90 days.
 - A new site needs both scripts (`--site <id>`) and an entry in the two site
@@ -371,6 +432,26 @@ past the end of the data it says how many days are really counted.
 The selected time and the stay length live in `App` and are shared by both views;
 the address bar mirrors them. TypeScript is `strict`. An error boundary shows a
 message instead of a blank page if a view fails (for example no WebGL).
+
+### 4.13 Dashboard and Compare scoring
+
+Both use the same numbers (`src/scene/compare.ts`), for the selected arrival and
+stay, from the same horizon rule as the rest of the app. Five axes, each 0 to 100:
+
+| Axis | How |
+|---|---|
+| Time with Sun | % of the stay with part of the Sun above the terrain |
+| Sun continuity | 100 minus the longest Sun-less gap as a share of the stay |
+| Sun height | mean Sun elevation while visible; 30° counts as 100 |
+| Time with Earth | % of the stay with part of the Earth above the terrain |
+| Flatness | 100 at 0°, 0 at 10° (the HLS slope limit); left out if the site has no slope |
+
+A goal is a set of weights (Power: Sun .45, continuity .35, height .1, flatness
+.1; Communications: Earth .8; Safe landing: flatness .5; Balanced: all axes). The
+score is the weighted mean of the axes that have data. **The weights and the 30°
+cap are a first proposal, not validated mission numbers.** Timelines are cached
+per loaded site and the arrival time is found by index (the data is hourly), so
+the Dashboard recomputes quickly. Scores are screening only.
 
 ## 5. Data and sources
 
@@ -458,8 +539,11 @@ They are listed in the app credits too:
 
 ## 8. Known limits
 
-- **Sites and period.** Six curated sites and 90 days (2026-11-14 to
-  2027-02-12). No custom coordinates yet: a new site needs the Python scripts,
+- **Sites and period.** Nine curated sites and 90 days (2026-11-14 to
+  2027-02-12). Missions without a landing point (Peregrine, which did not land;
+  Blue Moon Pathfinder, "south polar region"; Blue Ghost 2, farside and orbit)
+  are listed in a note, not on the map. Mare Crisium, Reiner Gamma and
+  Gruithuisen Domes have coordinates but their data is not generated yet. No custom coordinates yet: a new site needs the Python scripts,
   because browsers cannot read LOLA or Horizons directly (no CORS).
 - **Zone map.** Only the south pole, in a 50 × 50 km box, 1 km cells, judged at
   the 4 highest spots of each cell. Slope uses a 100 m baseline from LOLA 20 m.
@@ -544,12 +628,16 @@ After that:
   (decision pending: skip slope or use a coarse one).
 - **Custom coordinates** with a small server that runs the Python pipeline.
 - **Requirement scores** (nice-to-have with weights, presets for lander types).
-- **Dashboard** with impact numbers (hours or money saved) from the team's research of
-  today's process; no numbers until that research is read.
+- **Impact KPIs** on the Dashboard (hours or money saved) from the team's research of
+  today's process; the Dashboard is built, the KPI cards stay `—` until then.
 - **AI assistant**: built (tools over the app's data, strict number check, voice
   input), not yet tested with a live model; run the test set once the key exists.
-- **Compare mode** (two sites or dates side by side), a timeline of the lunar day,
-  a 2D horizon chart, finer zone cells (500 m, about 4 times slower).
+- **Compare**: review the goal weights and the 30° Sun height cap with the team;
+  compare the new CLPS horizons (50 km) against a 200 km horizon; confirm the CLPS
+  coordinates on NASA's pages; generate Mare Crisium, Reiner Gamma and Gruithuisen
+  Domes; a smaller terrain format (store heights only, about 3 to 6 times smaller).
+- A timeline of the lunar day, a 2D horizon chart, finer zone cells (500 m, about
+  4 times slower).
 - The full plan by phases and its results are in [`docs/PLAN.md`](docs/PLAN.md).
 
 ## 11. Project structure
@@ -562,13 +650,14 @@ concorde/
 ├── docs/PLAN.md              build plan by phases, with each phase's result
 ├── reference-image.jpeg      reference image from the idea (external paper, not used as data)
 ├── index.html                page head: title, description, social preview, structured data
+├── api/                      serverless function for the AI assistant (chat.ts, _lib/)
 ├── vite.config.ts, tsconfig*.json, package.json
 ├── public/
-│   ├── data/<site>/          sky.json, horizon.json, terrain.json, terrain_*.f32 (6 sites)
+│   ├── data/<site>/          sky.json, horizon.json, terrain.json, terrain_*.f32 (9 sites)
 │   ├── data/zones/           south-pole-1km*.{json,bin}: zone cells, horizons, slope
 │   ├── data/ephemeris.json   Sun/Earth for any point, hourly
 │   ├── data/site_slopes.json slope at each site
-│   ├── textures/             earth_bmng_topo_bathy_200412_2048.jpg
+│   ├── textures/             Earth map, stars/ and stars-h/ (Tycho-2 star map), moon-hero.png
 │   └── og-image.jpg, favicon.svg, apple-touch-icon.png, robots.txt, sitemap.xml
 ├── data/
 │   ├── raw/                  raw Horizons replies (evidence)
@@ -584,19 +673,21 @@ concorde/
 │   └── requirements.txt
 └── src/
     ├── App.tsx               views, shared time and stay, address bar state, lazy loading
-    ├── appName.ts            project name shown at the top-left
     ├── types.ts              data contract (all typed, no `any`)
-    ├── data/                 loadSiteData.ts (static files), sites.ts, layers.ts (map layers)
-    ├── state/urlState.ts     read/write ?view=&site=&t=&stay=
+    ├── data/                 loadSiteData.ts (static files), sites.ts (sites and CLPS missions), kpis.ts (impact KPI placeholders), layers.ts (map layers)
+    ├── state/                urlState.ts (?view=&site=&t=&stay=&cmp=), scenarios.ts (Compare scenarios)
+    ├── assistant/            AI assistant panel, tools, number check (see docs/AI_ASSISTANT_PLAN.md)
     ├── scene/                pure logic
     │   ├── visibility.ts, windows.ts, timing.ts   horizon lookup, rise/set, %
     │   ├── stay.ts           stay percentages
+    │   ├── compare.ts, dashboard.ts   five axes and goal score; daily Sun for the heatmap
     │   ├── requirements.ts   site requirements
     │   ├── zones.ts          zone cells: Sun/Earth for any point, requirements
     │   ├── timeSelection.ts, terrainInfo.ts, formatTime.ts, skyMath.ts, constants.ts, viewLimits.ts
     │   └── terrainGrid.ts, terrainShader.ts, earthOrientation.ts   Horizon view 3D
     └── components/           React components (one job each)
-        ├── NavRail, ErrorBoundary, Placeholder
+        ├── NavRail, ErrorBoundary, FlagButton, MissionList
+        ├── Dashboard: DashboardTab. Compare: CompareTab (cards, radar)
         ├── Orbital view: MoonGlobe, LayerSelector, SitePanel, HorizonPreview,
         │   StayPanel, RequirementsPanel, zoneLayer
         └── Horizon view: SiteView, Sidebar, MetricsPanel, DateTimeControl, StatusBadge,
