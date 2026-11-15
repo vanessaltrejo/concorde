@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type TabId = 'orbital' | 'horizon' | 'dashboard' | 'compare' | 'games' | 'references'
+export type TabId = 'orbital' | 'horizon' | 'dashboard' | 'compare' | 'educational' | 'references'
 
 type Tab = { id: TabId; label: string; icon: ReactNode }
 
@@ -59,8 +59,8 @@ const tabs: Tab[] = [
     ),
   },
   {
-    id: 'games',
-    label: 'Games',
+    id: 'educational',
+    label: 'Educational',
     icon: (
       <svg {...iconProps}>
         <rect x="2.5" y="7" width="19" height="11" rx="5" />

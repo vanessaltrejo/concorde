@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ActionBanner, type BannerItem } from './assistant/ActionBanner'
 import { AssistantPanel } from './assistant/AssistantPanel'
-import { GamesTab } from './components/GamesTab'
+import { EducationalTab } from './components/EducationalTab'
 import { ReferencesTab } from './components/ReferencesTab'
 import type { AppBridge, AppSnapshot } from './assistant/tools'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -259,7 +259,7 @@ export default function App() {
       {tab === 'compare' && (
         <CompareTab stayDays={stayDays} fallbackTimeMs={timeMs} />
       )}
-      {tab === 'games' && <GamesTab />}
+      {tab === 'educational' && <EducationalTab />}
       {tab === 'references' && <ReferencesTab />}
       </ErrorBoundary>
       {/* Outside the error boundary: a view crash does not close the assistant. */}

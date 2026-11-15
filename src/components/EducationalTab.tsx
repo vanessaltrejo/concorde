@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-// Page for the mini games that teach kids about the Moon. The games are not
+// Educational page: mini games that teach kids about the Moon. The games are not
 // built yet: each card is a place holder for one game (title, what it teaches).
 
 type Game = { title: string; teaches: string; color: string; icon: ReactNode }
@@ -64,15 +64,15 @@ const GAMES: Game[] = [
   },
 ]
 
-export function GamesTab() {
+export function EducationalTab() {
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col gap-4 overflow-y-auto bg-[#303030] p-3 text-gray-100 md:p-4 [&>*]:shrink-0">
       <header>
         <h1 className="flex items-center gap-2 text-lg font-semibold">
           <span aria-hidden className="h-4 w-1 rounded-sm bg-[var(--nasa-red)]" />
-          Games
+          Educational
         </h1>
-        <p className="mt-1 text-sm text-gray-300">Mini games to learn about the Moon. Coming soon.</p>
+        <p className="mt-1 text-sm text-gray-300">Mini games and activities to learn about the Moon. Coming soon.</p>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

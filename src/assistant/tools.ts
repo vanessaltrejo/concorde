@@ -14,7 +14,7 @@ import type { SkySample } from '../types'
 import { THRESHOLDS } from './thresholds'
 import { coverage, pointName, type AnywherePoint } from '../terrain/anywhere'
 
-export type AppView = 'orbital' | 'horizon' | 'dashboard' | 'compare' | 'games' | 'references'
+export type AppView = 'orbital' | 'horizon' | 'dashboard' | 'compare' | 'educational' | 'references'
 
 export type AppSnapshot = {
   view: AppView
@@ -179,10 +179,10 @@ function describeView(state: AppSnapshot) {
       ],
     }
   }
-  if (state.view === 'games') {
+  if (state.view === 'educational') {
     return {
-      view: 'Games',
-      panels: ['Page for mini games that teach kids about the Moon. The games are not built yet; each card says "Coming soon".'],
+      view: 'Educational',
+      panels: ['Educational page with mini games that teach kids about the Moon. The games are not built yet; each card says "Coming soon".'],
     }
   }
   if (state.view === 'references') {
