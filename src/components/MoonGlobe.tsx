@@ -10,23 +10,35 @@ import {
   UrlTemplateImageryProvider,
   Viewer,
   Cartesian3,
+  type ImageryLayer,
 } from 'cesium'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
-
-// Moon Trek WMTS: LRO Wide Angle Camera global mosaic (equirectangular tiles).
-// Levels 0 to 8 exist (level 9 returns 404; checked 2026-11-14 in the product's
-// WMTSCapabilities.xml and with a tile request).
-const WAC_URL =
-  'https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/{z}/{y}/{x}.jpg'
-const WAC_MAX_LEVEL = 8
+import { getLayer, photoBase, tileUrl, type TileSource } from '../data/layers'
+import { LayerSelector } from './LayerSelector'
 
 type Picked = { latitudeDeg: number; longitudeDeg: number }
 
+function makeProvider(source: TileSource) {
+  const [west, south, east, north] = source.rectangle
+  return new UrlTemplateImageryProvider({
+    url: tileUrl(source),
+    tilingScheme: new GeographicTilingScheme({ ellipsoid: Ellipsoid.MOON }),
+    // Only ask for tiles inside the data coverage (no 404 requests outside it).
+    rectangle: Rectangle.fromDegrees(west, south, east, north),
+    maximumLevel: source.maxLevel,
+    tileWidth: 256,
+    tileHeight: 256,
+  })
+}
+
 // Orbital view: smooth Moon sphere with NASA imagery. Cesium loads only the
-// tiles it needs for the current zoom.
+// tiles it needs for the current zoom. One map layer is shown at a time.
 export default function MoonGlobe() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const viewerRef = useRef<Viewer | null>(null)
+  const overlaysRef = useRef<ImageryLayer[]>([])
   const [picked, setPicked] = useState<Picked | null>(null)
+  const [layerId, setLayerId] = useState('image')
 
   useEffect(() => {
     const container = containerRef.current
@@ -53,22 +65,15 @@ export default function MoonGlobe() {
       requestRenderMode: true,
       maximumRenderTimeChange: Infinity,
     })
+    viewerRef.current = viewer
     viewer.scene.backgroundColor.alpha = 1
     viewer.scene.globe.showGroundAtmosphere = false
     viewer.scene.globe.enableLighting = false
     if (viewer.scene.sun) viewer.scene.sun.show = false
     if (viewer.scene.moon) viewer.scene.moon.show = false
 
-    viewer.imageryLayers.addImageryProvider(
-      new UrlTemplateImageryProvider({
-        url: WAC_URL,
-        tilingScheme: new GeographicTilingScheme({ ellipsoid: Ellipsoid.MOON }),
-        rectangle: Rectangle.MAX_VALUE,
-        maximumLevel: WAC_MAX_LEVEL,
-        tileWidth: 256,
-        tileHeight: 256,
-      }),
-    )
+    // The photo mosaic is the base. Map layers are drawn over it.
+    viewer.imageryLayers.addImageryProvider(makeProvider(photoBase))
 
     // Start above the near side, looking straight down at the Moon.
     viewer.camera.setView({
@@ -95,14 +100,30 @@ export default function MoonGlobe() {
     return () => {
       handler.destroy()
       viewer.destroy()
+      viewerRef.current = null
+      overlaysRef.current = []
     }
   }, [])
+
+  // Swap the overlay when the selected layer changes: the previous one is removed first.
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!viewer) return
+    for (const layer of overlaysRef.current) viewer.imageryLayers.remove(layer, true)
+    overlaysRef.current = getLayer(layerId).sources.map((source) =>
+      viewer.imageryLayers.addImageryProvider(makeProvider(source)),
+    )
+    viewer.scene.requestRender()
+  }, [layerId])
+
+  const active = getLayer(layerId)
 
   return (
     <div className="relative h-full min-w-0 flex-1 bg-black">
       <div ref={containerRef} className="h-full w-full" />
+      <LayerSelector activeId={layerId} onChange={setLayerId} />
       {picked && (
-        <div className="absolute left-4 top-4 rounded bg-[#303030]/90 px-3 py-2 text-sm text-gray-100">
+        <div className="absolute right-4 top-4 rounded bg-[#303030]/90 px-3 py-2 text-sm text-gray-100">
           <p className="text-xs text-gray-400">Picked point</p>
           <p>
             {picked.latitudeDeg.toFixed(4)}°, {picked.longitudeDeg.toFixed(2)}° E
@@ -110,7 +131,7 @@ export default function MoonGlobe() {
         </div>
       )}
       <p className="pointer-events-none absolute bottom-1 right-2 text-[10px] text-gray-400">
-        Imagery: NASA LRO Wide Angle Camera mosaic, via NASA Moon Trek.
+        NASA Moon Trek · {active.credit}
       </p>
     </div>
   )

@@ -228,6 +228,29 @@ re-read sections 0 to 0.2, question the phase, and ask what is missing.
   85° latitude; levels read from each capabilities file.
 - **Model:** Sonnet, medium effort.
 
+**Phase 2 result (2026-11-14, built, not committed):**
+- Done: `src/data/layers.ts` (registry), `LayerSelector.tsx` (radio group: Image,
+  Hillshade, Elevation, Slope, Temperature with a sub-menu of 3), and
+  `MoonGlobe.tsx` swaps overlays (the previous one is removed first). One small
+  credit line: "NASA Moon Trek · <layer credit>".
+- Checked: every product's tile matrix is the standard 2 x 1 global scheme, and
+  the real max level is the last level listed (the next level returns 404):
+  hillshade 6, elevation 6, slope global 2, slope 60S-60N 10, slope poles 6,
+  night temperature 6, max/min temperature 0. 62 tile requests while switching
+  layers, all 200, none 404.
+- Correction to Plan B: hillshade and elevation tiles stop at level 6 (a tile
+  pixel is about 333 m at the equator), coarser than the "256 ppd, 118 m" source.
+  The app says "finest tile pixel", never "data resolution".
+- No value legends: Moon Trek gives none for these tiles. The app says so and
+  does not invent heights, slopes or temperatures.
+- Official layer text read from the Moon Trek catalogue for hillshade, elevation,
+  global slope and night temperature. Not read for the 60S-60N slope, polar slope
+  and max/min temperature (they were not in the first 1000 catalogue rows).
+- Observed, not explained: the night temperature map shows a vertical seam near
+  the centre and dark streaks. The description mentions ground-track coverage, but
+  the seam itself was not checked.
+- Not tested yet: slope at 65° and 85° latitude by zooming in (acceptance item).
+
 ### Phase 3. Sites on the globe → Sky view, loading one zone at a time
 - **What:** `sites.json` (id, name, lat, lon, source of coordinates). Markers on
   the globe. Click → side panel → "Open sky view". `loadSiteData(siteId)` loads
