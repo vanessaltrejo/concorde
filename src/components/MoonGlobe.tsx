@@ -52,12 +52,12 @@ import {
 import { addGlobalLayer, raiseGlobalLayer, removeGlobalLayer } from './globalLayer'
 import { LayerControl } from './LayerControl'
 import { DEFAULT_MARKER_FILTER, siteVisible, type MarkerFilter } from '../scene/markers'
-import { addPlace, formatCoords, usePlaces, type Place } from '../state/places'
+import { addPlace, formatCoords, removePlace, renamePlace, usePlaces, type Place } from '../state/places'
 import { SitePanel } from './SitePanel'
 import { PickedPointCard } from './PickedPointCard'
 import { GROUP_COLOR } from '../data/siteGroups'
 
-type Picked = { latitudeDeg: number; longitudeDeg: number; cell: number | null }
+type Picked = { latitudeDeg: number; longitudeDeg: number; cell: number | null; placeId?: string }
 
 function makeProvider(source: TileSource) {
   const [west, south, east, north] = source.rectangle
@@ -75,13 +75,27 @@ function makeProvider(source: TileSource) {
 // The blinking marker of the point picked on the globe (before it is saved).
 const PICKED_ID = 'picked-point'
 
-// Marker colour by site group (same colours as the site menus).
-function groupColor(site: SiteEntry): Color {
-  return Color.fromCssColorString(GROUP_COLOR[site.group])
+// Every marker is a pin in the colour of its group (same colours as the site
+// menus). Requirements turn them green or gray; the selected site is white.
+const MEETS_HEX = '#009E73' // Okabe-Ito bluish green
+const EXCLUDED_HEX = '#8a8a8a'
+const SELECTED_HEX = '#ffffff'
+const PLACE_HEX = '#56B4E9' // saved places
+const PIN_SCALE = 0.7
+
+const pinCache = new Map<string, string>()
+function pinImage(fill: string): string {
+  let uri = pinCache.get(fill)
+  if (!uri) {
+    uri =
+      'data:image/svg+xml;utf8,' +
+      encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38"><path d="M14 1C7 1 1.5 6.4 1.5 13.3 1.5 22.5 14 37 14 37s12.5-14.5 12.5-23.7C26.5 6.4 21 1 14 1z" fill="${fill}" stroke="#ffffff" stroke-width="2"/><circle cx="14" cy="13.5" r="4.6" fill="#0b2e4a" fill-opacity="0.75"/></svg>`,
+      )
+    pinCache.set(fill, uri)
+  }
+  return uri
 }
-const MEETS_COLOR = Color.fromCssColorString('#009E73') // Okabe-Ito bluish green
-const EXCLUDED_COLOR = Color.fromCssColorString('#8a8a8a')
-const SELECTED_COLOR = Color.WHITE
 
 // Cesium objects are mutable by design; the mutation lives in a helper
 // (same pattern as the Horizon view, PROJECT_MEMORY problem #22).
@@ -90,8 +104,8 @@ function highlightSite(viewer: Viewer, siteId: string | null, meets: Record<stri
   for (const entity of viewer.entities.values) {
     if (entity.id === PICKED_ID || entity.id.startsWith('pin:')) continue
     const status = meets ? meets[entity.id] : undefined
-    const base = status === undefined ? groupColor(getSite(entity.id)) : status ? MEETS_COLOR : EXCLUDED_COLOR
-    if (entity.point) entity.point.color = new ConstantProperty(entity.id === siteId ? SELECTED_COLOR : base)
+    const base = status === undefined ? GROUP_COLOR[getSite(entity.id).group] : status ? MEETS_HEX : EXCLUDED_HEX
+    if (entity.billboard) entity.billboard.image = new ConstantProperty(pinImage(entity.id === siteId ? SELECTED_HEX : base))
     if (entity.label) {
       const name = getSite(entity.id).name
       // Text, not only colour: ✓ meets, ✕ excluded.
@@ -120,7 +134,12 @@ function addSiteMarker(viewer: Viewer, site: SiteEntry, index: number) {
   viewer.entities.add({
     id: site.id,
     position: Cartesian3.fromDegrees(site.longitudeDeg, site.latitudeDeg, 0, Ellipsoid.MOON),
-    point: { pixelSize: 9, color: groupColor(site), outlineColor: Color.BLACK, outlineWidth: 1.5 },
+    billboard: {
+      image: pinImage(GROUP_COLOR[site.group]),
+      verticalOrigin: VerticalOrigin.BOTTOM,
+      heightReference: HeightReference.NONE,
+      scale: PIN_SCALE,
+    },
     label: {
       text: site.name,
       font: '13px sans-serif',
@@ -130,19 +149,13 @@ function addSiteMarker(viewer: Viewer, site: SiteEntry, index: number) {
       style: LabelStyle.FILL_AND_OUTLINE,
       // Alternate above / below so close sites do not cover each other.
       verticalOrigin: index % 2 === 0 ? VerticalOrigin.BOTTOM : VerticalOrigin.TOP,
-      pixelOffset: new Cartesian2(0, index % 2 === 0 ? -10 : 10),
+      pixelOffset: new Cartesian2(0, index % 2 === 0 ? -30 : 6),
       distanceDisplayCondition: LABEL_NEAR,
     },
   })
 }
 
-// Saved places are drawn as map pins (entity id "pin:<placeId>").
-const PIN_IMAGE =
-  'data:image/svg+xml;utf8,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38"><path d="M14 1C7 1 1.5 6.4 1.5 13.3 1.5 22.5 14 37 14 37s12.5-14.5 12.5-23.7C26.5 6.4 21 1 14 1z" fill="#1a73e8" stroke="#ffffff" stroke-width="2"/><circle cx="14" cy="13.5" r="4.6" fill="#0b2e6b"/></svg>',
-  )
-
+// Saved places are drawn as map pins (entity id "pin:<placeId>"), in sky blue.
 function syncPins(viewer: Viewer, places: Place[], show: boolean) {
   for (const entity of [...viewer.entities.values]) if (entity.id.startsWith('pin:')) viewer.entities.remove(entity)
   if (show) {
@@ -151,9 +164,10 @@ function syncPins(viewer: Viewer, places: Place[], show: boolean) {
         id: `pin:${place.id}`,
         position: Cartesian3.fromDegrees(place.lonDeg, place.latDeg, 0, Ellipsoid.MOON),
         billboard: {
-          image: PIN_IMAGE,
+          image: pinImage(PLACE_HEX),
           verticalOrigin: VerticalOrigin.BOTTOM,
           heightReference: HeightReference.NONE,
+          scale: PIN_SCALE,
         },
         label: {
           text: place.name,
@@ -163,7 +177,7 @@ function syncPins(viewer: Viewer, places: Place[], show: boolean) {
           outlineWidth: 3,
           style: LabelStyle.FILL_AND_OUTLINE,
           verticalOrigin: VerticalOrigin.BOTTOM,
-          pixelOffset: new Cartesian2(0, -40),
+          pixelOffset: new Cartesian2(0, -30),
           distanceDisplayCondition: LABEL_NEAR,
         },
       })
@@ -524,7 +538,8 @@ export default function MoonGlobe({
   // Blinking yellow marker on the picked point, until it is saved or closed.
   useEffect(() => {
     const viewer = viewerRef.current
-    if (!viewer || !picked) return
+    // A saved place already has its pin, so only a new point blinks.
+    if (!viewer || !picked || picked.placeId) return
     const marker = viewer.entities.add({
       id: PICKED_ID,
       position: Cartesian3.fromDegrees(picked.longitudeDeg, picked.latitudeDeg, 0, Ellipsoid.MOON),
@@ -577,6 +592,19 @@ export default function MoonGlobe({
     addPlace(point.latitudeDeg, point.longitudeDeg)
     setMarkerFilter((f) => (f.pins ? f : { ...f, pins: true }))
     setPicked(null)
+  }
+
+  // A saved place chosen in the site menu: fly there and show its panel.
+  function selectPlace(place: Place) {
+    const viewer = viewerRef.current
+    if (viewer) {
+      viewer.camera.flyTo({
+        destination: Cartesian3.fromDegrees(place.lonDeg, place.latDeg, ZONE_ALTITUDE_M, Ellipsoid.MOON),
+        orientation: { heading: 0, pitch: CesiumMath.toRadians(-90), roll: 0 },
+        duration: 2,
+      })
+    }
+    setPicked({ latitudeDeg: place.latDeg, longitudeDeg: place.lonDeg, cell: null, placeId: place.id })
   }
 
   // Back to the first view: the whole near side, straight down.
@@ -703,6 +731,7 @@ export default function MoonGlobe({
         />
       </div>
       <SitePanel
+        onSelectPlace={selectPlace}
         topSlot={
           picked ? (
             <PickedPointCard
@@ -712,8 +741,15 @@ export default function MoonGlobe({
               onTimeChange={onTimeChange}
               stayDays={stayDays}
               onStayDaysChange={onStayDaysChange}
+              place={picked.placeId ? places.find((p) => p.id === picked.placeId) ?? null : null}
               onClose={() => setPicked(null)}
               onSave={() => savePicked(picked)}
+              onCompare={() => onComparePoint({ latDeg: picked.latitudeDeg, lonDeg: picked.longitudeDeg })}
+              onRename={(name) => picked.placeId && renamePlace(picked.placeId, name)}
+              onRemove={() => {
+                if (picked.placeId) removePlace(picked.placeId)
+                setPicked(null)
+              }}
               onOpenHorizon={() => onOpenPointView({ latDeg: picked.latitudeDeg, lonDeg: picked.longitudeDeg })}
             >
           {picked.cell !== null && zoneResults?.[picked.cell] && (

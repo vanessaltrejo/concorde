@@ -5,6 +5,7 @@ import { coverage, loadAnywhereLight } from '../terrain/anywhere'
 import { DateTimeControl } from './DateTimeControl'
 import { HorizonPreview } from './HorizonPreview'
 import { StayPanel } from './StayPanel'
+import { formatCoords, type Place } from '../state/places'
 
 type PickedPointCardProps = {
   latDeg: number
@@ -16,6 +17,11 @@ type PickedPointCardProps = {
   onClose: () => void
   onSave: () => void
   onOpenHorizon: () => void
+  onCompare: () => void
+  // Set when the point is a saved place: it can be renamed, compared and removed.
+  place?: Place | null
+  onRename: (name: string) => void
+  onRemove: () => void
   // Requirement summary for the point, written by the map.
   children?: ReactNode
 }
@@ -39,6 +45,10 @@ export function PickedPointCard({
   onClose,
   onSave,
   onOpenHorizon,
+  onCompare,
+  place = null,
+  onRename,
+  onRemove,
   children,
 }: PickedPointCardProps) {
   const cover = coverage(latDeg)
@@ -63,16 +73,33 @@ export function PickedPointCard({
   return (
     <>
       <div className="flex items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <p className="flex items-center gap-2 text-xs text-gray-400">
-            <span aria-hidden className="h-2 w-2 animate-pulse rounded-full bg-[#FFD400]" />
-            Picked point
+            <span aria-hidden className={'h-2 w-2 rounded-full ' + (place ? 'bg-[#56B4E9]' : 'animate-pulse bg-[#FFD400]')} />
+            {place ? 'Saved place' : 'Picked point'}
           </p>
-          <p className="text-sm font-medium">
-            {latDeg.toFixed(4)}°, {lonDeg.toFixed(2)}° E
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <span className="truncate">{place ? place.name : `${latDeg.toFixed(4)}°, ${lonDeg.toFixed(2)}° E`}</span>
+            {place && (
+              <button
+                type="button"
+                aria-label={`Rename ${place.name}`}
+                title="Rename"
+                onClick={() => {
+                  const name = window.prompt('Name for this place', place.name)
+                  if (name) onRename(name)
+                }}
+                className="rounded p-1 text-gray-400 hover:bg-[#444] hover:text-white"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z" />
+                </svg>
+              </button>
+            )}
           </p>
+          {place && <p className="text-[11px] text-gray-400">{formatCoords(place.latDeg, place.lonDeg)}</p>}
         </div>
-        <button type="button" onClick={onClose} aria-label="Close picked point" className="rounded px-1.5 text-gray-400 hover:bg-[#444] hover:text-white">
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded px-1.5 text-gray-400 hover:bg-[#444] hover:text-white">
           ×
         </button>
       </div>
@@ -80,6 +107,7 @@ export function PickedPointCard({
       {!cover.ok && <p className="text-[11px] text-gray-400">{cover.reason}</p>}
       {cover.ok && (
         <>
+          {!place && (
           <button
             type="button"
             onClick={onSave}
@@ -92,6 +120,16 @@ export function PickedPointCard({
             </svg>
             Save point
           </button>
+          )}
+          {place && (
+          <button
+            type="button"
+            onClick={onCompare}
+            className="flex items-center justify-center gap-2 rounded bg-[#FFD400] px-3 py-2 text-sm font-semibold text-black hover:brightness-110"
+          >
+            Compare
+          </button>
+          )}
           {current?.status === 'error' && <p className="text-xs text-[#E69F00]">Could not compute this point: {current.message}</p>}
           {!current && (
             <div className="flex aspect-[360/150] w-full items-center justify-center rounded bg-black text-xs text-gray-400">
@@ -120,6 +158,20 @@ export function PickedPointCard({
           >
             Open Horizon view here
           </button>
+          {place && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm(`Remove ${place.name}? It disappears from the map, the menu and Compare.`)) onRemove()
+              }}
+              className="flex items-center justify-center gap-1.5 rounded border border-[#E69F00]/60 px-3 py-1.5 text-xs text-[#f5b94d] hover:bg-[#E69F00]/15"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+              </svg>
+              Remove this place
+            </button>
+          )}
         </>
       )}
     </>

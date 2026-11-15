@@ -5,6 +5,7 @@ import { MissionList } from './MissionList'
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
 import { SITES, type SiteEntry } from '../data/sites'
+import { usePlaces, type Place } from '../state/places'
 import { indexForTime, timeOfIndex } from '../scene/timeSelection'
 import { DateTimeControl } from './DateTimeControl'
 import { HorizonPreview } from './HorizonPreview'
@@ -21,6 +22,8 @@ type SitePanelProps = {
   // Snapshot of the zone taken from the globe, or null while it is being made.
   zoneImageUrl: string | null
   onSelect: (siteId: string) => void
+  // A saved place chosen in the menu.
+  onSelectPlace: (place: Place) => void
   onOpenSkyView: (siteId: string) => void
 }
 
@@ -39,9 +42,11 @@ export function SitePanel({
   onStayDaysChange,
   zoneImageUrl,
   onSelect,
+  onSelectPlace,
   onOpenSkyView,
 }: SitePanelProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const places = usePlaces()
   const [lightState, setLightState] = useState<LightState | null>(null)
   const selectedId = selected?.id ?? null
   const hasSkyData = selected?.hasSkyData ?? false
@@ -80,7 +85,22 @@ export function SitePanel({
       <>
       <div className="flex flex-col gap-1">
         <span className="text-sm font-medium">Registered landing sites</span>
-        <SitePicker value={selected?.id ?? null} options={SITES} onChange={onSelect} ariaLabel="Registered landing sites" flagMissingData />
+        <SitePicker
+          value={selected?.id ?? null}
+          options={SITES}
+          extraGroups={
+            places.length > 0
+              ? [{ title: 'Saved places', color: '#56B4E9', items: places.map((p) => ({ id: `place:${p.id}`, name: p.name })) }]
+              : []
+          }
+          onChange={(id) => {
+            const place = id.startsWith('place:') ? places.find((p) => p.id === id.slice(6)) : undefined
+            if (place) onSelectPlace(place)
+            else onSelect(id)
+          }}
+          ariaLabel="Registered landing sites"
+          flagMissingData
+        />
       </div>
       {selected?.hasSkyData && <FlagButton siteId={selected.id} timeMs={timeMs} wide />}
 
