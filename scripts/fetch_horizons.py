@@ -4,7 +4,7 @@ Writes public/data/<site_id>/sky.json for the app, and saves the raw
 Horizons replies in data/raw/ as evidence.
 
 Run from the project root:
-    python3 scripts/fetch_horizons.py
+    python3 scripts/fetch_horizons.py [--site <id>]
 
 Only the Python standard library is used.
 
@@ -25,20 +25,21 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from sites import site_from_argv
+
 API_URL = "https://ssd.jpl.nasa.gov/api/horizons.api"
 
-# Site: Shackleton rim. Glaser et al. 2018, Planetary and Space Science 162,
-# Table 1 (surface level, "this study"), doi:10.1016/j.pss.2017.07.006.
+# Site from scripts/sites.py (--site <id>, default shackleton-rim).
+_SITE_ID, _SITE = site_from_argv()
 SITE = {
-    "id": "shackleton-rim",
-    "name": "Shackleton rim",
-    "east_longitude_deg": 203.97,
-    "latitude_deg": -89.7849,
+    "id": _SITE_ID,
+    "name": _SITE["name"],
+    "east_longitude_deg": _SITE["east_longitude_deg"],
+    "latitude_deg": _SITE["latitude_deg"],
     # Altitude above the 1737.4 km reference sphere. 0 km is an assumption:
     # a few km change the Sun/Earth direction by a negligible amount.
     "altitude_km": 0.0,
-    "source": "Glaser et al. 2018, Planetary and Space Science 162, Table 1 "
-    "(doi:10.1016/j.pss.2017.07.006)",
+    "source": _SITE["source"],
 }
 
 # One lunar day (about 29.5 Earth days), hourly, starting 2026-11-14 00:00 UTC.

@@ -1,9 +1,11 @@
 """Validation: long-term sunlight at the site vs Glaser et al. 2018.
 
-Glaser et al. 2018 (Planetary and Space Science 162, Table 1) report, for the
-Shackleton rim point at surface level over 2017-01-01 to 2037-01-01 (hourly):
-average illumination 81.0 % and solar visibility 85.5 %.
-(Values read from the PDF text extraction; check them in the PDF, page 4.)
+Glaser et al. 2018 (Planetary and Space Science 162) report average
+illumination and solar visibility over 2017-01-01 to 2037-01-01 (hourly):
+Table 1 at surface level (Shackleton rim: 81.0 % and 85.5 %) and Table 2 at
+2 m above ground (Connecting Ridge C1: 88.0 % and 92.1 %; C2: 78.1 % and
+82.0 %). See GLASER_BY_SITE. Values read from the PDF text extraction; check
+them in the PDF.
 
 This script repeats the idea with our own data:
   - Sun azimuth, elevation and size from JPL Horizons, every 6 hours, same period
@@ -13,7 +15,7 @@ It reports:
   - average illumination: mean visible fraction of the Sun's disc
 
 Run from the project root:
-    .venv/bin/python scripts/check_illumination.py
+    .venv/bin/python scripts/check_illumination.py [--site <id>]
 """
 
 import json
@@ -33,10 +35,38 @@ START_YEAR = 2017
 END_YEAR = 2037  # exclusive, as in the paper (2017-01-01 to 2037-01-01)
 STEP_SIZE = "6 h"
 
-GLASER_SURFACE = {"averageIlluminationPct": 81.0, "solarVisibilityPct": 85.5}
+# Glaser et al. 2018 reference values for each site. Read from the PDF text
+# extraction (columns come out mixed); check them in the PDF.
+# Shackleton: Table 1 (surface, compare with our 0 m result).
+# Connecting Ridge: Table 2 (2 m above ground, compare with our 2 m result),
+# read on 2026-11-14.
+GLASER_BY_SITE = {
+    "shackleton-rim": {
+        "table": "Table 1",
+        "observerHeightM": 0.0,
+        "averageIlluminationPct": 81.0,
+        "solarVisibilityPct": 85.5,
+    },
+    "connecting-ridge-c1": {
+        "table": "Table 2",
+        "observerHeightM": 2.0,
+        "averageIlluminationPct": 88.0,
+        "solarVisibilityPct": 92.1,
+    },
+    "connecting-ridge-c2": {
+        "table": "Table 2",
+        "observerHeightM": 2.0,
+        "averageIlluminationPct": 78.1,
+        "solarVisibilityPct": 82.0,
+    },
+}
+GLASER_REFERENCE = GLASER_BY_SITE[bt.SITE_ID]
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-OUT_FILE = PROJECT_ROOT / "data" / "validation" / "illumination_check.json"
+# Shackleton keeps its original file name; other sites get their own file.
+OUT_FILE = PROJECT_ROOT / "data" / "validation" / (
+    "illumination_check.json" if bt.SITE_ID == "shackleton-rim" else f"illumination_check_{bt.SITE_ID}.json"
+)
 
 
 def fetch_sun_year(year: int) -> np.ndarray:
@@ -132,7 +162,7 @@ def main() -> None:
         "period": f"{START_YEAR}-01-01 to {END_YEAR}-01-01, step {STEP_SIZE}",
         "samples": int(len(sun)),
         "ours": results,
-        "glaser2018SurfaceTable1": GLASER_SURFACE,
+        "glaser2018Reference": GLASER_REFERENCE,
         "sources": {"sun": "NASA/JPL Horizons API", "terrain": bt.DEM_SOURCE},
     }
     OUT_FILE.parent.mkdir(parents=True, exist_ok=True)

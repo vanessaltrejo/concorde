@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type TabId = 'moon' | 'sky' | 'dashboard'
+export type TabId = 'orbital' | 'horizon' | 'dashboard'
 
 type Tab = { id: TabId; label: string; icon: ReactNode }
 
@@ -18,8 +18,8 @@ const iconProps = {
 
 const tabs: Tab[] = [
   {
-    id: 'moon',
-    label: 'Moon map',
+    id: 'orbital',
+    label: 'Orbital view',
     icon: (
       <svg {...iconProps}>
         <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" />
@@ -27,8 +27,8 @@ const tabs: Tab[] = [
     ),
   },
   {
-    id: 'sky',
-    label: 'Sky view',
+    id: 'horizon',
+    label: 'Horizon view',
     icon: (
       <svg {...iconProps}>
         <circle cx="12" cy="12" r="4" />

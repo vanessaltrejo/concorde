@@ -1,4 +1,4 @@
-// Registry of Moon map layers. The selector, the info card and the credit line
+// Registry of Orbital view layers. The selector, the info card and the credit line
 // are all built from this list. Nothing in the UI is typed by hand per layer.
 //
 // Every product below was checked on 2026-11-14 against its Moon Trek
@@ -75,9 +75,17 @@ export const LAYERS: LayerDef[] = [
         rectangle: WORLD,
         extension: 'png',
       },
+      // South pole detail on top: the global tiles break up near the pole.
+      {
+        product: 'LRO_LOLA_Shade_SPole875_5mp_v04_EQ',
+        maxLevel: 9,
+        rectangle: [-180, -89.9994527, 180, -86.4641138],
+        extension: 'png',
+      },
     ],
-    sourceNote: 'Shaded relief of the LOLA elevation model (256 pixels per degree, version 6).',
-    coverageLabel: 'Whole Moon',
+    sourceNote:
+      'Shaded relief of the LOLA elevation model: whole Moon (256 pixels per degree, version 6) and, from 86.5°S to the pole, a 5 m per pixel south pole model (version 4).',
+    coverageLabel: 'Whole Moon; detailed from 86.5°S to the south pole',
     limitsNote: 'The light direction is fixed. It does not follow the real Sun, so it cannot show real shadows.',
     credit: 'LRO LOLA',
   },
@@ -91,9 +99,16 @@ export const LAYERS: LayerDef[] = [
         rectangle: WORLD,
         extension: 'png',
       },
+      {
+        product: 'LRO_LOLA_ClrShade_SPole875_5mp_v04_EQ',
+        maxLevel: 9,
+        rectangle: [-180, -89.9994527, 180, -86.4641138],
+        extension: 'png',
+      },
     ],
-    sourceNote: 'Colour shaded relief of the LOLA elevation model (256 pixels per degree, version 6).',
-    coverageLabel: 'Whole Moon',
+    sourceNote:
+      'Colour shaded relief of the LOLA elevation model: whole Moon (256 pixels per degree, version 6) and, from 86.5°S to the pole, a 5 m per pixel south pole model (version 4). The two colour scales may not match.',
+    coverageLabel: 'Whole Moon; detailed from 86.5°S to the south pole',
     limitsNote:
       'Shading is part of the picture. Moon Trek gives no height scale for these tiles, so colours are not read as heights.',
     credit: 'LRO LOLA',

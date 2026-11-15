@@ -1,0 +1,28 @@
+{
+ "site": {
+  "lonDeg": 245.98,
+  "latDeg": -89.313
+ },
+ "period": "2017-01-01 to 2037-01-01, step 6 h",
+ "samples": 29220,
+ "ours": {
+  "0m": {
+   "solarVisibilityPct": 75.72,
+   "averageIlluminationPct": 70.47
+  },
+  "2m": {
+   "solarVisibilityPct": 81.82,
+   "averageIlluminationPct": 77.87
+  }
+ },
+ "glaser2018Reference": {
+  "table": "Table 2",
+  "observerHeightM": 2.0,
+  "averageIlluminationPct": 78.1,
+  "solarVisibilityPct": 82.0
+ },
+ "sources": {
+  "sun": "NASA/JPL Horizons API",
+  "terrain": "LOLA LDEM_80S_20MPP_ADJ (PGDA product 90), Barker et al. 2023, Planet. Sci. J. 4, 183, doi:10.3847/PSJ/acf3e1"
+ }
+}

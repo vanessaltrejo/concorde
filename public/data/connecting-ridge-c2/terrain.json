@@ -1,0 +1,54 @@
+{
+ "siteId": "connecting-ridge-c2",
+ "grids": {
+  "near": {
+   "size": 1000,
+   "spacingM": 20.0,
+   "affine": [
+    -8.149261628862385,
+    -18.271283194285097,
+    13201.117199944625,
+    18.270691506099094,
+    -8.135562273251727,
+    -5072.6204667890515
+   ],
+   "maxResidualM": 11.537255532499564,
+   "file": "terrain_near.f32"
+  },
+  "mid": {
+   "size": 500,
+   "spacingM": 320.0,
+   "affine": [
+    -130.13862371482426,
+    -291.9142729241773,
+    105510.80331971654,
+    291.87295234901705,
+    -130.02384760245596,
+    -40468.39584267976
+   ],
+   "maxResidualM": 251.47864567532474,
+   "file": "terrain_mid.f32"
+  },
+  "far": {
+   "size": 625,
+   "spacingM": 640.0,
+   "affine": [
+    -259.35749315847585,
+    -582.2621202149089,
+    263270.4951581121,
+    582.2460686829548,
+    -259.5969767311236,
+    -100882.43582560628
+   ],
+   "maxResidualM": 1378.1305506338874,
+   "file": "terrain_far.f32"
+  }
+ },
+ "layout": "float32 x,y,z per grid node, row-major (row = map row). Scene axes: x = east, y = up, z = -north (meters); site ground at (0,0,0), observer eye at (0, observerHeightM, 0). Affine (col,row) -> scene x,z is approximate (see maxResidualM) and only used for shadow height lookups.",
+ "observerHeightM": 2.0,
+ "provenance": {
+  "source": "LOLA LDEM_80S_20MPP_ADJ (PGDA product 90), Barker et al. 2023, Planet. Sci. J. 4, 183, doi:10.3847/PSJ/acf3e1",
+  "url": "https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_80S_20MPP_ADJ.TIF",
+  "generatedUtc": "2026-11-15T01:11:43.553505Z"
+ }
+}

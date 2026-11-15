@@ -1,3 +1,4 @@
+import { APP_NAME } from '../appName'
 import { SELECTOR, getLayer, tileLimitLabel } from '../data/layers'
 
 type LayerSelectorProps = {
@@ -11,6 +12,7 @@ export function LayerSelector({ activeId, onChange }: LayerSelectorProps) {
 
   return (
     <div className="absolute left-4 top-4 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-3 overflow-y-auto rounded-lg border border-[#444] bg-[#303030]/95 p-3 text-gray-100">
+      <h1 className="text-lg font-semibold">{APP_NAME}</h1>
       <fieldset className="flex flex-col gap-1">
         <legend className="mb-1 text-sm font-medium">Map layer</legend>
         {SELECTOR.map((entry) => {

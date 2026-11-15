@@ -18,6 +18,20 @@ downloads without Vanessa's approval, one phase at a time.
 
 ---
 
+## Names used in the app (decided by Vanessa, 2026-11-14)
+
+The team sketches name the screens **Orbital view** (the globe, before
+"Moon map") and **Horizon view** (the first-person view, before "Sky view").
+The app and the URL (`?view=orbital|horizon`) use the new names. This file still
+says "Moon map" and "Sky view" in older text: read them as Orbital view and
+Horizon view. The project name ("Lunar Landing Site Simulator") is shown at the
+top-left of each view, as in the sketches; the screen is not titled "Horizon
+view". The app now opens on the Orbital view. The 19 MB of terrain loads only
+when the Horizon view opens (checked: 0 terrain files at startup, 3 after
+opening it).
+
+---
+
 ## 0. How Vanessa wants us to work (read before every phase)
 
 - **Do not assume. Ask.** If a fact, value, file name or decision is missing,
@@ -265,6 +279,84 @@ re-read sections 0 to 0.2, question the phase, and ask what is missing.
   Ridge numbers compared with Gläser et al. 2018 Table 1; no dummy data.
 - **Model:** Opus, medium effort.
 
+**Phase 3 result, app part (2026-11-14, built, not committed):**
+- Done: `src/data/sites.ts` (curated sites with source), site markers on the
+  globe (labels only when close), `SitePanel` (site list, selected site,
+  "Open Sky view"), list click flies the camera to the site, "Back to map" in
+  the Sky view. `App` loads only the open site's files and drops the old ones;
+  a late answer for an older site is ignored.
+- Connecting Ridge C1 (-89.4505°, 222.84° E) and C2 (-89.3157°, 245.94° E):
+  read from the text of Gläser et al. 2018 Table 1 (Vanessa's PDF). The
+  Shackleton row in the same text matches the repo value exactly. Still to
+  confirm visually in the PDF. They show "no Sky view data yet": no dummy data.
+- Found while testing: near the south pole the global WAC photo and global
+  hillshade break into radial streaks (equirectangular tiles near the pole).
+  Fix: Hillshade and Elevation now add the LOLA 5 m south pole models
+  (`LRO_LOLA_Shade_SPole875_5mp_v04_EQ`, `LRO_LOLA_ClrShade_SPole875_5mp_v04_EQ`,
+  86.46°S to the pole, max level 9, CORS checked). With them Shackleton crater is
+  clear and the Shackleton rim marker sits on the rim. The Image layer is still
+  poor at the pole (open question for Vanessa).
+- Checked: regression passed (52% partial on 17 Nov 00:00, Earthset Dec 1 02:34,
+  Sun 100%, Earth 50%); 0 tile errors; main bundle 1,176 kB (+1 kB).
+- Seen in dev only: each site file is fetched twice because React StrictMode
+  runs effects twice in development (this was already true before). Production
+  runs it once. Not changed.
+- "Back to map" does not keep the chosen date yet (Phase 4, shared state).
+
+**Phase 3 result, data part (2026-11-14, approved by Vanessa, not committed):**
+- Gläser et al. 2018 has three kinds of Connecting Ridge entries: Table 1
+  (surface, one point per site), Table 2 (2 m above ground, one point per
+  site) and Table 3 (clusters C1-0, C1-1, C2-0, C2-1, S0-S2: illumination,
+  area, PSR distance and slope, **no coordinates**; their places are only drawn
+  in Fig. 6). Cluster coordinates are not invented.
+- Decision: C1 and C2 use the **Table 2** points (2 m, same height as our
+  observer): C1 -89.4398°, 222.83° E; C2 -89.3130°, 245.98° E. Their values
+  (88.0/92.1 and 78.1/82.0) match clusters C1-0 and C2-1 in Table 3 (our
+  inference). Shackleton keeps its validated Table 1 point (not changed).
+- Scripts take `--site <id>` (`scripts/sites.py`); with no argument they do
+  exactly what they did before (Shackleton).
+- Generated `public/data/connecting-ridge-c1/` and `.../c2/` (about 19 MB each).
+  Horizons echoed the right coordinates; all grids complete (0 NaN filled).
+- Validation, 20 years (2017-2037, Horizons every 6 h + our horizon) vs Gläser
+  Table 2 at 2 m: **C1 87.56% average illumination (Gläser 88.0%), 91.8% solar
+  visibility (92.1%)**. **C2 77.87% (Gläser 78.1%), 81.82% (82.0%)**. Both within
+  0.5 points. Files: `data/validation/illumination_check_connecting-ridge-c1.json`
+  and `..._c2.json`.
+- In the app (Nov 14 - Dec 13 2026): C1 Sun 100%, Earth link 52%. C2 Sun 97%
+  (sunset Nov 14 09:10 UTC behind terrain at 0.76°), Earth link 53%.
+  Shackleton regression unchanged.
+- Fixed while testing: with render on demand, finer globe tiles sometimes
+  stayed hidden until the mouse moved; the globe now redraws on tile loads.
+- Known limit: a small blurred wedge right at the pole (geographic tiles meet
+  at the pole). It sits between Shackleton and the pole, not on the sites.
+
+**Phase 4 result (2026-11-14, built, not committed):**
+- Done: the selected date and time now lives in the app (`timeMs`), shared by
+  the Moon map and every Sky view; "Back to map" and "Open Sky view" keep it.
+  `SiteView` became controlled (same look). New files: `HorizonPreview.tsx`,
+  `scene/timeSelection.ts`, `state/urlState.ts`; `SitePanel.tsx` rewritten.
+- Right column on the Moon map (from the sketch): Sites list, date control,
+  **Horizon preview** (flat 360° drawing of the real horizon with the Sun and
+  Earth at the chosen time, same visible/partly/hidden rule as the Sky view;
+  markers not to scale and the drawing says so), "Open Sky view", and
+  **Topography preview** (snapshot of the globe over the zone) with "Topography
+  view" (closer flight; switches Image to Hillshade) and "Back to globe".
+- The preview loads only sky.json + horizon.json (about 0.4 MB, cached), not the
+  19 MB of terrain. The 19 MB now loads only when the Sky view tab opens (before:
+  always at startup).
+- URL state: `?view=moon|sky|dashboard&site=<id>&t=2026-11-17T00:00Z`. Without
+  a URL the app opens as before (Sky view, Shackleton).
+- Checked: URL opens the map with C2 and 17 Nov 00:00 selected; selecting C1
+  changes the preview (Earth 92% of disc) and the snapshot; Open Sky view keeps
+  the date and shows the same 92%; Shackleton regression unchanged (52% partial,
+  Earthset Dec 1 02:34 UTC, Sun 100%, Earth 50%); build and lint clean; main
+  bundle 1,178 kB (+1 kB).
+- Not tested yet: "Topography view" and "Back to globe" buttons, and a
+  mobile-width layout of the right column.
+- Decisions to confirm with Vanessa: the app still opens on the Sky view (the
+  sketches start on the globe); "Topography view" switches Image to Hillshade
+  on its own.
+
 ### Phase 3b. Apollo sites
 - **What:** adapt `build_terrain.py` to a non-polar DEM (118 m global or SLDEM2015
   59 m). First check whether the file allows range reads.
@@ -288,6 +380,29 @@ re-read sections 0 to 0.2, question the phase, and ask what is missing.
 - **Check:** Shackleton results match Plan B's test table (14 Nov 62.8%, 18 to
   22 Nov 100%, 30 Nov 17.3%, from 2 Dec 0%).
 - **Model:** Sonnet, medium effort.
+
+**Phase 5 result (2026-11-14, built, not committed):**
+- Done: stay = the selected date and time (arrival) plus a stay length slider
+  (0.5 to 29.5 days, default 6.5 days; step 0.5). `src/scene/stay.ts` counts the
+  hourly samples in the half-open range [arrival, arrival + stay) with the same
+  rule as the rest of the app (some part of the disc above the terrain horizon).
+  `StayPanel` shows "Stay with Sun" and "Stay with Earth link" in the Horizon
+  view sidebar and in the Orbital view site panel, so sites and dates can be
+  compared. Stay length is in the URL (`&stay=10`, omitted when it is 6.5).
+- If the stay runs past the end of the data (Dec 13 12:00 UTC), the panel says
+  how many days are really counted.
+- Checked against Plan B's Shackleton table (6.5 days, any part of the Earth):
+  arrival Nov 14: 63% (62.8), Nov 28: 48% (48.1), Nov 30: 17% (17.3), Dec 2: 0%,
+  Sun 100% on all of them. A Python check with the same rule gave exactly those
+  numbers with a window of 156 hourly samples; counting one more sample gave
+  slightly different values (63.1, 47.8, 17.2), so the half-open range is the
+  one that matches. A 10 day stay from Nov 20 gave 100% / 100%. C2 from Dec 10
+  showed "only 3.5 of 6.5 days are counted". Horizon view regression unchanged.
+- Decision for Vanessa: arrival and the time slider are the same control. Moving
+  the slider moves the start of the stay. A separate arrival field would be easy
+  to add if the two should differ.
+- Not done: a timeline chart of the whole lunar day, longest gap without Earth
+  link, and "best arrival dates" (Phase 7 or later).
 
 ### Phase 6. Sky view anywhere (custom coordinates)  ← **use Fable here**
 - **What:** SPICE ephemeris file (Sun direction, Earth position in km, hourly,

@@ -137,3 +137,21 @@ export async function loadSiteData(siteId: string): Promise<SiteData> {
   ])
   return { sky, horizon, terrain }
 }
+
+// Light version for previews: only the Sun/Earth positions and the horizon
+// (about 0.4 MB), not the 19 MB of terrain. Cached, because the Moon map asks
+// for it every time a site is selected.
+export type SiteLight = { sky: SkyData; horizon: HorizonProfile }
+
+const lightCache = new Map<string, Promise<SiteLight>>()
+
+export function loadSiteLight(siteId: string): Promise<SiteLight> {
+  let cached = lightCache.get(siteId)
+  if (!cached) {
+    cached = Promise.all([loadSky(siteId), loadHorizon(siteId)]).then(([sky, horizon]) => ({ sky, horizon }))
+    // A failed load must not stay cached, so a later click can try again.
+    cached.catch(() => lightCache.delete(siteId))
+    lightCache.set(siteId, cached)
+  }
+  return cached
+}

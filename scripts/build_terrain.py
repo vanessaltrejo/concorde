@@ -20,7 +20,7 @@ in the observer's local east-north-up frame. The horizon is the highest
 elevation per azimuth bin. Curvature and the direction of north are exact.
 
 Run from the project root (see scripts/requirements.txt):
-    .venv/bin/python scripts/build_terrain.py
+    .venv/bin/python scripts/build_terrain.py [--site <id>]
 
 If remote reads fail with an SSL error, see the note in fetch_horizons.py and
 set CURL_CA_BUNDLE to the exported macOS certificate file.
@@ -36,15 +36,18 @@ import pyproj
 import rasterio
 from rasterio.windows import from_bounds
 
+from sites import site_from_argv
+
 DEM_URL = "https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_80S_20MPP_ADJ.TIF"
 DEM_SOURCE = (
     "LOLA LDEM_80S_20MPP_ADJ (PGDA product 90), Barker et al. 2023, "
     "Planet. Sci. J. 4, 183, doi:10.3847/PSJ/acf3e1"
 )
 
-SITE_ID = "shackleton-rim"
-SITE_LON_DEG = 203.97
-SITE_LAT_DEG = -89.7849
+# Site from scripts/sites.py (--site <id>, default shackleton-rim).
+SITE_ID, _SITE = site_from_argv()
+SITE_LON_DEG = _SITE["east_longitude_deg"]
+SITE_LAT_DEG = _SITE["latitude_deg"]
 
 MOON_RADIUS_M = 1_737_400.0  # Radius of the DEM reference sphere (from the file CRS).
 OBSERVER_HEIGHT_M = 2.0  # Lander height, as in Glaser et al. 2018.
