@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { NavRail, type TabId } from './components/NavRail'
 import { Placeholder } from './components/Placeholder'
 import { SiteView } from './components/SiteView'
@@ -72,6 +73,7 @@ export default function App() {
   return (
     <div className="flex h-full">
       <NavRail active={tab} onChange={setTab} />
+      <ErrorBoundary key={tab}>
       {tab === 'horizon' && (
         <HorizonTab
           current={current}
@@ -102,6 +104,7 @@ export default function App() {
       {tab === 'dashboard' && (
         <Placeholder title="Dashboard" description="Summary metrics for the selected site." />
       )}
+      </ErrorBoundary>
     </div>
   )
 }

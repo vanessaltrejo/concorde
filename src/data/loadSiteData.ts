@@ -141,7 +141,7 @@ export async function loadSiteData(siteId: string): Promise<SiteData> {
 }
 
 // Light version for previews: only the Sun/Earth positions and the horizon
-// (about 0.4 MB), not the 19 MB of terrain. Cached, because the Moon map asks
+// (about 0.4 MB), not the 19 MB of terrain. Cached, because the Orbital view asks
 // for it every time a site is selected.
 export type SiteLight = { sky: SkyData; horizon: HorizonProfile }
 

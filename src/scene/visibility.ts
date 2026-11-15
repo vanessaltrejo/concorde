@@ -12,7 +12,7 @@ export function horizonElevationAt(profile: HorizonProfile, azimuthDeg: number):
 
 // Fraction (0..1) of a disc above the horizon. The horizon is treated as a
 // straight line across the small disc. Same rule as scripts/check_illumination.py.
-export function visibleDiscFraction(body: SkyBodyState, horizonDeg: number): number {
+function visibleDiscFraction(body: SkyBodyState, horizonDeg: number): number {
   const radius = body.angularDiameterDeg / 2
   const d = Math.max(-1, Math.min(1, (body.elevationDeg - horizonDeg) / radius))
   const below = (Math.acos(d) - d * Math.sqrt(1 - d * d)) / Math.PI
@@ -21,7 +21,7 @@ export function visibleDiscFraction(body: SkyBodyState, horizonDeg: number): num
 
 // "partial" counts as visible for communication, as in the NASA PGDA Earth
 // visibility maps (visible if any part of the disc is not obscured).
-export function visibilityOf(fraction: number): Visibility {
+function visibilityOf(fraction: number): Visibility {
   if (fraction >= 1) return 'visible'
   if (fraction <= 0) return 'hidden'
   return 'partial'

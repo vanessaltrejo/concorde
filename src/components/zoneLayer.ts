@@ -20,7 +20,7 @@ const MEETS = Color.fromCssColorString('#009E73').withAlpha(0.55) // Okabe-Ito b
 const EXCLUDED = Color.fromCssColorString('#8a8a8a').withAlpha(0.12)
 const HEIGHT_M = 150 // above the sphere so the cells do not flicker with it
 
-export function cellId(index: number): string {
+function cellId(index: number): string {
   return `cell-${index}`
 }
 

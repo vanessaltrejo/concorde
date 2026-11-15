@@ -30,7 +30,7 @@ export type LandingSite = {
   source: string
 }
 
-export type SkyDataProvenance = {
+type SkyDataProvenance = {
   source: string
   apiVersion: string | null
   generatedUtc: string

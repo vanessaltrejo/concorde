@@ -12,7 +12,7 @@ export const MAX_STAY_DAYS = 29.5 // one lunar day (the data covers 90 days)
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-export type StaySummary = {
+type StaySummary = {
   arrivalMs: number
   // Last moment covered by data (may be earlier than arrival + stay).
   coveredEndMs: number

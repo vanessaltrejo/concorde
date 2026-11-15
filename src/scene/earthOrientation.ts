@@ -39,7 +39,7 @@ function triad(a: Vec3, b: Vec3): [Vec3, Vec3, Vec3] {
   return [t1, t2, cross(t1, t2)]
 }
 
-export type EarthFrame = {
+type EarthFrame = {
   // Earth's north pole, local direction "east" on Earth's equator, and the
   // equator direction toward the meridian at the center of the visible disc,
   // all in scene axes (x = east, y = up, z = -north of the site).

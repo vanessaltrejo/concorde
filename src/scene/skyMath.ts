@@ -2,7 +2,7 @@ import type { SkyPosition } from '../types'
 
 // Sky bodies are drawn on a far sphere, behind all the terrain and the
 // horizon silhouette.
-export const skyDistanceM = 400_000
+const skyDistanceM = 400_000
 
 const degToRad = Math.PI / 180
 

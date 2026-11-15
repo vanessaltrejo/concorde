@@ -26,3 +26,9 @@ dist-ssr
 # Python
 .venv
 __pycache__
+
+# Local assistant settings
+.claude/
+
+# Scratch results
+*.npy

@@ -1,11 +1,11 @@
 import type { HorizonProfile, SkyBodyState, SkySample } from '../types'
 import { horizonElevationAt } from './visibility'
 
-export type SkyBodyKey = 'sun' | 'earth'
+type SkyBodyKey = 'sun' | 'earth'
 
 // How far the top edge of the disc is above the terrain horizon (degrees).
 // > 0 means some part of the disc is visible (NASA PGDA rule for Earth).
-export function topEdgeMarginDeg(body: SkyBodyState, profile: HorizonProfile): number {
+function topEdgeMarginDeg(body: SkyBodyState, profile: HorizonProfile): number {
   return body.elevationDeg + body.angularDiameterDeg / 2 - horizonElevationAt(profile, body.azimuthDeg)
 }
 

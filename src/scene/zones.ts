@@ -55,7 +55,7 @@ function localFrame(lonDeg: number, latDeg: number): Frame {
   }
 }
 
-export type SkyPoint = { azimuthDeg: number; elevationDeg: number; radiusDeg: number }
+type SkyPoint = { azimuthDeg: number; elevationDeg: number; radiusDeg: number }
 
 // Azimuth (clockwise from north), elevation and apparent radius of a body at
 // `bodyKm` (Moon-fixed, from the Moon centre) seen from the point with this frame.
@@ -81,13 +81,6 @@ function bodies(row: number[]): { earth: Vec3; sun: Vec3 } {
   return { earth: [e[0] * earthKm, e[1] * earthKm, e[2] * earthKm], sun: [s[0] * sunKm, s[1] * sunKm, s[2] * sunKm] }
 }
 
-// Sun and Earth seen from any point at one ephemeris row (used for checks).
-export function skyAt(ephemeris: Ephemeris, rowIndex: number, lonDeg: number, latDeg: number) {
-  const frame = localFrame(lonDeg, latDeg)
-  const { earth, sun } = bodies(ephemeris.rows[rowIndex])
-  return { sun: lookAt(frame, sun, SUN_RADIUS_KM), earth: lookAt(frame, earth, EARTH_RADIUS_KM) }
-}
-
 function horizonAt(horizons: Int16Array, row: number, azimuthDeg: number): number {
   const x = azimuthDeg % BINS
   const k = Math.floor(x)
@@ -96,7 +89,7 @@ function horizonAt(horizons: Int16Array, row: number, azimuthDeg: number): numbe
   return (horizons[base + k] * (1 - f) + horizons[base + ((k + 1) % BINS)] * f) / 100
 }
 
-export type ZoneCriteria = {
+type ZoneCriteria = {
   sun: { on: boolean; minPercent: number }
   earth: { on: boolean; minPercent: number }
   slope: { on: boolean; maxDeg: number }

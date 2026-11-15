@@ -5,7 +5,7 @@ import { DEFAULT_STAY_DAYS, MAX_STAY_DAYS, MIN_STAY_DAYS } from '../scene/stay'
 
 export type View = 'orbital' | 'horizon' | 'dashboard'
 
-export type UrlState = {
+type UrlState = {
   view: View | null
   siteId: string | null
   timeMs: number | null

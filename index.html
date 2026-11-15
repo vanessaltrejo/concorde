@@ -1,10 +1,83 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- 1. Basics: encoding, responsive viewport -->
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Lunar Landing Site Simulator</title>
+
+    <!-- 2. Title (55 characters) and description (159 characters) -->
+    <title>Lunar Landing Site Simulator: Sun and Earth on the Moon</title>
+    <meta
+      name="description"
+      content="Compare Moon landing sites and dates: see where the Sun and Earth are in the sky and whether real terrain hides them. Built on NASA LOLA and JPL Horizons data."
+    />
+
+    <!-- 3. Indexing. The canonical URL points to the home page, so links with
+         ?view=...&site=...&t=... are not indexed as duplicate pages. -->
+    <link rel="canonical" href="https://concordemoon.com/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+
+    <!-- 4. Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- 5. Open Graph (Facebook, WhatsApp, LinkedIn, Discord, Telegram).
+         og:image must be an ABSOLUTE URL: relative paths do not work when a link is shared. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Lunar Landing Site Simulator" />
+    <meta property="og:title" content="Lunar Landing Site Simulator: Sun and Earth on the Moon" />
+    <meta
+      property="og:description"
+      content="Compare Moon landing sites and dates: see where the Sun and Earth are in the sky and whether real terrain hides them. Built on NASA LOLA and JPL Horizons data."
+    />
+    <meta property="og:url" content="https://concordemoon.com/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://concordemoon.com/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="The Moon next to the title Lunar Landing Site Simulator: where are the Sun and Earth in the sky, and does the terrain hide them?"
+    />
+
+    <!-- 6. Twitter / X card (no account tags: the team has no account) -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Lunar Landing Site Simulator: Sun and Earth on the Moon" />
+    <meta
+      name="twitter:description"
+      content="Compare Moon landing sites and dates: see where the Sun and Earth are in the sky and whether real terrain hides them."
+    />
+    <meta name="twitter:image" content="https://concordemoon.com/og-image.jpg" />
+    <meta
+      name="twitter:image:alt"
+      content="The Moon next to the title Lunar Landing Site Simulator."
+    />
+
+    <!-- 7. Mobile: browser bar colour (same dark gray as the app) and iOS home-screen mode -->
+    <meta name="theme-color" content="#303030" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Lunar Landing Sites" />
+
+    <!-- 8. Structured data (schema.org) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Lunar Landing Site Simulator",
+        "url": "https://concordemoon.com/",
+        "description": "Compare Moon landing sites and dates: see where the Sun and Earth are in the sky and whether real terrain hides them. Built on NASA LOLA and JPL Horizons data.",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any (web browser)",
+        "inLanguage": "en",
+        "image": "https://concordemoon.com/og-image.jpg",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

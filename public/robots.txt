@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://concordemoon.com/sitemap.xml

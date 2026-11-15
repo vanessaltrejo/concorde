@@ -16,7 +16,7 @@ export type TileSource = {
   extension: 'png' | 'jpg'
 }
 
-export type LayerDef = {
+type LayerDef = {
   id: string
   label: string
   // Overlays are drawn over the photo mosaic. The photo mosaic itself is the base.
@@ -31,7 +31,7 @@ export type LayerDef = {
 
 const WORLD: [number, number, number, number] = [-180, -90, 180, 90]
 
-export const MOON_TREK_TILES = 'https://trek.nasa.gov/tiles/Moon/EQ'
+const MOON_TREK_TILES = 'https://trek.nasa.gov/tiles/Moon/EQ'
 
 export function tileUrl(source: TileSource): string {
   return `${MOON_TREK_TILES}/${source.product}/1.0.0/default/default028mm/{z}/{y}/{x}.${source.extension}`
@@ -39,12 +39,12 @@ export function tileUrl(source: TileSource): string {
 
 // Size of one tile pixel at the equator for the highest level, derived from the
 // level count (256 px tiles, 2 x 1 at level 0, Moon radius 1737.4 km).
-export function tilePixelSizeMeters(maxLevel: number): number {
+function tilePixelSizeMeters(maxLevel: number): number {
   const pixelsAround = 256 * 2 ** (maxLevel + 1)
   return (2 * Math.PI * 1_737_400) / pixelsAround
 }
 
-export function formatLength(meters: number): string {
+function formatLength(meters: number): string {
   return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`
 }
 
@@ -55,7 +55,7 @@ export const photoBase: TileSource = {
   extension: 'jpg',
 }
 
-export const LAYERS: LayerDef[] = [
+const LAYERS: LayerDef[] = [
   {
     id: 'image',
     label: 'Image',
@@ -203,7 +203,7 @@ export const LAYERS: LayerDef[] = [
 ]
 
 // How the layers are grouped in the selector. One layer is shown at a time.
-export type SelectorEntry = { id: string; label: string; options?: string[] }
+type SelectorEntry = { id: string; label: string; options?: string[] }
 
 export const SELECTOR: SelectorEntry[] = [
   { id: 'image', label: 'Image' },

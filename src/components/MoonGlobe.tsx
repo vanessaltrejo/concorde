@@ -409,7 +409,12 @@ export default function MoonGlobe({
 
   return (
     <div className="relative h-full min-w-0 flex-1 bg-black">
-      <div ref={containerRef} className="h-full w-full" />
+      <div
+        ref={containerRef}
+        className="h-full w-full"
+        role="application"
+        aria-label="3D Moon globe. Drag to rotate, scroll to zoom, click a site marker to select it."
+      />
       <div className="absolute left-4 top-4 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-3 overflow-y-auto">
         <LayerSelector activeId={layerId} onChange={setLayerId} />
         <RequirementsPanel

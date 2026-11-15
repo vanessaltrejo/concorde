@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import type { RefObject } from 'react'
 import { Vector3 } from 'three'
 
-export type ScreenLabelTarget = {
+type ScreenLabelTarget = {
   elementRef: RefObject<HTMLDivElement | null>
   worldPosition: [number, number, number]
 }
