@@ -29,7 +29,10 @@ export function CompareTab({ stayDays, fallbackTimeMs }: Props) {
       if (cancelled) return
       const lights: Record<string, SiteLight> = {}
       const failed: string[] = []
-      for (const [id, l] of pairs) (l ? (lights[id] = l) : failed.push(id))
+      for (const [id, l] of pairs) {
+        if (l) lights[id] = l
+        else failed.push(id)
+      }
       setData({ lights, slopes: slopes as Record<string, SiteSlope>, failed })
     })
     return () => {

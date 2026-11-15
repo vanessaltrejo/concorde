@@ -55,7 +55,8 @@ export const photoBase: TileSource = {
   extension: 'jpg',
 }
 
-const LAYERS: LayerDef[] = [
+// Exported for the assistant tools (src/assistant/tools.ts).
+export const LAYERS: LayerDef[] = [
   {
     id: 'image',
     label: 'Image',

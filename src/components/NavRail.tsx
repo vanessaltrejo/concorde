@@ -63,10 +63,12 @@ const tabs: Tab[] = [
 type NavRailProps = {
   active: TabId
   onChange: (tab: TabId) => void
+  assistantOpen: boolean
+  onToggleAssistant: () => void
 }
 
 // Slim icon bar on the far left. Each icon switches the main tab.
-export function NavRail({ active, onChange }: NavRailProps) {
+export function NavRail({ active, onChange, assistantOpen, onToggleAssistant }: NavRailProps) {
   return (
     <nav
       aria-label="Main navigation"
@@ -94,6 +96,22 @@ export function NavRail({ active, onChange }: NavRailProps) {
           </button>
         )
       })}
+      <button
+        type="button"
+        title="Assistant"
+        aria-label="Assistant"
+        aria-pressed={assistantOpen}
+        onClick={onToggleAssistant}
+        className={
+          'mt-auto flex h-10 w-10 items-center justify-center rounded-lg transition-colors ' +
+          (assistantOpen ? 'bg-[#3d3d3d] text-white' : 'text-gray-400 hover:bg-[#333] hover:text-white')
+        }
+      >
+        <svg {...iconProps}>
+          <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
+          <path d="M8.5 11h.01M12 11h.01M15.5 11h.01" />
+        </svg>
+      </button>
     </nav>
   )
 }
