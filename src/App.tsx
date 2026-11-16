@@ -294,8 +294,7 @@ export default function App() {
           timeMs={timeMs}
           onTimeChange={setTimeMs}
           stayDays={stayDays}
-          onOpenHorizon={openSkyView}
-          onOpenCompare={() => setTab('compare')}
+          criteria={criteria}
         />
       )}
       {tab === 'compare' && (
@@ -392,7 +391,7 @@ function HorizonTab({ current, siteName, progress, timeMs, onTimeChange, stayDay
     return (
       <div className={`${centered} flex-col gap-3 px-6 text-center`}>
         <p className="max-w-md">{current.message}</p>
-        <button type="button" onClick={onBackToMap} className="rounded-lg bg-[#FFD400] px-3 py-1.5 text-xs font-semibold text-black shadow-lg hover:brightness-110">
+        <button type="button" onClick={onBackToMap} className="btn-outline bg-[#1c1e20] px-3 py-1.5 text-xs font-medium">
           ← Back to Orbital view
         </button>
       </div>

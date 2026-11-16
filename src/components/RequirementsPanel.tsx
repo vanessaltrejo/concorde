@@ -1,5 +1,4 @@
-import { getSite } from '../data/sites'
-import { GREEN_FULL, GREEN_WEAK, type Criteria, type SiteResult } from '../scene/requirements'
+import { GREEN_FULL, GREEN_WEAK, type Criteria } from '../scene/requirements'
 
 // Default values and their sources are documented in src/scene/requirements.ts.
 
@@ -8,14 +7,11 @@ type RequirementsPanelProps = {
   onEnabledChange: (on: boolean) => void
   criteria: Criteria
   onCriteriaChange: (criteria: Criteria) => void
-  results: SiteResult[] | null
-  error: string | null
   zoneSummary: { meets: number; total: number; cellKm: number } | null
   globalSummary: { meets: number; total: number; cellLabel: string; hasSlope: boolean } | null
 }
 
 const MEETS_COLOR = GREEN_FULL // always with a symbol and text
-const EXCLUDED_COLOR = '#9a9a9a' // gray, always with ✕
 
 function Row({
   label,
@@ -78,14 +74,12 @@ export function RequirementsPanel({
   onEnabledChange,
   criteria,
   onCriteriaChange,
-  results,
-  error,
   zoneSummary,
   globalSummary,
 }: RequirementsPanelProps) {
   const gradient = !criteria.sun.on || criteria.sun.minPercent < 100
   return (
-    <div data-tour="requirements" className="flex flex-col gap-3 rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg">
+    <div data-tour="requirements" className="flex flex-col gap-3 rounded-lg border border-white/[0.08] bg-[#1c1e20] p-3 text-gray-100">
       <label className="flex items-center justify-between text-sm font-medium">
         <span>Requirements</span>
         <span className="flex items-center gap-2 text-xs font-normal text-gray-300">
@@ -174,25 +168,6 @@ export function RequirementsPanel({
             </ul>
           )}
 
-          {error && <p className="text-xs text-gray-300">{error}</p>}
-          {!results && !error && <p className="text-xs text-gray-300">Checking sites…</p>}
-          {results && (
-            <ul className="flex flex-col gap-1 text-xs">
-              {results.map((r) => (
-                <li key={r.siteId} className="flex flex-col">
-                  <span className="font-medium" style={{ color: r.meets ? MEETS_COLOR : EXCLUDED_COLOR }}>
-                    {r.meets ? '✓' : '✕'} {getSite(r.siteId).name}
-                  </span>
-                  <span className="text-gray-300">
-                    Sun {r.sunPercent.toFixed(0)}%{r.passes.sun ? '' : ' ✕'} · Earth {r.earthPercent.toFixed(0)}%
-                    {r.passes.earth ? '' : ' ✕'} · Slope{' '}
-                    {r.slope ? `${r.slope.slopeDeg.toFixed(1)}° (${r.slope.baselineM} m)` : 'n/a'}
-                    {r.passes.slope ? '' : ' ✕'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
         </>
       )}
     </div>

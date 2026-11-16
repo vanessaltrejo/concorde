@@ -89,7 +89,7 @@ export function PickedPointCard({
                   const name = window.prompt('Name for this place', place.name)
                   if (name) onRename(name)
                 }}
-                className="rounded p-1 text-gray-400 hover:bg-[#444] hover:text-white"
+                className="rounded p-1 text-gray-400 hover:bg-white/10 hover:text-white"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z" />
@@ -99,7 +99,7 @@ export function PickedPointCard({
           </p>
           {place && <p className="text-[11px] text-gray-400">{formatCoords(place.latDeg, place.lonDeg)}</p>}
         </div>
-        <button type="button" onClick={onClose} aria-label="Close" className="rounded px-1.5 text-gray-400 hover:bg-[#444] hover:text-white">
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded px-1.5 text-gray-400 hover:bg-white/10 hover:text-white">
           ×
         </button>
       </div>
@@ -112,7 +112,7 @@ export function PickedPointCard({
             type="button"
             onClick={onSave}
             disabled={current?.status === 'error'}
-            className="flex items-center justify-center gap-2 rounded bg-[#FFD400] px-3 py-2 text-sm font-semibold text-black hover:brightness-110 disabled:opacity-50"
+            className="btn-outline flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" />
@@ -125,7 +125,7 @@ export function PickedPointCard({
           <button
             type="button"
             onClick={onCompare}
-            className="flex items-center justify-center gap-2 rounded bg-[#FFD400] px-3 py-2 text-sm font-semibold text-black hover:brightness-110"
+            className="btn-outline flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium"
           >
             Compare
           </button>
@@ -144,7 +144,7 @@ export function PickedPointCard({
                 onIndexChange={(i) => onTimeChange(timeOfIndex(ready.sky.samples, i))}
               />
               <StayPanel samples={ready.sky.samples} horizon={ready.horizon} timeMs={timeMs} stayDays={stayDays} onStayDaysChange={onStayDaysChange} />
-              <section className="flex flex-col gap-1 border-t border-[#444] pt-2">
+              <section className="flex flex-col gap-1 border-t border-white/[0.08] pt-2">
                 <h3 className="text-sm font-medium">Horizon</h3>
                 <HorizonPreview sky={ready.sky} horizon={ready.horizon} timeMs={timeMs} />
               </section>
@@ -153,7 +153,7 @@ export function PickedPointCard({
           <button
             type="button"
             onClick={onOpenHorizon}
-            className="rounded bg-[#FFD400] px-3 py-2 text-sm font-semibold text-black hover:brightness-110"
+            className="btn-outline px-3 py-2 text-sm font-medium"
             title={`Computed in your browser from NASA ${cover.label}`}
           >
             Open Horizon view here

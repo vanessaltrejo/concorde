@@ -24,6 +24,9 @@ export function SitePicker({ value, options, extraGroups = [], onChange, placeho
   const menuRef = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState<{ top: number; left: number; width: number } | null>(null)
   const selected = options.find((s) => s.id === value) ?? null
+  // A value from an extra group (a saved point) shows with that group's colour.
+  const extraGroup = selected ? null : extraGroups.find((g) => g.items.some((i) => i.id === value)) ?? null
+  const extra = extraGroup ? { name: extraGroup.items.find((i) => i.id === value)!.name, color: extraGroup.color } : null
   const groups = [...new Set(options.map((s) => s.group))]
 
   useEffect(() => {
@@ -65,17 +68,17 @@ export function SitePicker({ value, options, extraGroups = [], onChange, placeho
         onClick={() => setOpen((o) => !o)}
         className={
           triggerClassName ??
-          'flex w-full items-center gap-2 rounded border border-[#555] bg-[#262626] px-2 py-1.5 text-left text-sm text-gray-100 hover:border-[#777]'
+          'flex w-full items-center gap-2 rounded border border-white/20 bg-[#121314] px-2 py-1.5 text-left text-sm text-gray-100 hover:border-white/40'
         }
       >
-        {selected && <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: GROUP_COLOR[selected.group] }} />}
-        <span className="flex-1 truncate">{selected ? selected.name : placeholder}</span>
+        {(selected || extra) && <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: selected ? GROUP_COLOR[selected.group] : extra!.color }} />}
+        <span className="flex-1 truncate">{selected ? selected.name : extra ? extra.name : placeholder}</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={'shrink-0 text-gray-400 transition-transform ' + (open ? 'rotate-180' : '')}>
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
       {open && box && createPortal(
-        <div ref={menuRef} role="listbox" aria-label={ariaLabel} style={{ position: 'fixed', top: box.top, left: box.left, minWidth: box.width, maxHeight: 'calc(100vh - 16px)' }} className="z-[100] overflow-y-auto rounded-lg border border-[#555] bg-[#262626] py-1 shadow-2xl">
+        <div ref={menuRef} role="listbox" aria-label={ariaLabel} style={{ position: 'fixed', top: box.top, left: box.left, minWidth: box.width, maxHeight: 'calc(100vh - 16px)' }} className="z-[100] overflow-y-auto rounded-lg border border-white/20 bg-[#121314] py-1">
           {groups.map((group) => (
             <div key={group}>
               <p className="flex items-center gap-2 px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: GROUP_COLOR[group] }}>
@@ -94,7 +97,7 @@ export function SitePicker({ value, options, extraGroups = [], onChange, placeho
                       onChange(s.id)
                       setOpen(false)
                     }}
-                    className={'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-[#3a3a3a] ' + (s.id === value ? 'bg-[#333] text-white' : 'text-gray-200')}
+                    className={'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-white/10 ' + (s.id === value ? 'bg-white/10 text-white' : 'text-gray-200')}
                   >
                     <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: GROUP_COLOR[s.group] }} />
                     <span className="flex-1 whitespace-nowrap">{s.name}</span>
@@ -119,7 +122,7 @@ export function SitePicker({ value, options, extraGroups = [], onChange, placeho
                     onChange(item.id)
                     setOpen(false)
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-gray-200 hover:bg-[#3a3a3a]"
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-gray-200 hover:bg-white/10"
                 >
                   <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: g.color }} />
                   <span className="flex-1 whitespace-nowrap">{item.name}</span>

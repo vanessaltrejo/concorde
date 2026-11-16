@@ -281,7 +281,7 @@ export default function MoonGlobe({
   const [zoneImage, setZoneImage] = useState<ZoneImage | null>(null)
   const capturedSiteRef = useRef<string | null>(null)
   const [requirementsData, setRequirementsData] = useState<RequirementsData | null>(null)
-  const [requirementsError, setRequirementsError] = useState<string | null>(null)
+  const [, setRequirementsError] = useState<string | null>(null)
   const [zoneData, setZoneData] = useState<{ grid: ZoneGrid; ephemeris: Ephemeris } | null>(null)
   const zonePrimitiveRef = useRef<Primitive | null>(null)
   // Whole-Moon slope table; null = files not built yet. `undefined` = still loading.
@@ -701,16 +701,15 @@ export default function MoonGlobe({
         aria-label="3D Moon globe. Drag to rotate, scroll to zoom, click a site marker to select it."
       />
       <div className="absolute left-4 top-4 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-3 overflow-y-auto">
-        <div className="rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg">
+        <div className="rounded-lg border border-white/[0.08] bg-[#1c1e20] p-3 text-gray-100">
           <div className="flex items-center justify-between gap-2">
             <h1 className="flex items-center gap-2 text-lg font-semibold">
-              <span aria-hidden className="h-4 w-1 rounded-sm bg-[var(--nasa-red)]" />
               Orbital view
             </h1>
             <button
               type="button"
               onClick={resetGlobe}
-              className="flex items-center gap-1.5 rounded bg-[#FFD400] px-2.5 py-1 text-xs font-semibold text-black hover:brightness-110"
+              className="btn-outline flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />
@@ -724,8 +723,6 @@ export default function MoonGlobe({
           onEnabledChange={setRequirementsOn}
           criteria={criteria}
           onCriteriaChange={setCriteria}
-          results={results}
-          error={requirementsError ?? zoneShares.error}
           zoneSummary={
             zoneResults && zoneData
               ? {
@@ -811,12 +808,12 @@ export default function MoonGlobe({
       />
       <LayerControl activeId={layerId} onChange={setLayerId} filter={markerFilter} onFilterChange={setMarkerFilter} />
       <div style={{ right: 'calc(19.5rem + var(--assistant-w, 0px))' }}
-        className="absolute top-1/2 flex -translate-y-1/2 flex-col transition-[right] duration-300 overflow-hidden rounded-lg border border-[#444] bg-[#303030]/95 shadow-lg">
-        <button type="button" onClick={() => zoomBy(0.5)} aria-label="Zoom in" title="Zoom in" className="h-9 w-9 text-lg text-gray-100 hover:bg-[#3a3a3a]">
+        className="absolute top-1/2 flex -translate-y-1/2 flex-col transition-[right] duration-300 overflow-hidden rounded-lg border border-white/[0.08] bg-[#1c1e20]/95">
+        <button type="button" onClick={() => zoomBy(0.5)} aria-label="Zoom in" title="Zoom in" className="h-9 w-9 text-lg text-gray-100 hover:bg-white/10">
           +
         </button>
-        <div className="h-px bg-[#444]" />
-        <button type="button" onClick={() => zoomBy(2)} aria-label="Zoom out" title="Zoom out" className="h-9 w-9 text-lg text-gray-100 hover:bg-[#3a3a3a]">
+        <div className="h-px bg-white/10" />
+        <button type="button" onClick={() => zoomBy(2)} aria-label="Zoom out" title="Zoom out" className="h-9 w-9 text-lg text-gray-100 hover:bg-white/10">
           −
         </button>
       </div>
@@ -831,10 +828,28 @@ export default function MoonGlobe({
             overMenuRef.current = false
             setPinMenu(null)
           }}
-          className="absolute z-20 w-56 -translate-x-1/2 rounded-lg border border-[#555] bg-[#202020]/97 p-2.5 text-gray-100 shadow-2xl"
+          className="absolute z-20 w-56 -translate-x-1/2 rounded-lg border border-white/20 bg-[#1c1e20] p-2.5 text-gray-100"
           style={{ left: pinMenu.x, top: Math.max(8, pinMenu.y - 150) }}
         >
-          <p className="truncate text-sm font-medium">{menuPlace.name}</p>
+          <div className="flex items-start justify-between gap-2">
+            <p className="truncate text-sm font-medium">{menuPlace.name}</p>
+            <button
+              type="button"
+              onClick={() => {
+                removePlace(menuPlace.id)
+                if (picked?.placeId === menuPlace.id) setPicked(null)
+                overMenuRef.current = false
+                setPinMenu(null)
+              }}
+              aria-label={`Delete ${menuPlace.name}`}
+              title="Delete this pin"
+              className="-mr-1 -mt-0.5 shrink-0 rounded p-1 text-gray-400 hover:bg-white/10 hover:text-white"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+              </svg>
+            </button>
+          </div>
           <p className="text-[11px] text-gray-400">{formatCoords(menuPlace.latDeg, menuPlace.lonDeg)}</p>
           {(() => {
             const cover = coverage(menuPlace.latDeg)
@@ -844,7 +859,7 @@ export default function MoonGlobe({
                 <button type="button" onClick={() => onOpenPointView(point)} className="flex-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-950 hover:bg-white">
                   Horizon view
                 </button>
-                <button type="button" onClick={() => onComparePoint(point)} className="flex-1 rounded border border-[#666] px-2 py-1 text-xs hover:bg-[#3a3a3a]">
+                <button type="button" onClick={() => onComparePoint(point)} className="flex-1 rounded border border-white/20 px-2 py-1 text-xs hover:bg-white/10">
                   Compare
                 </button>
               </div>

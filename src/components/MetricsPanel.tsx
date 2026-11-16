@@ -35,7 +35,7 @@ function BodyCard({
   next: NextTransition
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-[#444] bg-[#262626] px-3 py-2">
+    <div className="flex flex-col gap-1 rounded-lg border border-white/[0.08] bg-[#121314] px-3 py-2">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-sm font-medium">
           <span aria-hidden className="h-3 w-3 rounded-full" style={{ background: color }} />

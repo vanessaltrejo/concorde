@@ -39,7 +39,7 @@ export function LayerControl({ activeId, onChange, filter, onFilterChange }: Pro
         <div
           role="dialog"
           aria-label="Map layers"
-          className="flex max-h-[min(34rem,calc(100vh-9rem))] w-80 flex-col overflow-y-auto rounded-xl border border-[#444] bg-[#202020]/97 p-4 text-gray-100 shadow-2xl"
+          className="flex max-h-[min(34rem,calc(100vh-9rem))] w-80 flex-col overflow-y-auto rounded-xl border border-white/[0.08] bg-[#1c1e20] p-4 text-gray-100"
         >
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-base font-semibold">Map layers</h2>
@@ -63,7 +63,7 @@ export function LayerControl({ activeId, onChange, filter, onFilterChange }: Pro
                     <img
                       src={thumbUrl(firstId)}
                       alt=""
-                      className={'h-12 w-12 shrink-0 rounded-lg object-cover ' + (selected ? 'ring-2 ring-[#7fb0ff]' : 'ring-1 ring-[#444]')}
+                      className={'h-12 w-12 shrink-0 rounded-lg object-cover ' + (selected ? 'ring-2 ring-[#7fb0ff]' : 'ring-1 ring-white/10')}
                     />
                     <span className="flex min-w-0 flex-col">
                       <span className={'text-sm ' + (selected ? 'text-[#9fc3ff]' : 'text-gray-100')}>{entry.label}</span>
@@ -118,7 +118,7 @@ export function LayerControl({ activeId, onChange, filter, onFilterChange }: Pro
         aria-expanded={open}
         aria-label="Map layers"
         title="Map layers"
-        className="group relative h-[6.5rem] w-[6.5rem] overflow-hidden rounded-xl border-2 border-[#111] shadow-lg ring-1 ring-white/30 hover:ring-white/70"
+        className="group relative h-[6.5rem] w-[6.5rem] overflow-hidden rounded-xl border-2 border-[#111] ring-1 ring-white/30 hover:ring-white/70"
       >
         <img src={thumbUrl(activeId)} alt="" className="h-full w-full object-cover" />
         <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/60 py-0.5 text-[11px] font-medium text-white">

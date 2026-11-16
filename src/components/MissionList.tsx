@@ -5,7 +5,7 @@ import type { SiteEntry } from '../data/sites'
 export function MissionList({ site }: { site: SiteEntry }) {
   if (!site.missions?.length) return null
   return (
-    <section className="flex flex-col gap-1 border-t border-[#444] pt-2">
+    <section className="flex flex-col gap-1 border-t border-white/[0.08] pt-2">
       <h3 className="text-sm font-medium">CLPS missions here</h3>
       <ul className="flex flex-col gap-1 text-xs text-gray-300">
         {site.missions.map((m) => (

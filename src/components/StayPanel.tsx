@@ -19,7 +19,7 @@ function Bar({ label, value }: { label: string; value: number }) {
         <span className="text-gray-300">{label}</span>
         <span className="font-medium">{value.toFixed(0)}%</span>
       </div>
-      <div className="h-1.5 rounded bg-[#444]">
+      <div className="h-1.5 rounded bg-white/10">
         <div className="h-1.5 rounded bg-[#4d8be8]" style={{ width: `${value}%` }} />
       </div>
     </div>

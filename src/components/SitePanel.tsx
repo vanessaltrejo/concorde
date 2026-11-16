@@ -80,7 +80,7 @@ export function SitePanel({
       style={{ right: 'calc(1rem + var(--assistant-w, 0px))', transform: collapsed ? 'translateX(calc(100% + 1rem))' : 'none' }}
     >
     <PanelHandle open={!collapsed} onClick={() => setCollapsed((c) => !c)} label="site panel" className="absolute -left-7 top-3" />
-    <div data-tour="site-panel" className={'flex max-h-full w-72 flex-col gap-3 overflow-y-auto rounded-lg border border-[#444] bg-[#303030] p-3 text-gray-100 shadow-lg transition-opacity duration-300 ' + (collapsed ? 'pointer-events-none opacity-0' : 'pointer-events-auto')}>
+    <div data-tour="site-panel" className={'flex max-h-full w-72 flex-col gap-3 overflow-y-auto rounded-lg border border-white/[0.08] bg-[#1c1e20] p-3 text-gray-100 transition-opacity duration-300 ' + (collapsed ? 'pointer-events-none opacity-0' : 'pointer-events-auto')}>
       {topSlot ?? (
       <>
       <div className="flex flex-col gap-1">
@@ -106,7 +106,7 @@ export function SitePanel({
 
       {selected && (
         <>
-          <section className="flex flex-col gap-1 border-t border-[#444] pt-2">
+          <section className="flex flex-col gap-1 border-t border-white/[0.08] pt-2">
             <p className="text-xs text-gray-400">
               {selected.latitudeDeg.toFixed(4)}°, {selected.longitudeDeg.toFixed(2)}° E
             </p>
@@ -138,13 +138,13 @@ export function SitePanel({
                 onStayDaysChange={onStayDaysChange}
               />
 
-              <section className="flex flex-col gap-1 border-t border-[#444] pt-2">
+              <section className="flex flex-col gap-1 border-t border-white/[0.08] pt-2">
                 <h3 className="text-sm font-medium">Horizon</h3>
                 <HorizonPreview sky={current.light.sky} horizon={current.light.horizon} timeMs={timeMs} />
                 <button
                   type="button"
                   onClick={() => onOpenSkyView(selected.id)}
-                  className="mt-1 rounded bg-[#FFD400] px-3 py-2 text-sm font-semibold text-black hover:brightness-110"
+                  className="btn-outline mt-1 px-3 py-2 text-sm font-medium"
                 >
                   Open Horizon view
                 </button>
@@ -152,7 +152,7 @@ export function SitePanel({
             </>
           )}
 
-          <section className="flex flex-col gap-1 border-t border-[#444] pt-2">
+          <section className="flex flex-col gap-1 border-t border-white/[0.08] pt-2">
             <h3 className="text-sm font-medium">Topography</h3>
             {zoneImageUrl ? (
               <img

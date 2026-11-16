@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { SITES, getSite } from '../data/sites'
+import { SITES } from '../data/sites'
 import { SitePicker } from './SitePicker'
-import { IMPACT_KPIS } from '../data/kpis'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
 import { GOALS, computeMetrics, scoreFor, type GoalId } from '../scene/compare'
 import { dailySunPercent, toCsv } from '../scene/dashboard'
 import { formatDuration, formatUtc, formatUtcDay } from '../scene/formatTime'
-import { loadSiteSlopes, type SiteSlope } from '../scene/requirements'
+import { evaluateSite, loadSiteSlopes, type Criteria, type SiteSlope } from '../scene/requirements'
+import { loadAnywhereLight, pointId } from '../terrain/anywhere'
+import { usePlaces } from '../state/places'
 import { computeStay } from '../scene/stay'
 import { indexForTime } from '../scene/timeSelection'
 import { buildTimeline, nextTransition, type NextTransition } from '../scene/windows'
@@ -22,9 +23,13 @@ type Props = {
   timeMs: number | null
   onTimeChange: (ms: number) => void
   stayDays: number
-  onOpenHorizon: (siteId: string) => void
-  onOpenCompare: () => void
+  // The requirements set on the Orbital view, checked for the selected point.
+  criteria: Criteria
 }
+
+// One row of the dashboard: a registered site or one of the user's saved pins.
+type Entry = { id: string; name: string; group: string }
+const PIN_COLOR = '#56B4E9'
 
 type State = { lights: Record<string, SiteLight>; slopes: Record<string, SiteSlope>; status: 'loading' | 'ready' | 'error' }
 
@@ -39,10 +44,24 @@ const EARTH = '#b0bec5'
 const GRID = 'rgba(255,255,255,0.09)'
 const AXIS_TEXT = '#a0a0a0'
 
-export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayDays, onOpenHorizon, onOpenCompare }: Props) {
+export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayDays, criteria }: Props) {
   const withData = useMemo(() => SITES.filter((s) => s.hasSkyData), [])
-  const activeId = siteId && withData.some((s) => s.id === siteId) ? siteId : withData[0].id
+  const places = usePlaces()
+  const pins = useMemo<Entry[]>(() => places.map((p) => ({ id: pointId(p), name: p.name, group: 'Saved point' })), [places])
+  const entries = useMemo<Entry[]>(() => [...withData, ...pins], [withData, pins])
+  // A saved pin picked here stays on the dashboard (the other pages keep the registered site).
+  const [pinId, setPinId] = useState<string | null>(null)
+  const curatedId = siteId && withData.some((s) => s.id === siteId) ? siteId : withData[0].id
+  const activeId = pinId && pins.some((p) => p.id === pinId) ? pinId : curatedId
+  const select = (id: string) => {
+    if (id.startsWith('point:')) setPinId(id)
+    else {
+      setPinId(null)
+      onSelectSite(id)
+    }
+  }
   const [state, setState] = useState<State>({ lights: {}, slopes: {}, status: 'loading' })
+  const [pinData, setPinData] = useState<{ lights: Record<string, SiteLight>; slopes: Record<string, SiteSlope> }>({ lights: {}, slopes: {} })
   const [detailed, setDetailed] = useState(false)
   const [goalId, setGoalId] = useState<GoalId>('power')
 
@@ -58,25 +77,47 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
     }
   }, [withData])
 
+  // Saved pins: computed in the browser from the terrain tiles (cached per point).
+  useEffect(() => {
+    let cancelled = false
+    for (const p of places) {
+      const id = pointId(p)
+      loadAnywhereLight(p)
+        .then((r) => {
+          if (cancelled) return
+          setPinData((d) => ({ lights: { ...d.lights, [id]: r.light }, slopes: r.slope ? { ...d.slopes, [id]: r.slope } : d.slopes }))
+        })
+        .catch(() => {})
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [places])
+
+  const lights = useMemo(() => ({ ...state.lights, ...pinData.lights }), [state.lights, pinData.lights])
+  const slopes = useMemo(() => ({ ...state.slopes, ...pinData.slopes }), [state.slopes, pinData.slopes])
+
   const goal = GOALS.find((g) => g.id === goalId) ?? GOALS[0]
   const table = useMemo(() => {
     if (state.status !== 'ready') return []
-    return withData
-      .filter((s) => state.lights[s.id])
+    return entries
+      .filter((s) => lights[s.id])
       .map((s) => {
-        const m = computeMetrics(s.id, state.lights[s.id], state.slopes[s.id] ?? null, timeMs, stayDays)
-        return { site: s, m, score: scoreFor(m, goal.weights) }
+        const m = computeMetrics(s.id, lights[s.id], slopes[s.id] ?? null, timeMs, stayDays)
+        const req = evaluateSite(s.id, lights[s.id], slopes[s.id] ?? null, criteria, timeMs, stayDays)
+        return { site: s, m, req, score: scoreFor(m, goal.weights) }
       })
       .sort((a, b) => b.score - a.score)
-  }, [state, withData, timeMs, stayDays, goal])
+  }, [state.status, entries, lights, slopes, timeMs, stayDays, goal, criteria])
   const heat = useMemo(
-    () => (state.status === 'ready' ? withData.filter((s) => state.lights[s.id]).map((s) => ({ site: s, days: dailySunPercent(state.lights[s.id]) })) : []),
-    [state, withData],
+    () => (state.status === 'ready' ? entries.filter((s) => lights[s.id]).map((s) => ({ site: s, days: dailySunPercent(lights[s.id]) })) : []),
+    [state.status, entries, lights],
   )
 
-  const light = state.lights[activeId]
+  const light = lights[activeId]
+  const pinLoading = activeId.startsWith('point:') && !light
   if (state.status === 'error') return <Shell><Centered>Could not load the site data.</Centered></Shell>
-  if (state.status === 'loading' || !light) return <Shell><Centered>Loading mission data…</Centered></Shell>
+  if (state.status === 'loading' || !light) return <Shell><Centered>{pinLoading ? 'Computing this point from NASA terrain tiles…' : 'Loading mission data…'}</Centered></Shell>
 
   const samples = light.sky.samples
   const a = indexForTime(samples, timeMs)
@@ -87,14 +128,25 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
   const earthTl = buildTimeline(samples, light.horizon, 'earth')
   const sunNext = nextTransition(sunTl, a)
   const earthNext = nextTransition(earthTl, a)
-  const meets = table.filter((r) => r.m.meetsDefaults).length
-  const site = getSite(activeId)
+  const meets = table.filter((r) => r.req.meets).length
+  const site = entries.find((e) => e.id === activeId) ?? withData[0]
   const mine = table.find((r) => r.site.id === activeId)
+  const req = evaluateSite(activeId, light, slopes[activeId] ?? null, criteria, timeMs, stayDays)
+  const reqRows = [
+    criteria.sun.on && { label: 'Sun during stay', want: `≥ ${criteria.sun.minPercent}%`, got: `${Math.round(req.sunPercent)}%`, ok: req.passes.sun },
+    criteria.earth.on && { label: 'Earth link during stay', want: `≥ ${criteria.earth.minPercent}%`, got: `${Math.round(req.earthPercent)}%`, ok: req.passes.earth },
+    criteria.slope.on && { label: 'Slope at the site', want: `≤ ${criteria.slope.maxDeg}°`, got: req.slope ? `${req.slope.slopeDeg.toFixed(1)}°` : 'no data', ok: req.passes.slope },
+  ].filter(Boolean) as { label: string; want: string; got: string; ok: boolean }[]
+  const reqText = [
+    criteria.sun.on && `Sun ≥ ${criteria.sun.minPercent}%`,
+    criteria.earth.on && `Earth ≥ ${criteria.earth.minPercent}%`,
+    criteria.slope.on && `slope ≤ ${criteria.slope.maxDeg}°`,
+  ].filter(Boolean).join(', ')
 
   function exportCsv() {
     const rows: (string | number)[][] = [
-      ['Site', 'Group', `Score (${goal.label})`, 'Sun %', 'Earth %', 'Longest dark (h)', 'Mean Sun elevation (deg)', 'Slope (deg)', 'Meets defaults'],
-      ...table.map((r) => [r.site.name, r.site.group, r.score.toFixed(1), r.m.sunPercent.toFixed(1), r.m.earthPercent.toFixed(1), r.m.longestDarkHours.toFixed(0), r.m.meanSunElevationDeg?.toFixed(2) ?? '', r.m.slopeDeg?.toFixed(1) ?? '', r.m.meetsDefaults ? 'yes' : 'no']),
+      ['Site', 'Group', `Score (${goal.label})`, 'Sun %', 'Earth %', 'Longest dark (h)', 'Mean Sun elevation (deg)', 'Slope (deg)', 'Meets your requirements'],
+      ...table.map((r) => [r.site.name, r.site.group, r.score.toFixed(1), r.m.sunPercent.toFixed(1), r.m.earthPercent.toFixed(1), r.m.longestDarkHours.toFixed(0), r.m.meanSunElevationDeg?.toFixed(2) ?? '', r.m.slopeDeg?.toFixed(1) ?? '', r.req.meets ? 'yes' : 'no']),
     ]
     const url = URL.createObjectURL(new Blob([toCsv(rows)], { type: 'text/csv' }))
     const link = document.createElement('a')
@@ -127,7 +179,8 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
                 <SitePicker
                   value={activeId}
                   options={withData}
-                  onChange={onSelectSite}
+                  extraGroups={pins.length ? [{ title: 'Saved points', color: PIN_COLOR, items: pins }] : []}
+                  onChange={select}
                   ariaLabel="Site"
                   triggerClassName="btn-glass flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-left text-sm font-medium"
                 />
@@ -135,13 +188,28 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
               <Chip>Arrival {formatUtc(stay.arrivalMs)}</Chip>
               <Chip>Stay {stayDays} d</Chip>
             </div>
+            <div className="flex flex-col gap-1.5">
+              <p className="flex items-center justify-between gap-2 text-xs text-[#c0c0c0]">
+                <span>Your requirements</span>
+                {reqRows.length > 0 && <span className={req.meets ? 'text-white' : 'text-[#a0a0a0]'}>{req.meets ? '✓ Meets all' : '✕ Misses at least one'}</span>}
+              </p>
+              {reqRows.length === 0 ? (
+                <p className="text-xs text-[#a0a0a0]">None set (Orbital view)</p>
+              ) : (
+                <ul className="grid gap-1.5 sm:grid-cols-3">
+                  {reqRows.map((r) => (
+                    <li key={r.label} className="rounded-xl border border-white/15 bg-white/[0.05] px-2.5 py-1.5">
+                      <span className="block text-[11px] text-[#a0a0a0]">{r.label} {r.want}</span>
+                      <span className="flex items-center justify-between text-sm text-white">
+                        {r.got}
+                        <span aria-label={r.ok ? 'meets' : 'misses'} className={r.ok ? 'text-white' : 'text-[#a0a0a0]'}>{r.ok ? '✓' : '✕'}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => onOpenHorizon(activeId)} className="btn-gloss rounded-xl px-4 py-1.5 text-sm">
-                Open Horizon view
-              </button>
-              <button type="button" onClick={onOpenCompare} className="btn-glass rounded-xl px-4 py-1.5 text-sm">
-                Compare sites
-              </button>
               <div role="group" aria-label="Detail level" className="flex overflow-hidden rounded-xl border border-white/20 bg-white/5 text-xs">
                 {([['Simple', false], ['Detailed', true]] as const).map(([label, value]) => (
                   <button key={label} type="button" aria-pressed={detailed === value} onClick={() => setDetailed(value)}
@@ -180,7 +248,7 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
 
         {/* Heatmap */}
         <Panel delay={280} className="xl:col-span-7" title="90 days of sunlight, every site" sub={detailed ? 'Share of each UTC day with part of the Sun above the terrain horizon. Click a day to set your arrival.' : 'Brighter = more sunlight that day. Click any day to jump there.'}>
-          <Heatmap rows={heat} startMs={Date.parse(samples[0].timeUtc)} arrivalMs={stay.arrivalMs} stayDays={stayDays} activeId={activeId} onPick={(id, ms) => { onSelectSite(id); onTimeChange(ms) }} />
+          <Heatmap rows={heat} startMs={Date.parse(samples[0].timeUtc)} arrivalMs={stay.arrivalMs} stayDays={stayDays} activeId={activeId} onPick={(id, ms) => { select(id); onTimeChange(ms) }} />
         </Panel>
 
         {/* Ranking */}
@@ -188,7 +256,7 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
           delay={340}
           className="xl:col-span-5"
           title="Best sites for your goal"
-          sub={`${meets} of ${table.length} meet the defaults (Sun 100%, Earth ≥ 25%, slope ≤ 10°).`}
+          sub={reqText ? `${meets} of ${table.length} meet your requirements (${reqText}).` : `${table.length} sites and saved points.`}
           action={<button type="button" onClick={exportCsv} className="btn-glass rounded-lg px-2.5 py-0.5 text-xs">Export CSV</button>}
         >
           <div role="radiogroup" aria-label="Goal" className="mb-2 flex flex-wrap gap-1">
@@ -202,12 +270,15 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
           <ol className="flex flex-col">
             {table.map((r, i) => (
               <li key={r.site.id}>
-                <button type="button" onClick={() => onSelectSite(r.site.id)}
+                <button type="button" onClick={() => select(r.site.id)}
                   className={'grid w-full grid-cols-[1rem_1fr_auto] items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left hover:bg-white/[0.08] ' + (r.site.id === activeId ? 'bg-white/[0.12] ring-1 ring-white/25' : '')}>
                   <span className="text-xs text-gray-500">{i + 1}</span>
                   <span className="min-w-0">
                     <span className="flex items-center justify-between gap-2 text-sm">
-                      <span className="truncate font-medium text-gray-100">{r.site.name}</span>
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        {r.site.id.startsWith('point:') && <span aria-label="Saved point" className="h-2 w-2 shrink-0 rounded-full" style={{ background: PIN_COLOR }} />}
+                        <span className="truncate font-medium text-gray-100">{r.site.name}</span>
+                      </span>
                       <span className="shrink-0 text-[11px]">
                         <span style={{ color: SUN_INK }}>☀︎ {Math.round(r.m.sunPercent)}%</span>
                         <span className="mx-1 text-gray-400">·</span>
@@ -227,20 +298,6 @@ export function DashboardTab({ siteId, onSelectSite, timeMs, onTimeChange, stayD
           {detailed && <p className="mt-1 text-[11px] text-gray-400">Score 0–100 for “{goal.label}”. Weights are a first proposal.</p>}
         </Panel>
 
-        {/* Impact: one slim row */}
-        <Panel delay={400} className="xl:col-span-12" title="Impact" sub="KPIs pending definition: waiting for the team's research on today's process. No values are invented.">
-          <ul className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            {IMPACT_KPIS.map((k) => (
-              <li key={k.id} className="flex items-baseline justify-between gap-2 rounded-xl border border-dashed border-white/20 bg-white/[0.03] px-3 py-2">
-                <span>
-                  <span className="block text-xs text-gray-200">{k.label}</span>
-                  <span className="block text-[10px] text-gray-400">{k.unit}</span>
-                </span>
-                <span className="text-xl font-semibold text-gray-400">{k.status === 'live' ? k.value : '—'}</span>
-              </li>
-            ))}
-          </ul>
-        </Panel>
       </div>
 
     </Shell>

@@ -3,7 +3,7 @@ import { getSite } from '../data/sites'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
 import { loadSiteSlopes, type SiteSlope } from '../scene/requirements'
 import { AXES, GOALS, computeMetrics, scoreFor, whyWinner, type GoalId, type Metrics } from '../scene/compare'
-import { addDateVariant, moveScenario, removeScenario, setScenarioOrder, updateScenario, useScenarios, type Scenario } from '../state/scenarios'
+import { addDateVariant, addScenario, MAX_SCENARIOS, moveScenario, removeScenario, setScenarioOrder, updateScenario, useScenarios, type Scenario } from '../state/scenarios'
 import { HorizonPreview } from './HorizonPreview'
 import { MissionList } from './MissionList'
 import { SavedPointsTable } from './SavedPointsTable'
@@ -24,6 +24,29 @@ export function CompareTab({ stayDays, fallbackTimeMs, onAddPoint }: Props) {
   // Re-render when a saved place is renamed (card titles use its name).
   usePlaces()
   const [goalId, setGoalId] = useState<GoalId>('power')
+  // List mode: tick saved points, then Compare. Compare mode: the cards.
+  const [mode, setMode] = useState<'list' | 'compare'>(() => (scenarios.length > 0 ? 'compare' : 'list'))
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  // Registered sites sent here from the globe stay in the comparison and take a slot.
+  const otherCount = scenarios.filter((s) => !parsePointId(s.siteId)).length
+  const maxPoints = Math.max(0, MAX_SCENARIOS - otherCount)
+
+  function toggle(id: string) {
+    setSelected((cur) => {
+      const next = new Set(cur)
+      if (next.has(id)) next.delete(id)
+      else if (next.size < maxPoints) next.add(id)
+      return next
+    })
+  }
+  function compareSelected() {
+    for (const s of scenarios) if (parsePointId(s.siteId) && !selected.has(s.siteId)) removeScenario(s.id)
+    for (const id of selected) if (!scenarios.some((s) => s.siteId === id)) addScenario(id, null)
+    setSelected(new Set())
+    setMode('compare')
+  }
+  // With nothing left to compare, the list comes back.
+  const view = scenarios.length === 0 ? 'list' : mode
   const [data, setData] = useState<Loaded>({ lights: {}, slopes: {}, failed: [] })
 
   const siteIds = useMemo(() => [...new Set(scenarios.map((s) => s.siteId))], [scenarios])
@@ -74,6 +97,14 @@ export function CompareTab({ stayDays, fallbackTimeMs, onAddPoint }: Props) {
     <div className="flex h-full min-w-0 flex-1 flex-col gap-5 overflow-y-auto bg-[#121314] px-6 py-6 text-gray-100">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-white">Compare sites</h1>
+        {view === 'list' ? (
+          scenarios.length > 0 && (
+            <button type="button" onClick={() => setMode('compare')} className="btn-outline px-4 py-2 text-xs font-medium">
+              Back to comparison
+            </button>
+          )
+        ) : (
+        <div className="flex flex-wrap items-center gap-3">
         <div role="radiogroup" aria-label="Goal" className="flex border border-white/20">
           {GOALS.map((g) => (
             <button
@@ -92,9 +123,18 @@ export function CompareTab({ stayDays, fallbackTimeMs, onAddPoint }: Props) {
             </button>
           ))}
         </div>
+        <button type="button" onClick={onAddPoint} title="Pick a point on the globe" className="btn-outline px-4 py-2 text-xs font-medium">
+          + Add point
+        </button>
+        </div>
+        )}
       </header>
 
-      {winner?.metrics && (
+      {view === 'list' && (
+        <SavedPointsTable selected={selected} max={maxPoints} onToggle={toggle} onAddPoint={onAddPoint} onCompare={compareSelected} />
+      )}
+
+      {view === 'compare' && winner?.metrics && (
         <section className="card-matte flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4">
           <p className="text-sm text-[#c0c0c0]">
             Best for {goal.label.toLowerCase()}: <strong className="font-medium text-white">{scenarioName(winner.sc.siteId)}</strong>{' '}
@@ -117,7 +157,7 @@ export function CompareTab({ stayDays, fallbackTimeMs, onAddPoint }: Props) {
         </section>
       )}
 
-      {rows.length > 0 && (
+      {view === 'compare' && rows.length > 0 && (
         <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(18rem,1fr))]">
           {rows.map((r) => (
             <Card
@@ -133,9 +173,7 @@ export function CompareTab({ stayDays, fallbackTimeMs, onAddPoint }: Props) {
         </div>
       )}
 
-      <SavedPointsTable scenarios={scenarios} onAddPoint={onAddPoint} />
-
-      {ranked.length >= 2 && <OverlayRadar rows={ranked.map((r) => ({ index: r.i, name: scenarioName(r.sc.siteId), metrics: r.metrics! }))} />}
+      {view === 'compare' && ranked.length >= 2 && <OverlayRadar rows={ranked.map((r) => ({ index: r.i, name: scenarioName(r.sc.siteId), metrics: r.metrics! }))} />}
     </div>
   )
 }
@@ -251,6 +289,7 @@ function Card({ index, row, rank, allMetrics, fallbackTimeMs, loadingFailed }: {
             Arrival (UTC)
             <input
               type="datetime-local"
+              onClick={(e) => e.currentTarget.showPicker?.()}
               value={toInput(value)}
               min={toInput(first)}
               max={toInput(last)}

@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { addScenario, MAX_SCENARIOS, removeScenario, type Scenario } from '../state/scenarios'
 import { formatCoords, lastEdited, renamePlace, usePlaces, type Place } from '../state/places'
 
 // Compare page: the saved points as a list (after the Google Earth projects
-// table). Tick a point to put it in the comparison; pencil or double-click to
-// rename; "Add point" picks a new one on the globe and comes back here.
+// table). Tick the points to compare, then press Compare; pencil or
+// double-click to rename; "Add point" picks a new one on the globe.
 
 const pointId = (p: Place) => `point:${p.latDeg.toFixed(4)},${p.lonDeg.toFixed(4)}`
 const COLS = 'grid grid-cols-[2.5rem_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-3'
@@ -13,14 +12,26 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 }
 
-export function SavedPointsTable({ scenarios, onAddPoint }: { scenarios: Scenario[]; onAddPoint: () => void }) {
+type Props = { selected: Set<string>; max: number; onToggle: (id: string) => void; onAddPoint: () => void; onCompare: () => void }
+
+export function SavedPointsTable({ selected, max, onToggle, onAddPoint, onCompare }: Props) {
   const places = usePlaces()
   const sorted = [...places].sort((a, b) => lastEdited(b).localeCompare(lastEdited(a)))
-  const full = scenarios.length >= MAX_SCENARIOS
+  const full = selected.size >= max
 
   return (
     <section data-tour="compare-add" className="card-matte overflow-hidden rounded-2xl">
-      <h2 className="px-5 pt-4 pb-3 text-base font-medium text-white">Saved points</h2>
+      <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
+        <h2 className="text-base font-medium text-white">Saved points</h2>
+        <button
+          type="button"
+          onClick={onCompare}
+          disabled={selected.size === 0}
+          className="btn-outline px-4 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Compare{selected.size > 0 ? ` (${selected.size})` : ''}
+        </button>
+      </div>
       <div className={COLS + ' border-y border-white/[0.08] px-5 py-2 text-xs font-medium text-[#a7abad]'}>
         <span>
           <span className="sr-only">In comparison</span>
@@ -39,7 +50,7 @@ export function SavedPointsTable({ scenarios, onAddPoint }: { scenarios: Scenari
       ) : (
         <ul>
           {sorted.map((p) => (
-            <Row key={p.id} place={p} scenarios={scenarios} full={full} />
+            <Row key={p.id} place={p} checked={selected.has(pointId(p))} full={full} max={max} onToggle={onToggle} />
           ))}
         </ul>
       )}
@@ -47,17 +58,10 @@ export function SavedPointsTable({ scenarios, onAddPoint }: { scenarios: Scenari
   )
 }
 
-function Row({ place, scenarios, full }: { place: Place; scenarios: Scenario[]; full: boolean }) {
-  const id = pointId(place)
-  const inCompare = scenarios.filter((s) => s.siteId === id)
-  const checked = inCompare.length > 0
+function Row({ place, checked, full, max, onToggle }: { place: Place; checked: boolean; full: boolean; max: number; onToggle: (id: string) => void }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(place.name)
 
-  function toggle() {
-    if (checked) inCompare.forEach((s) => removeScenario(s.id))
-    else if (!full) addScenario(id, null)
-  }
   function save() {
     renamePlace(place.id, draft)
     setEditing(false)
@@ -69,9 +73,9 @@ function Row({ place, scenarios, full }: { place: Place; scenarios: Scenario[]; 
         type="checkbox"
         checked={checked}
         disabled={!checked && full}
-        onChange={toggle}
+        onChange={() => onToggle(pointId(place))}
         aria-label={`${checked ? 'Remove' : 'Add'} ${place.name} ${checked ? 'from' : 'to'} the comparison`}
-        title={!checked && full ? `Compare holds ${MAX_SCENARIOS}: untick one first` : undefined}
+        title={!checked && full ? `Compare holds ${max}: untick one first` : undefined}
         className="h-4 w-4 cursor-pointer disabled:cursor-not-allowed"
       />
       <span className="flex min-w-0 items-center gap-2">

@@ -9,9 +9,9 @@ type ViewControlsProps = {
 }
 
 const buttonClassName =
-  'rounded bg-[#FFD400] px-3 py-1.5 text-xs font-semibold text-black hover:brightness-110 disabled:opacity-40'
+  'btn-outline bg-[#1c1e20] px-3 py-1.5 text-xs font-medium disabled:opacity-40'
 const zoomClassName =
-  'h-8 w-8 rounded-lg border border-white/20 bg-[#303030]/90 text-lg leading-none text-white hover:bg-[#3a3a3a] disabled:opacity-40'
+  'h-8 w-8 rounded-lg border border-white/20 bg-[#1c1e20]/90 text-lg leading-none text-white hover:bg-white/10 disabled:opacity-40'
 
 // Zoom and quick-aim buttons for the 3D view. Zoom only narrows the field of
 // view (like binoculars); the Sun and Earth keep their real angular size.

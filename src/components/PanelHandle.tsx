@@ -16,7 +16,7 @@ export function PanelHandle({ open, onClick, label, className = '' }: PanelHandl
       aria-expanded={open}
       title={(open ? 'Hide ' : 'Show ') + label}
       className={
-        'pointer-events-auto flex h-14 w-7 items-center justify-center rounded-l-lg bg-[var(--nasa-blue)] text-white shadow-lg transition-[filter] hover:brightness-125 ' + className
+        'pointer-events-auto flex h-14 w-7 items-center justify-center rounded-l-lg border border-r-0 border-white/20 bg-[#1c1e20] text-white hover:bg-[#2a2c2e] ' + className
       }
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

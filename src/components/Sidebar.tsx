@@ -43,17 +43,16 @@ export function Sidebar({
   const entry = SITES.find((s) => s.id === site.id)
   const groupColor = entry ? GROUP_COLOR[entry.group] : null
   return (
-    <aside data-tour="horizon-panel" className="absolute left-4 top-4 z-10 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-4 overflow-y-auto rounded-lg border border-[#444] bg-[#303030] p-4 shadow-lg text-gray-100">
+    <aside data-tour="horizon-panel" className="absolute left-4 top-4 z-10 flex max-h-[calc(100%-2rem)] w-72 flex-col gap-4 overflow-y-auto rounded-lg border border-white/[0.08] bg-[#1c1e20] p-4 text-gray-100">
       <div className="flex items-center justify-between gap-2">
         <h1 className="flex items-center gap-2 text-lg font-semibold">
-          <span aria-hidden className="h-4 w-1 rounded-sm bg-[var(--nasa-red)]" />
           Horizon view
         </h1>
         <button
           type="button"
           onClick={onResetView}
           title="Back to the starting direction, level horizon, no zoom"
-          className="flex items-center gap-1.5 rounded bg-[#FFD400] px-2.5 py-1 text-xs font-semibold text-black hover:brightness-110"
+          className="btn-outline flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />
@@ -72,7 +71,7 @@ export function Sidebar({
             {site.latitudeDeg.toFixed(4)}°, {site.longitudeDeg.toFixed(2)}° E
           </p>
         </div>
-        {!anywhere && <FlagButton siteId={site.id} timeMs={timeMs} wide />}
+        <FlagButton siteId={anywhere ? horizon.siteId : site.id} timeMs={timeMs} wide />
       </section>
 
       <DateTimeControl samples={samples} index={index} onIndexChange={onIndexChange} />

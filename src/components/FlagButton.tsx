@@ -14,12 +14,12 @@ export function FlagButton({ siteId, timeMs, wide = false }: { siteId: string; t
       title={full ? `Compare is full (${MAX_SCENARIOS}). Remove one first.` : flagged ? 'Remove from Compare' : 'Add to Compare'}
       className={
         wide
-          ? 'flex w-full items-center justify-center gap-2 rounded px-3 py-2 text-sm font-semibold transition-[filter] disabled:cursor-not-allowed disabled:opacity-50 ' +
-            (flagged ? 'border border-[#FFD400] bg-[#FFD400]/15 text-[#FFD400]' : 'bg-[#FFD400] text-black hover:brightness-110')
-          : 'flex items-center gap-1 rounded border px-2 py-0.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 ' +
+          ? 'flex w-full items-center justify-center gap-2 px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 ' +
+            (flagged ? 'border border-white bg-white text-[#121314]' : 'btn-outline')
+          : 'flex items-center gap-1 border px-2 py-0.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 ' +
         (flagged
-          ? 'border-[var(--nasa-blue)] bg-[var(--nasa-blue)] text-white'
-          : 'border-[#555] text-gray-100 hover:bg-[var(--nasa-blue)] hover:text-white')
+          ? 'border-white bg-white text-[#121314]'
+          : 'border-white/20 text-gray-100 hover:bg-white/10 hover:text-white')
       }
     >
       <svg width={wide ? 15 : 12} height={wide ? 15 : 12} viewBox="0 0 24 24" fill={flagged ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden>
