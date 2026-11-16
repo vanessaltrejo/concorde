@@ -44,6 +44,11 @@ export default function App() {
   // A point picked on the map; when set, the Horizon view shows it instead of skySiteId.
   const [horizonPoint, setHorizonPoint] = useState<AnywherePoint | null>(initial.view === 'horizon' ? initial.point : null)
   const [pointProgress, setPointProgress] = useState('')
+  // Direction kept when moving across the terrain by double-click (null = default, toward the Earth).
+  const [horizonHeading, setHorizonHeading] = useState<number | null>(null)
+  // Places stood on before, oldest first, while moving by double-click on the
+  // terrain. Cleared when the Horizon view is opened from elsewhere.
+  const [horizonTrail, setHorizonTrail] = useState<AnywherePoint[]>([])
   // Selected date and time, shared by the Orbital view and every Horizon view. null = first sample.
   const [timeMs, setTimeMs] = useState<number | null>(initial.timeMs)
   // Stay length in days, from the selected time on. Shared by both views.
@@ -133,6 +138,8 @@ export default function App() {
   function openSkyView(siteId: string) {
     setSkySiteId(siteId)
     setHorizonPoint(null)
+    setHorizonHeading(null)
+    setHorizonTrail([])
     setTab('horizon')
     setFlyRequest(null)
   }
@@ -140,8 +147,21 @@ export default function App() {
   function openPointView(point: AnywherePoint) {
     setPointProgress('')
     setHorizonPoint(point)
+    setHorizonHeading(null)
+    setHorizonTrail([])
     setTab('horizon')
     setFlyRequest(null)
+  }
+
+  // Double-click on the Horizon view terrain: stand at that point, facing the
+  // same way; the place just left joins the trail.
+  function moveHorizonTo(point: AnywherePoint, headingDeg: number) {
+    const site = getSite(skySiteId)
+    const here = horizonPoint ?? { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg }
+    setHorizonTrail((trail) => [...trail, here])
+    setPointProgress('')
+    setHorizonPoint(point)
+    setHorizonHeading(headingDeg)
   }
 
   function backToMap() {
@@ -189,12 +209,16 @@ export default function App() {
         patch({ horizonSiteId: siteId, horizonPoint: null, view: 'horizon' })
         setSkySiteId(siteId)
         setHorizonPoint(null)
+        setHorizonHeading(null)
+        setHorizonTrail([])
         setTab('horizon')
         setFlyRequest(null)
       },
       openHorizonAtPoint: (point) => {
         patch({ horizonPoint: point, view: 'horizon' })
         setHorizonPoint(point)
+        setHorizonHeading(null)
+        setHorizonTrail([])
         setTab('horizon')
         setFlyRequest(null)
       },
@@ -242,6 +266,9 @@ export default function App() {
           stayDays={stayDays}
           onStayDaysChange={setStayDays}
           onBackToMap={backToMap}
+          onMoveTo={moveHorizonTo}
+          initialHeadingDeg={horizonHeading}
+          trail={horizonTrail}
         />
       )}
       {tab === 'orbital' && (
@@ -367,9 +394,12 @@ type HorizonTabProps = {
   stayDays: number
   onStayDaysChange: (days: number) => void
   onBackToMap: () => void
+  onMoveTo: (point: AnywherePoint, headingDeg: number) => void
+  initialHeadingDeg: number | null
+  trail: AnywherePoint[]
 }
 
-function HorizonTab({ current, siteName, progress, timeMs, onTimeChange, stayDays, onStayDaysChange, onBackToMap }: HorizonTabProps) {
+function HorizonTab({ current, siteName, progress, timeMs, onTimeChange, stayDays, onStayDaysChange, onBackToMap, onMoveTo, initialHeadingDeg, trail }: HorizonTabProps) {
   if (current?.status === 'ready') {
     const samples = current.data.sky.samples
     return (
@@ -382,6 +412,9 @@ function HorizonTab({ current, siteName, progress, timeMs, onTimeChange, stayDay
             onSampleIndexChange={(index) => onTimeChange(timeOfIndex(samples, index))}
             stayDays={stayDays}
             onStayDaysChange={onStayDaysChange}
+            onMoveTo={onMoveTo}
+            initialHeadingDeg={initialHeadingDeg}
+            trail={trail}
           />
         </Suspense>
       </div>

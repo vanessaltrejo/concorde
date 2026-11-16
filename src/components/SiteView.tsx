@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { TimingMetrics } from '../scene/timing'
 import type { SiteData } from '../types'
+import type { AnywherePoint } from '../terrain/anywhere'
 import { bodyVisibility } from '../scene/visibility'
 import { buildTimeline, nextTransition, visiblePercent } from '../scene/windows'
 import { MainView } from './MainView'
@@ -13,10 +14,16 @@ type SiteViewProps = {
   onSampleIndexChange: (index: number) => void
   stayDays: number
   onStayDaysChange: (days: number) => void
+  // Double-click on the terrain moves the Horizon view there.
+  onMoveTo?: (point: AnywherePoint, headingDeg: number) => void
+  // Direction to face on opening (kept when moving across the terrain); default: toward the Earth.
+  initialHeadingDeg?: number | null
+  // Places stood on before (oldest first), drawn as dots on the terrain.
+  trail?: AnywherePoint[]
 }
 
 // One site: shared time selection for the sidebar and the 3D view.
-export function SiteView({ data, sampleIndex, onSampleIndexChange, stayDays, onStayDaysChange }: SiteViewProps) {
+export function SiteView({ data, sampleIndex, onSampleIndexChange, stayDays, onStayDaysChange, onMoveTo, initialHeadingDeg, trail = [] }: SiteViewProps) {
   const { sky, horizon, terrain } = data
   const [resetToken, setResetToken] = useState(0)
 
@@ -59,8 +66,12 @@ export function SiteView({ data, sampleIndex, onSampleIndexChange, stayDays, onS
         terrain={terrain}
         sunVisibility={sunVisibility}
         earthVisibility={earthVisibility}
-        initialAzimuthDeg={Math.round(sky.samples[0].earth.azimuthDeg)}
+        initialAzimuthDeg={Math.round(initialHeadingDeg ?? sky.samples[0].earth.azimuthDeg)}
         resetToken={resetToken}
+        siteLatDeg={sky.site.latitudeDeg}
+        siteLonDeg={sky.site.longitudeDeg}
+        onMoveTo={onMoveTo}
+        trail={trail}
       />
     </div>
   )
