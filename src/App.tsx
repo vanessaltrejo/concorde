@@ -55,6 +55,8 @@ export default function App() {
   const [requirementsOn, setRequirementsOn] = useState(true)
   const [criteria, setCriteria] = useState<Criteria>(DEFAULT_CRITERIA)
   const [flyRequest, setFlyRequest] = useState<{ siteId: string } | { point: AnywherePoint } | null>(null)
+  // "Add point" on Compare: the Orbital view sends the next pin back to Compare.
+  const [pickForCompare, setPickForCompare] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
   // Guest mode (kept in this browser) and the step of the guest tutorial.
   const [guest, setGuestState] = useState(() => {
@@ -222,7 +224,13 @@ export default function App() {
 
   return (
     <div className="relative flex h-full overflow-hidden" style={{ '--assistant-w': assistantOpen ? '24rem' : '0px' } as CSSProperties}>
-      <NavRail active={tab} onChange={setTab} />
+      <NavRail
+        active={tab}
+        onChange={(t) => {
+          setPickForCompare(false)
+          setTab(t)
+        }}
+      />
       <ErrorBoundary key={tab}>
       {tab === 'horizon' && (
         <HorizonTab
@@ -254,6 +262,17 @@ export default function App() {
             criteria={criteria}
             onCriteriaChange={setCriteria}
             flyRequest={flyRequest}
+            pickForCompare={pickForCompare}
+            onPickDone={(point) => {
+              setPickForCompare(false)
+              const id = pointId(point)
+              if (scenarios.length < MAX_SCENARIOS && !scenarios.some((sc) => sc.siteId === id)) addScenario(id, timeMs)
+              setTab('compare')
+            }}
+            onPickCancel={() => {
+              setPickForCompare(false)
+              setTab('compare')
+            }}
             onComparePoint={(point) => {
               const id = pointId(point)
               if (!scenarios.some((sc) => sc.siteId === id)) {
@@ -280,7 +299,14 @@ export default function App() {
         />
       )}
       {tab === 'compare' && (
-        <CompareTab stayDays={stayDays} fallbackTimeMs={timeMs} />
+        <CompareTab
+          stayDays={stayDays}
+          fallbackTimeMs={timeMs}
+          onAddPoint={() => {
+            setPickForCompare(true)
+            setTab('orbital')
+          }}
+        />
       )}
       {tab === 'educational' && <EducationalTab />}
       {tab === 'references' && <ReferencesTab />}

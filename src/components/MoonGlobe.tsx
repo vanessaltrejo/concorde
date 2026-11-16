@@ -237,6 +237,11 @@ type MoonGlobeProps = {
   flyRequest: { siteId: string } | { point: { latDeg: number; lonDeg: number } } | null
   // Pin menu "Compare": add this point to the Compare tab.
   onComparePoint: (point: { latDeg: number; lonDeg: number }) => void
+  // Pick mode started from Compare ("Add point"): the next Add pin is sent back
+  // to Compare instead of staying here. Off everywhere else.
+  pickForCompare?: boolean
+  onPickDone?: (point: { latDeg: number; lonDeg: number }) => void
+  onPickCancel?: () => void
 }
 
 // Orbital view: smooth Moon sphere with NASA imagery. Cesium loads only the
@@ -258,6 +263,9 @@ export default function MoonGlobe({
   onCriteriaChange: setCriteria,
   flyRequest,
   onComparePoint,
+  pickForCompare = false,
+  onPickDone,
+  onPickCancel,
 }: MoonGlobeProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<Viewer | null>(null)
@@ -592,6 +600,7 @@ export default function MoonGlobe({
     addPlace(point.latitudeDeg, point.longitudeDeg)
     setMarkerFilter((f) => (f.pins ? f : { ...f, pins: true }))
     setPicked(null)
+    if (pickForCompare) onPickDone?.({ latDeg: point.latitudeDeg, lonDeg: point.longitudeDeg })
   }
 
   // A saved place chosen in the site menu: fly there and show its panel.
@@ -677,6 +686,14 @@ export default function MoonGlobe({
 
   return (
     <div className="relative h-full min-w-0 flex-1 overflow-hidden bg-black">
+      {pickForCompare && (
+        <div role="status" className="absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4 border border-white/25 bg-[#1c1e20] px-4 py-2.5 text-sm text-white">
+          <span>Adding a point for Compare: click the Moon, then press Save point.</span>
+          <button type="button" onClick={onPickCancel} className="btn-outline px-3 py-1 text-xs">
+            Cancel
+          </button>
+        </div>
+      )}
       <div
         ref={containerRef}
         className="h-full w-full"
@@ -701,9 +718,6 @@ export default function MoonGlobe({
               Reset globe
             </button>
           </div>
-          <p className="mt-1 text-[11px] text-gray-400">
-            Click the Moon to pick a point, then save it or open its Horizon view. Map layers: bottom left.
-          </p>
         </div>
         <RequirementsPanel
           enabled={requirementsOn}

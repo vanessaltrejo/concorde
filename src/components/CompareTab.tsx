@@ -1,23 +1,25 @@
-import { useEffect, useMemo, useState } from 'react'
-import { SITES, getSite } from '../data/sites'
-import { SitePicker } from './SitePicker'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { getSite } from '../data/sites'
 import { loadSiteLight, type SiteLight } from '../data/loadSiteData'
 import { loadSiteSlopes, type SiteSlope } from '../scene/requirements'
 import { AXES, GOALS, computeMetrics, scoreFor, whyWinner, type GoalId, type Metrics } from '../scene/compare'
-import { addDateVariant, addScenario, MAX_SCENARIOS, moveScenario, removeScenario, setScenarioOrder, updateScenario, useScenarios, type Scenario } from '../state/scenarios'
+import { addDateVariant, moveScenario, removeScenario, setScenarioOrder, updateScenario, useScenarios, type Scenario } from '../state/scenarios'
 import { HorizonPreview } from './HorizonPreview'
 import { MissionList } from './MissionList'
+import { SavedPointsTable } from './SavedPointsTable'
 import { loadAnywhereLight, parsePointId, pointName } from '../terrain/anywhere'
 import { usePlaces, getPlaces } from '../state/places'
 
-// Colors per card (red is kept for small highlights only); cards are also told apart by number and line style.
-const CARD_COLORS = ['#0B3D91', '#1f7ae0', '#0e8f7e']
+// Compare: matte cards (solid dark surface, thin border, no sheen) after the
+// reference dashboard. One accent tone per card, from the gray palette; cards
+// are also told apart by their number and by line style on the radar.
+const CARD_COLORS = ['#FFFFFF', '#B0BEC5', '#808080']
 
-type Props = { stayDays: number; fallbackTimeMs: number | null }
+type Props = { stayDays: number; fallbackTimeMs: number | null; onAddPoint: () => void }
 
 type Loaded = { lights: Record<string, SiteLight>; slopes: Record<string, SiteSlope>; failed: string[] }
 
-export function CompareTab({ stayDays, fallbackTimeMs }: Props) {
+export function CompareTab({ stayDays, fallbackTimeMs, onAddPoint }: Props) {
   const scenarios = useScenarios()
   // Re-render when a saved place is renamed (card titles use its name).
   usePlaces()
@@ -69,18 +71,10 @@ export function CompareTab({ stayDays, fallbackTimeMs }: Props) {
   const why = winner?.metrics ? whyWinner(winner.metrics, second?.metrics ?? null, goal.weights) : []
 
   return (
-    <div className="flex h-full min-w-0 flex-1 flex-col gap-4 overflow-y-auto bg-[#05070d] p-4 text-gray-100">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold">
-            <span aria-hidden className="h-5 w-1 rounded-sm bg-[var(--nasa-red)]" />
-            Compare sites
-          </h1>
-          <p className="text-xs text-gray-400">
-            Up to {MAX_SCENARIOS} scenarios (site + arrival date). Stay length: {stayDays} days. Screening only, not flight grade.
-          </p>
-        </div>
-        <div role="radiogroup" aria-label="Goal" className="flex flex-wrap gap-1.5">
+    <div className="flex h-full min-w-0 flex-1 flex-col gap-5 overflow-y-auto bg-[#121314] px-6 py-6 text-gray-100">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold tracking-tight text-white">Compare sites</h1>
+        <div role="radiogroup" aria-label="Goal" className="flex border border-white/20">
           {GOALS.map((g) => (
             <button
               key={g.id}
@@ -90,10 +84,8 @@ export function CompareTab({ stayDays, fallbackTimeMs }: Props) {
               title={g.blurb}
               onClick={() => setGoalId(g.id)}
               className={
-                'rounded-full border px-3 py-1 text-xs transition-colors ' +
-                (g.id === goalId
-                  ? 'border-[var(--nasa-blue)] bg-[var(--nasa-blue)] text-white'
-                  : 'border-[#3a4560] text-gray-200 hover:border-white')
+                'border-l border-white/20 px-4 py-2 text-xs font-medium first:border-l-0 ' +
+                (g.id === goalId ? 'bg-white text-[#121314]' : 'text-[#c0c0c0] hover:bg-white/[0.06] hover:text-white')
               }
             >
               {g.label}
@@ -103,54 +95,50 @@ export function CompareTab({ stayDays, fallbackTimeMs }: Props) {
       </header>
 
       {winner?.metrics && (
-        <p className="rounded-lg border border-[#22304f] bg-[#0b1226] px-3 py-2 text-sm">
-          <span className="text-gray-400">Model suggestion for {goal.label}: </span>
-          <strong>{scenarioName(winner.sc.siteId)}</strong>
-          <span className="text-gray-400"> ({dateLabel(winner.sc, winner.light)})</span>
-          {why.length > 0 && second ? (
-            <span className="text-gray-300">
-              {' '}
-              leads on {why.map((k) => AXES.find((a) => a.key === k)?.short.toLowerCase()).join(' and ')} over {scenarioName(second.sc.siteId)}.
-            </span>
-          ) : (
-            <span className="text-gray-300"> {ranked.length === 1 ? '— add another scenario to compare.' : 'is a close call: scores are nearly equal.'}</span>
+        <section className="card-matte flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4">
+          <p className="text-sm text-[#c0c0c0]">
+            Best for {goal.label.toLowerCase()}: <strong className="font-medium text-white">{scenarioName(winner.sc.siteId)}</strong>{' '}
+            ({dateLabel(winner.sc, winner.light)})
+            {why.length > 0 && second
+              ? `, ahead on ${why.map((k) => AXES.find((a) => a.key === k)?.short.toLowerCase()).join(' and ')} over ${scenarioName(second.sc.siteId)}.`
+              : ranked.length === 1
+                ? '.'
+                : '. Scores are nearly equal.'}
+          </p>
+          {ranked.length >= 2 && (
+            <button
+              type="button"
+              onClick={() => setScenarioOrder([...ranked.map((r) => r.sc.id), ...rows.filter((r) => !r.metrics).map((r) => r.sc.id)])}
+              className="btn-outline px-3 py-1.5 text-xs font-medium"
+            >
+              Order by score
+            </button>
           )}
-        </p>
+        </section>
       )}
 
-      <div className="flex items-center justify-between gap-2 text-xs text-gray-400">
-        <p>Drag a card to set <strong className="text-gray-200">your</strong> order: 1st, 2nd, 3rd. The model suggestion is separate.</p>
-        {ranked.length >= 2 && (
-          <button
-            type="button"
-            onClick={() => setScenarioOrder([...ranked.map((r) => r.sc.id), ...rows.filter((r) => !r.metrics).map((r) => r.sc.id)])}
-            className="shrink-0 rounded border border-[#3a4560] px-2 py-1 text-gray-200 hover:border-white"
-          >
-            Order by model suggestion
-          </button>
-        )}
-      </div>
-      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(17rem,1fr))]">
-        {rows.map((r) => (
-          <Card
-            key={r.sc.id}
-            index={r.i}
-            row={r}
-            rank={ranked.findIndex((x) => x.sc.id === r.sc.id)}
-            allMetrics={rows.map((x) => x.metrics)}
-            fallbackTimeMs={fallbackTimeMs}
-            loadingFailed={data.failed.includes(r.sc.siteId)}
-          />
-        ))}
-        {scenarios.length < MAX_SCENARIOS && <AddSlot />}
-      </div>
+      {rows.length > 0 && (
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(18rem,1fr))]">
+          {rows.map((r) => (
+            <Card
+              key={r.sc.id}
+              index={r.i}
+              row={r}
+              rank={ranked.findIndex((x) => x.sc.id === r.sc.id)}
+              allMetrics={rows.map((x) => x.metrics)}
+              fallbackTimeMs={fallbackTimeMs}
+              loadingFailed={data.failed.includes(r.sc.siteId)}
+            />
+          ))}
+        </div>
+      )}
+
+      <SavedPointsTable scenarios={scenarios} onAddPoint={onAddPoint} />
 
       {ranked.length >= 2 && <OverlayRadar rows={ranked.map((r) => ({ index: r.i, name: scenarioName(r.sc.siteId), metrics: r.metrics! }))} />}
     </div>
   )
 }
-
-const ordinal = (i: number) => ['1st', '2nd', '3rd'][i] ?? `${i + 1}th`
 
 function dateLabel(sc: Scenario, light: SiteLight | undefined): string {
   const ms = sc.timeMs ?? (light ? Date.parse(light.sky.samples[0].timeUtc) : null)
@@ -169,6 +157,7 @@ function Card({ index, row, rank, allMetrics, fallbackTimeMs, loadingFailed }: {
   const last = light ? Date.parse(light.sky.samples[light.sky.samples.length - 1].timeUtc) : 0
   const toInput = (ms: number) => new Date(ms).toISOString().slice(0, 16)
   const value = sc.timeMs ?? first
+  const others = allMetrics.filter(Boolean).length > 1
 
   return (
     <article
@@ -187,99 +176,102 @@ function Card({ index, row, rank, allMetrics, fallbackTimeMs, loadingFailed }: {
         setOver(false)
         moveScenario(e.dataTransfer.getData('text/plain'), index)
       }}
-      className={
-        'flex cursor-grab flex-col overflow-hidden rounded-xl border bg-[#303030] text-gray-100 shadow-lg active:cursor-grabbing ' +
-        (over ? 'border-white ring-2 ring-white' : 'border-[#444]')
-      }
+      title="Drag to change your order"
+      className={'card-matte flex cursor-grab flex-col rounded-2xl p-5 active:cursor-grabbing ' + (over ? 'outline outline-1 outline-white' : '')}
     >
-      <div className="flex items-center justify-between gap-2 px-3 py-2 text-white" style={{ background: color }}>
-        <h2 className="flex items-center gap-2 text-base font-semibold">
-          <span aria-hidden className="rounded-full bg-[#303030] px-1.5 py-0.5 text-[11px] font-bold" style={{ color }} title="Your order (drag to change)">
-            {ordinal(index)}
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="icon-tile flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold" style={{ color }}>
+            {index + 1}
           </span>
-          {name}
-        </h2>
-        <button type="button" onClick={() => removeScenario(sc.id)} aria-label={`Remove ${name}`} className="text-lg leading-none text-white/80 hover:text-white">
-          ×
-        </button>
-      </div>
+          <h2 className="truncate text-base font-medium text-white">{name}</h2>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {light && <span className="text-[11px] text-[#8f9396]">{dateLabel(sc, light)}</span>}
+          <button type="button" onClick={() => removeScenario(sc.id)} aria-label={`Remove ${name}`} className="p-1 text-[#8f9396] hover:text-white">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+      </header>
 
-      <div className="flex flex-col gap-3 p-3">
-        <label className="flex flex-col gap-0.5 text-xs text-gray-300">
-          Arrival (UTC)
-          <input
-            type="datetime-local"
-            value={toInput(value)}
-            min={light ? toInput(first) : undefined}
-            max={light ? toInput(last) : undefined}
-            onChange={(e) => {
-              const ms = Date.parse(`${e.target.value}Z`)
-              if (!Number.isNaN(ms)) updateScenario(sc.id, { timeMs: ms })
-            }}
-            className="rounded border border-[#555] bg-[#262626] px-2 py-1 text-sm text-gray-100 [color-scheme:dark]"
-          />
-        </label>
+      {loadingFailed && (
+        <p className="mt-4 text-sm text-[#c0c0c0]">
+          No data for this {site ? 'site' : 'point'} yet{site ? '' : ': outside the covered latitudes, or the daily tile limit was reached'}.
+        </p>
+      )}
+      {!light && !loadingFailed && <p className="mt-4 text-sm text-[#8f9396]">{site ? 'Loading' : 'Computing the terrain for this point'}</p>}
 
-        {loadingFailed && <p className="text-xs text-[#F0793A]">No data for this {site ? 'site' : 'point'} yet{site ? '' : ' (outside the covered latitudes, or the tile limit was reached)'}.</p>}
-        {!light && !loadingFailed && <p className="text-xs text-gray-300">{site ? 'Loading…' : 'Computing the terrain for this point…'}</p>}
-
-        {metrics && light && (
-          <>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-4xl font-semibold leading-none" style={{ color: color === '#0B3D91' ? '#7fb0ff' : color }}>
-                  {Math.round(score ?? 0)}
-                </p>
-                <p className="text-[11px] text-gray-300">goal score / 100</p>
-              </div>
-              {rank === 0 && (
-                <span className="rounded border border-[#7fb0ff] px-1.5 py-0.5 text-[10px] font-medium text-[#7fb0ff]" title="Highest score for the chosen goal. Independent of your 1st/2nd/3rd order.">
-                  Model suggestion
-                </span>
-              )}
-              <span className={'rounded px-2 py-0.5 text-[11px] font-medium ' + (metrics.meetsDefaults ? 'bg-[#0B3D91]/50 text-[#9cc0ff]' : 'bg-[#3a3a3a] text-gray-300')}>
-                {metrics.meetsDefaults ? '✓ meets default requirements' : '– misses a default requirement'}
+      {metrics && light && (
+        <>
+          <div className="mt-5 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-5xl font-bold leading-none tabular-nums text-white">{Math.round(score ?? 0)}</p>
+              <p className="mt-1 text-xs text-[#8f9396]">score for this goal, out of 100</p>
+            </div>
+            <div className="flex flex-col items-end gap-1 text-[11px]">
+              {rank === 0 && others && <span className="border border-white/50 px-2 py-0.5 text-white">Highest score</span>}
+              <span className={metrics.meetsDefaults ? 'text-white' : 'text-[#8f9396]'}>
+                {metrics.meetsDefaults ? 'Meets the default requirements' : 'Misses a default requirement'}
               </span>
             </div>
+          </div>
 
+          <div className="mt-4">
             <HorizonPreview sky={light.sky} horizon={light.horizon} timeMs={sc.timeMs} />
+          </div>
 
-            <ul className="flex flex-col gap-1.5">
-              {AXES.map(({ key, label }) => {
-                const v = metrics.axes[key]
-                const best = v !== null && allMetrics.every((m) => !m || m.axes[key] === null || (m.axes[key] as number) <= v)
-                return (
-                  <li key={key}>
-                    <div className="flex items-baseline justify-between text-xs">
-                      <span className="text-gray-300">{label}</span>
-                      <span className={best && allMetrics.filter(Boolean).length > 1 ? 'font-semibold text-[#7fb0ff]' : 'text-gray-100'}>
-                        {best && allMetrics.filter(Boolean).length > 1 ? '★ ' : ''}
-                        {axisText(key, metrics)}
-                      </span>
-                    </div>
-                    <div className="h-1.5 rounded bg-[#444]">
-                      <div className="h-1.5 rounded" style={{ width: `${v ?? 0}%`, background: color }} />
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-            {metrics.truncated && <p className="text-[11px] text-[#E69F00]">The stay runs past the end of the data ({metrics.coveredDays.toFixed(1)} days counted).</p>}
-            {metrics.slopeDeg === null && <p className="text-[11px] text-gray-300">No slope data for this site yet: flatness is left out of the score.</p>}
-            {site ? <MissionList site={site} /> : <p className="text-[11px] text-gray-400">Point on the Moon: terrain and slope computed in your browser from NASA LOLA tiles (same method as the curated sites).</p>}
-            <button
-              type="button"
-              disabled={false}
-              onClick={() => addDateVariant(sc, fallbackTimeMs ?? first)}
-              className="rounded border border-[#555] px-2 py-1 text-xs hover:bg-[var(--nasa-blue)] hover:text-white"
-            >
-              + Same site, 7 days later
-            </button>
-          </>
-        )}
-      </div>
+          <ul className="mt-4 flex flex-col gap-2.5">
+            {AXES.map(({ key, label }) => {
+              const v = metrics.axes[key]
+              const best = others && v !== null && allMetrics.every((m) => !m || m.axes[key] === null || (m.axes[key] as number) <= v)
+              return (
+                <li key={key}>
+                  <div className="flex items-baseline justify-between gap-2 text-xs">
+                    <span className="text-[#a7abad]">{label}</span>
+                    <span className={best ? 'font-medium text-white' : 'text-[#c0c0c0]'}>
+                      {axisText(key, metrics)}
+                      {best && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-[#8f9396]">best</span>}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1 bg-white/[0.08]">
+                    <div className="h-1" style={{ width: `${v ?? 0}%`, background: color }} />
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+
+          {metrics.truncated && <Note>The stay runs past the end of the data ({metrics.coveredDays.toFixed(1)} days counted).</Note>}
+          {metrics.slopeDeg === null && <Note>No slope data for this site yet: flatness is left out of the score.</Note>}
+          <div className="mt-3">{site ? <MissionList site={site} /> : <Note>Point on the Moon: terrain and slope from NASA LOLA tiles.</Note>}</div>
+
+          <label className="mt-4 flex flex-col gap-1 text-xs text-[#a7abad]">
+            Arrival (UTC)
+            <input
+              type="datetime-local"
+              value={toInput(value)}
+              min={toInput(first)}
+              max={toInput(last)}
+              onChange={(e) => {
+                const ms = Date.parse(`${e.target.value}Z`)
+                if (!Number.isNaN(ms)) updateScenario(sc.id, { timeMs: ms })
+              }}
+              className="border border-white/15 bg-black/30 px-2 py-1.5 text-sm text-white outline-none [color-scheme:dark] focus:border-white/40"
+            />
+          </label>
+          <button type="button" onClick={() => addDateVariant(sc, fallbackTimeMs ?? first)} className="btn-outline mt-3 px-3 py-1.5 text-xs font-medium">
+            Same place, 7 days later
+          </button>
+        </>
+      )}
     </article>
   )
+}
+
+function Note({ children }: { children: ReactNode }) {
+  return <p className="mt-2 text-[11px] text-[#8f9396]">{children}</p>
 }
 
 function axisText(key: string, m: Metrics): string {
@@ -300,34 +292,6 @@ function scenarioName(siteId: string): string {
   return saved ? saved.name : pointName(point)
 }
 
-function AddSlot() {
-  const options = SITES.filter((s) => s.hasSkyData)
-  const places = usePlaces()
-  return (
-    <div data-tour="compare-add" className="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#3a4560] p-4 text-center text-sm text-gray-300">
-      <p>Add a scenario</p>
-      <SitePicker
-        value={null}
-        options={options}
-        extraGroups={
-          places.length > 0
-            ? [
-                {
-                  title: 'Saved places (any point on the Moon)',
-                  color: '#56B4E9',
-                  items: places.map((p) => ({ id: `point:${p.latDeg.toFixed(4)},${p.lonDeg.toFixed(4)}`, name: p.name })),
-                },
-              ]
-            : []
-        }
-        onChange={(id) => addScenario(id, null)}
-        ariaLabel="Add a site to compare"
-      />
-      <p className="text-[11px] text-gray-400">Or press “Compare” on any site, or on a pin on the Orbital view.</p>
-    </div>
-  )
-}
-
 // All scenarios drawn on one radar so shape differences stand out.
 function OverlayRadar({ rows }: { rows: { index: number; name: string; metrics: Metrics }[] }) {
   const size = 260
@@ -339,18 +303,18 @@ function OverlayRadar({ rows }: { rows: { index: number; name: string; metrics: 
     return [c + Math.cos(a) * r * (v / 100), c + Math.sin(a) * r * (v / 100)]
   }
   return (
-    <section className="flex flex-wrap items-center justify-center gap-6 rounded-xl border border-[#22304f] bg-[#0b1226] p-4">
+    <section className="card-matte flex flex-wrap items-center gap-8 rounded-2xl p-5">
       <svg viewBox={`0 0 ${size} ${size}`} className="w-64" role="img" aria-label="Radar chart of the compared scenarios">
         {[25, 50, 75, 100].map((ring) => (
-          <polygon key={ring} points={AXES.map((_, i) => pt(i, ring).join(',')).join(' ')} fill="none" stroke="#2a3552" strokeWidth={1} />
+          <polygon key={ring} points={AXES.map((_, i) => pt(i, ring).join(',')).join(' ')} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
         ))}
         {AXES.map((a, i) => {
           const [x, y] = pt(i, 100)
           const [lx, ly] = pt(i, 122)
           return (
             <g key={a.key}>
-              <line x1={c} y1={c} x2={x} y2={y} stroke="#2a3552" />
-              <text x={lx} y={ly} fill="#cbd2e1" fontSize={9} textAnchor="middle" dominantBaseline="middle">{a.short}</text>
+              <line x1={c} y1={c} x2={x} y2={y} stroke="rgba(255,255,255,0.1)" />
+              <text x={lx} y={ly} fill="#a7abad" fontSize={9} textAnchor="middle" dominantBaseline="middle">{a.short}</text>
             </g>
           )
         })}
@@ -359,21 +323,26 @@ function OverlayRadar({ rows }: { rows: { index: number; name: string; metrics: 
             key={row.index}
             points={AXES.map((a, i) => pt(i, row.metrics.axes[a.key] ?? 0).join(',')).join(' ')}
             fill={CARD_COLORS[row.index % CARD_COLORS.length]}
-            fillOpacity={0.25}
+            fillOpacity={0.12}
             stroke={CARD_COLORS[row.index % CARD_COLORS.length]}
-            strokeWidth={2}
+            strokeWidth={1.5}
             strokeDasharray={row.index === 1 ? '5 3' : row.index === 2 ? '2 3' : undefined}
           />
         ))}
       </svg>
-      <ul className="flex flex-col gap-1 text-sm">
-        {rows.map((row) => (
-          <li key={row.index} className="flex items-center gap-2">
-            <span aria-hidden className="h-3 w-3 rounded-full" style={{ background: CARD_COLORS[row.index % CARD_COLORS.length] }} />
-            <span className="font-medium">{ordinal(row.index)} · {row.name}</span>
-          </li>
-        ))}
-      </ul>
+      <div>
+        <h2 className="text-base font-medium text-white">All five measures</h2>
+        <ul className="mt-3 flex flex-col gap-2 text-sm">
+          {rows.map((row) => (
+            <li key={row.index} className="flex items-center gap-3">
+              <span aria-hidden className="h-0.5 w-6" style={{ background: CARD_COLORS[row.index % CARD_COLORS.length] }} />
+              <span className="text-[#c0c0c0]">
+                <span className="text-white">{row.index + 1}</span> · {row.name}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   )
 }

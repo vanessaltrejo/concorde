@@ -5,7 +5,13 @@ import { useSyncExternalStore } from 'react'
 // Kept in this browser only (localStorage): a per-viewer convenience, so the
 // app works the same when storage is blocked (the list just starts empty).
 
-export type Place = { id: string; name: string; latDeg: number; lonDeg: number; createdUtc: string }
+// updatedUtc: last edit (created or renamed). Older saved places may lack it;
+// lastEdited() falls back to createdUtc.
+export type Place = { id: string; name: string; latDeg: number; lonDeg: number; createdUtc: string; updatedUtc?: string }
+
+export function lastEdited(p: Place): string {
+  return p.updatedUtc ?? p.createdUtc
+}
 
 const KEY = 'concorde.savedPlaces.v1'
 
@@ -62,6 +68,7 @@ export function addPlace(latDeg: number, lonDeg: number): Place {
     latDeg,
     lonDeg: ((lonDeg % 360) + 360) % 360,
     createdUtc: new Date().toISOString(),
+    updatedUtc: new Date().toISOString(),
   }
   set([place, ...places])
   return place
@@ -70,7 +77,7 @@ export function addPlace(latDeg: number, lonDeg: number): Place {
 export function renamePlace(id: string, name: string): void {
   const clean = name.trim().slice(0, 60)
   if (!clean) return
-  set(places.map((p) => (p.id === id ? { ...p, name: clean } : p)))
+  set(places.map((p) => (p.id === id && p.name !== clean ? { ...p, name: clean, updatedUtc: new Date().toISOString() } : p)))
 }
 
 export function removePlace(id: string): void {
